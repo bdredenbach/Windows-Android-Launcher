@@ -24,7 +24,7 @@ final class ToolViewState {
         if(item!=null){
             if(view instanceof EditText){EditText text=(EditText)view;if(item.has("text"))text.setText(item.optString("text"));int length=text.length();text.setSelection(Math.max(0,Math.min(length,item.optInt("start",length))),Math.max(0,Math.min(length,item.optInt("end",length))));if(item.optBoolean("focus")&&view.isShown())text.requestFocus();}
             if(view instanceof MonthCalendarView)((MonthCalendarView)view).restore(item.optLong("month"),item.optLong("selected"));
-            if(view instanceof ScrollView)view.post(()->view.scrollTo(item.optInt("scrollX"),item.optInt("scrollY")));
+            if(view instanceof ScrollView)view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener(){public void onGlobalLayout(){view.getViewTreeObserver().removeOnGlobalLayoutListener(this);view.scrollTo(item.optInt("scrollX"),item.optInt("scrollY"));}});
         }
         if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++)restore(group.getChildAt(i),path+"/"+i,state);}
     }
