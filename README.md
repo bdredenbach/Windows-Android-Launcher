@@ -69,4 +69,4 @@ The runner restores the previous note after its checks. It is intended for test 
 
 ## First-build validation
 
-The debug APK and instrumentation APK compile successfully locally and on GitHub Actions. The five platform-independent launcher behavior checks pass, and the APK signature is verified. Emulator interaction checks have not completed successfully in this environment; acceptance testing on a physical Android device is still pending. Normal pushes build both APK packages and run the emulator smoke test, with bounded timeouts and screenshot evidence.
+The debug APK and instrumentation APK compile successfully locally and on GitHub Actions. The five platform-independent launcher behavior checks pass, and the APK signature is verified. The Android 11 emulator interaction checks pass: app discovery, search, note autosave, minimize/taskbar restore, maximize/restore, close/reopen, and personalization. Acceptance testing on a physical Android device is still pending. Normal pushes build both APK packages and run the emulator smoke test, with bounded timeouts and screenshot evidence.

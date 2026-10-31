@@ -59,7 +59,7 @@ public final class LauncherSmoke extends Instrumentation {
     private void snapshot(String name) throws java.io.IOException {
         android.graphics.Bitmap bitmap=getUiAutomation().takeScreenshot();
         if(bitmap==null)throw new java.io.IOException("Screenshot unavailable");
-        java.io.File output=new java.io.File(getTargetContext().getExternalFilesDir(null),name);
+        java.io.File output=new java.io.File(getTargetContext().getFilesDir(),name);
         try(java.io.FileOutputStream stream=new java.io.FileOutputStream(output)){bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,stream);}finally{bitmap.recycle();}
     }
     private void progress(String message){Bundle status=new Bundle();status.putString("stream","CHECK: "+message+"\n");sendStatus(1,status);}
