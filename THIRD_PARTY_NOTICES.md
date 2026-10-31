@@ -5,3 +5,15 @@ The Gradle wrapper scripts and `gradle/wrapper/gradle-wrapper.jar` come from the
 Android SDK/build tools and the Android Gradle Plugin are downloaded as development dependencies under their respective licenses; they are not source assets from the inspiration project. This app has no third-party runtime-library dependencies.
 
 The Nth Desktop code, wallpaper and vector/primitives icon artwork were created for this project. No Microsoft assets or jovanovski/windowslauncher code are included. Android app icons and labels shown at runtime come from apps installed on the user's device.
+
+## Selawik typeface
+
+The unmodified Selawik Regular (`selawk.ttf`) and Semibold (`selawksb.ttf`) fonts are copyright 2015 Microsoft Corporation, with Reserved Font Name Selawik. They are redistributed under the SIL Open Font License 1.1; the complete license is in `third_party/selawik/LICENSE.txt`. Source: https://github.com/microsoft/Selawik/releases/tag/1.01 . Selawik is an open-source Segoe UI replacement; no proprietary Segoe UI font files are included.
+
+## Weather data
+
+Weather forecasts are provided by the Norwegian Meteorological Institute (MET Norway), under CC BY 4.0. This application formats temperatures and condition descriptions from the original data, caches results until the provider's expiry time, and identifies itself in the User-Agent header. Attribution and a licensing link are available in Weather settings. No API key is required. Forecast requests are made only while the configured Weather gadget and launcher are visible. Location search uses Android's Geocoder service; approximate device location is optional and requested only after the user chooses that action.
+
+- https://api.met.no/
+- https://docs.api.met.no/doc/TermsOfService
+- https://creativecommons.org/licenses/by/4.0/

@@ -17,25 +17,26 @@ final class DesktopWindow extends LinearLayout {
     private boolean maximized;
     private int normalX, normalY, normalW, normalH;
     private float downX, downY, originX, originY;
-    DesktopWindow(Context context, FrameLayout host, String title, View body, Runnable changed) {
+    DesktopWindow(Context context, FrameLayout host, String title, View body, AeroWallpaper wallpaper,Runnable changed) {
         super(context); this.host=host; this.changed=changed;
         setOrientation(VERTICAL); setElevation(Aero.dp(context,16));
-        setBackground(Aero.panel(context,0xeea6d3e6,0xf0e7eff5,9,0x99ffffff));
-        setPadding(Aero.dp(context,5),Aero.dp(context,4),Aero.dp(context,5),Aero.dp(context,5));
+        setBackground(new AeroGlass(wallpaper,AeroGlass.WINDOW));
+        setPadding(Aero.dp(context,6),Aero.dp(context,2),Aero.dp(context,6),Aero.dp(context,6));
         LinearLayout bar=new LinearLayout(context); bar.setGravity(Gravity.CENTER_VERTICAL);
-        TextView label=Aero.text(context,title,15,Aero.INK); Aero.bold(label); label.setPadding(Aero.dp(context,8),0,0,0);
+        TextView label=Aero.text(context,title,13,0xff111b22);label.setShadowLayer(Aero.dp(context,3),0,0,0xffffffff); label.setPadding(Aero.dp(context,8),0,0,0);
         bar.addView(label,new LayoutParams(0,Aero.dp(context,48),1));
         TextView minimize=chrome("—",()->{ hideKeyboard();setVisibility(GONE); changed.run(); });
         maximizeButton=chrome("□",this::toggleMaximize);
         TextView close=chrome("×",()->{ hideKeyboard();host.removeView(this); changed.run(); });
-        close.setTextColor(0xff963a35);
+        close.setTextColor(Color.WHITE);
+        close.setBackground(Aero.gloss(context,new int[]{0xffefb2a3,0xffcf6550,0xffa92d18,0xffc14f33},3,0xff64362f));
         bar.addView(minimize); bar.addView(maximizeButton); bar.addView(close);
         addView(bar,new LayoutParams(-1,Aero.dp(context,48)));
-        body.setBackgroundColor(0xfff6f9fb); addView(body,new LayoutParams(-1,0,1));
+        body.setBackgroundColor(0xfff7f8f9); addView(body,new LayoutParams(-1,0,1));
         label.setOnTouchListener((v,e)->{
             if(e.getActionMasked()==MotionEvent.ACTION_DOWN){ bringToFront(); downX=e.getRawX(); downY=e.getRawY(); originX=getX(); originY=getY(); return true; }
             if(e.getActionMasked()==MotionEvent.ACTION_MOVE){
-                if(!maximized){ setX(clamp(originX+e.getRawX()-downX,0,Math.max(0,host.getWidth()-getWidth()))); setY(clamp(originY+e.getRawY()-downY,0,Math.max(0,host.getHeight()-getHeight()))); }
+                if(!maximized){ setX(clamp(originX+e.getRawX()-downX,0,Math.max(0,host.getWidth()-getWidth()))); setY(clamp(originY+e.getRawY()-downY,0,Math.max(0,host.getHeight()-getHeight())));invalidate(); }
                 return true;
             }
             if(e.getActionMasked()==MotionEvent.ACTION_UP){ v.performClick(); return true; }
@@ -45,7 +46,8 @@ final class DesktopWindow extends LinearLayout {
     }
     private TextView chrome(String symbol,Runnable action){
         TextView view=Aero.button(getContext(),symbol,action);
-        view.setTextSize(19); view.setLayoutParams(new LayoutParams(Aero.dp(getContext(),48),Aero.dp(getContext(),44)));
+        view.setTextSize(16);view.setMinHeight(0);view.setPadding(0,0,0,0);LayoutParams lp=new LayoutParams(Aero.dp(getContext(),40),Aero.dp(getContext(),30));lp.leftMargin=Aero.dp(getContext(),1);view.setLayoutParams(lp);
+        view.setBackground(Aero.gloss(getContext(),new int[]{0xbbc4deeb,0xaa8daabd,0x99738c9e,0xaab0c9d6},3,0xff627b8c));
         view.setContentDescription(symbol.equals("×")?"Close window":symbol.equals("—")?"Minimize window":"Maximize or restore window");
         return view;
     }

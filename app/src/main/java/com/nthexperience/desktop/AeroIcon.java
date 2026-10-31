@@ -14,8 +14,8 @@ final class AeroIcon extends View {
         canvas.save(); canvas.translate((getWidth()-64*s)/2,(getHeight()-64*s)/2); canvas.scale(s,s);
         p.setShader(null); p.setStyle(Paint.Style.FILL);
         if (kind.equals("orb")) {
-            p.setShader(new RadialGradient(24,16,45,new int[]{0xff75e1de,0xff2189b3,0xff092e61},null,Shader.TileMode.CLAMP));
-            canvas.drawCircle(32,32,29,p); p.setShader(null);
+            p.setShader(new RadialGradient(24,16,45,new int[]{0xffb9f5df,0xff237fbd,0xff071d44},null,Shader.TileMode.CLAMP));
+            canvas.drawCircle(32,32,29,p); p.setShader(null);p.setColor(0xff061a32);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2);canvas.drawCircle(32,32,29,p);p.setStyle(Paint.Style.FILL);
             p.setColor(0xaaffffff); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1); canvas.drawCircle(32,32,28,p); p.setStyle(Paint.Style.FILL);
             p.setColor(0x55ffffff); canvas.drawOval(13,8,51,28,p);
             p.setColor(Color.WHITE); p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD)); p.setTextSize(34); canvas.drawText("N",20,46,p);

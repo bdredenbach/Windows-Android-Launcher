@@ -1,46 +1,53 @@
 # Nth Desktop for Android
 
-An independently implemented, Vista-inspired Android home launcher by Nth Experience. The first test build is **0.1.0**.
+A Vista-style Android home launcher by Nth Experience. **0.2.0 — Aero & gadgets** brings a dark reflective taskbar, a two-column Start menu with bottom search, Selawik typography, vertical desktop shortcuts, glass window borders, and a docked gadget Sidebar.
 
-## Implemented in this build
+## Desktop gadgets
 
-- Native Android HOME activity with an optional standard default-home chooser.
-- Original gradient aurora wallpapers, glass-style taskbar, and an original N start orb/icon set.
-- Searchable Start menu listing launchable apps in the current Android profile.
-- Launch real Android apps; hold a Start menu entry to pin/unpin it or open Android's app info.
-- Hold and drag desktop shortcuts onto each other to swap positions. Shortcut order survives restarts.
-- Recent-launch shortcuts in the taskbar (these do not claim to be running-app indicators).
-- Built-in Notepad with automatic local saving, a clock/calendar, and personalization.
-- Drag, minimize, maximize/restore, and close built-in tool windows; minimized tools can be restored from the taskbar.
-- System document picker and the device's installed browser/file handlers.
-- Portrait/landscape layouts, system-bar/cutout insets, keyboard insets, and package-change refresh.
+Open **Start → Gadgets**, or hold blank desktop space and choose **Gadgets**. Add or remove gadgets in the gallery. Hold and drag a gadget onto another gadget to swap their order. Tap a gadget to use or configure it. The Sidebar can be hidden and reopened from the gallery. Its selection and order survive restarts.
 
-This version does not host Android widgets or work-profile apps, resize other Android apps, read notifications, or replace Android's Recents/system controls. It requests no network, storage, accessibility, contacts, or notification permissions. The Internet shortcut hands a web URL to the installed browser.
+| Gadget | Behavior |
+| --- | --- |
+| Clock | Live local time, ivory/black faces, optional second hand |
+| Calendar | Today's date on a tear-off page; tap for the native month grid |
+| Weather | User-selected city or optional approximate location, °C/°F, cached forecasts from MET Norway |
+| Notes | Yellow sticky note, saved automatically and independently of Notepad |
+| Photo Frame | Choose up to 12 images with Android's document picker; slideshow while the launcher is visible |
+| System Meter | Actual battery level and physical memory usage on two analog dials |
 
-## Try it
+The initial Sidebar includes Clock, Calendar and Weather. Weather shows a setup prompt until you choose a location; it never displays a sample forecast as real weather. Gadgets stop ticking while the launcher is in the background. Weather requests honor provider cache expiry and remain off when the Sidebar or Weather gadget is hidden.
 
-Install the debug APK, open **Nth Desktop**, and tap the N orb. You can try it before choosing it as your default home app. Select **Make home** in Start when ready. To return to your previous launcher, open **Android Settings → Apps → Default apps → Home app**.
+## Launcher behavior
 
-- Tap a desktop shortcut once to open it.
-- Hold a program in Start for desktop options.
-- Hold a blank desktop area for personalization and shortcut management.
-- Swipe up on blank desktop space to open program search.
-- The strip at the far right of the taskbar minimizes built-in tools to show the desktop.
-- Back dismisses Start or minimizes the top built-in tool.
+- Native HOME activity and standard optional default-home chooser.
+- Start search and All Programs list real launchable apps in the current Android profile. Hold an app for desktop pin/unpin or Android app info.
+- Vertical desktop icon columns. Hold and drag shortcuts onto each other to swap slots; their order is saved.
+- Taskbar quick launch, recent-launch shortcuts, and buttons for built-in tool windows. The recent strip does not claim to be a running-app/task manager.
+- Drag, minimize, maximize/restore and close built-in tool windows. Android apps open normally under Android's window management.
+- Notepad saves automatically on the device. Files and Music use Android's document picker and installed handlers.
+- The right edge of the taskbar shows the desktop. Back dismisses Start or minimizes the top built-in tool.
+- Three wallpaper/color treatments. The aurora artwork uses lossless WebP; see [artwork and prompt details](ASSETS.md).
+- Android's status bar is hidden by default for the desktop look; swipe from the top to reveal system controls, or enable it in Personalization. Navigation and cutout insets remain respected.
 
-Notes and preferences are stored only on the device; uninstalling the app clears them. This is a test build, not a production release.
+These are native built-in desktop gadgets. This release does not yet host third-party Android home-screen widgets, work-profile apps, or move other Android apps into its built-in windows.
 
-## Build
+## Install and update
 
-Requires JDK 17, Android SDK platform 36, and SDK Build Tools 35.0.0. Open this directory in Android Studio, or set `ANDROID_HOME` to your SDK and run:
+Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.2.0 handoff APK uses the same preserved test signing key as 0.1.0, so it can be installed as an update.
+
+Notes, selected photo references, preferences and cached forecasts are stored locally. Photo access uses the document picker's retained grants; no broad photo/storage permission is requested. Approximate location is requested only when you tap **Use my approximate location**. A city can be chosen without granting location access. Forecasts require Internet access; city search depends on the device's Android Geocoder service. Selected weather coordinates are sent to MET Norway. Uninstalling clears local app data.
+
+GitHub Actions uses its runner's debug key. Its APK artifact may not have the same signing identity as the handoff APK. Reuse the private test signing key for in-place hand-built test updates, and never commit signing keys or use the debug key for a production release.
+
+## Build and checks
+
+JDK 17, Android SDK platform 36, Build Tools 35.0.0, Gradle 8.13 and AGP 8.13.2. Minimum Android 8.0 (API 26), target API 36. No third-party runtime-library dependencies.
 
 ```sh
-./gradlew assembleDebug
+./gradlew assembleDebug assembleDebugAndroidTest
 ```
 
-Output: `app/build/outputs/apk/debug/app-debug.apk`. The Gradle wrapper uses Gradle 8.13 and Android Gradle Plugin 8.13.2. The app supports Android 8.0 (API 26) and above and targets API 36. No third-party runtime libraries are bundled.
-
-Check the platform-independent shortcut/recent-launch rules:
+Output: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ```sh
 mkdir -p build/state-check
@@ -48,25 +55,20 @@ javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherS
 java -cp build/state-check LauncherStateCheck
 ```
 
-## Origin and rights
-
-The feature idea was prompted by [jovanovski/windowslauncher](https://github.com/jovanovski/windowslauncher). At inspection on October 31, 2026, it had no declared source license; its README also states that many assets belong to Microsoft. No source code or graphics from that project were copied here. Our application code, icons, wallpaper, and branding were created independently. This is not a Microsoft product and is not affiliated with Microsoft.
-
-The Gradle wrapper is third-party build tooling supplied by Gradle under its own license. No open-source license is being chosen for Nth Experience's application code in this initial setup; licensing is reserved for the owner to decide.
-
-## Emulator smoke test
-
-A dependency-free instrumentation runner covers installed-app discovery, search, Notepad autosave, window controls, taskbar restore, and personalization. On a disposable emulator:
+On a disposable emulator:
 
 ```sh
-./gradlew assembleDebug assembleDebugAndroidTest
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke
 ```
 
-The runner restores the previous note after its checks. It is intended for test devices; do not run it against your primary home configuration.
+The instrumentation runner checks app discovery, Start search/All Programs, note persistence, window controls, wallpaper settings, gadget selection, sticky notes, clock settings, calendar, weather parsing/unit conversion and configuration. It captures real desktop, menu, window and gadget-gallery screens. It does not require live weather or location permission to pass. GitHub Actions builds and runs these checks on Android 11. Physical-device acceptance testing is separate.
 
-## First-build validation
+## Origin and credits
 
-The debug APK and instrumentation APK compile successfully locally and on GitHub Actions. The five platform-independent launcher behavior checks pass, and the APK signature is verified. The Android 11 emulator interaction checks pass: app discovery, search, note autosave, minimize/taskbar restore, maximize/restore, close/reopen, and personalization. Acceptance testing on a physical Android device is still pending. Normal pushes build both APK packages and run the emulator smoke test, with bounded timeouts and screenshot evidence.
+The original idea was prompted by [jovanovski/windowslauncher](https://github.com/jovanovski/windowslauncher). At inspection it had no declared source license. No source code or proprietary Windows graphics from that project were copied. The application, icons and wallpaper were independently created. This is not a Microsoft product.
+
+The openly licensed Selawik font is copyright Microsoft Corporation and is included under SIL OFL 1.1. Weather data are provided by MET Norway under CC BY 4.0. Gradle's wrapper is build tooling under its own license. Full notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Licensing of Nth Experience's application code remains for the owner to decide; no open-source license is selected by this setup.

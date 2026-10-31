@@ -14,6 +14,10 @@ final class DesktopStore {
     List<String> desktop() {
         return list("shortcuts", Arrays.asList("@computer", "@browser", "@files", "@notes", "@appearance"));
     }
+    List<String> gadgets(){return list("gadgets",Arrays.asList("clock","calendar","weather"));}
+    void gadgets(List<String> ids){save("gadgets",ids);}
+    List<String> photos(){return list("gadget_photos",new ArrayList<>());}
+    void photos(List<String> ids){save("gadget_photos",ids);}
     List<String> recents() { return list("recents", new ArrayList<>()); }
     private List<String> list(String key, List<String> fallback) {
         try {
