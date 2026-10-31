@@ -13,6 +13,7 @@ import org.json.*;
 /** Floating windows are for our built-in tools; Android apps launch normally. */
 final class DesktopWindow extends LinearLayout {
     private final FrameLayout host;
+    final View body;
     private final Runnable changed;
     private final TextView maximizeButton;
     private boolean maximized;
@@ -23,16 +24,17 @@ final class DesktopWindow extends LinearLayout {
     final String toolId;
     private float downX, downY, originX, originY;
     DesktopWindow(Context context, FrameLayout host, String title, View body, AeroWallpaper wallpaper,Runnable changed,DesktopStore store,String toolId,String layoutKey) {
-        super(context); this.host=host; this.changed=changed;this.store=store;this.toolId=toolId;geometryKey="window_"+layoutKey+"_"+toolId;
+        super(context);this.body=body; this.host=host; this.changed=changed;this.store=store;this.toolId=toolId;geometryKey="window_"+layoutKey+"_"+toolId;
         setOrientation(VERTICAL); setElevation(Aero.dp(context,16));
         setBackground(new AeroGlass(wallpaper,AeroGlass.WINDOW));
         setPadding(Aero.dp(context,6),Aero.dp(context,2),Aero.dp(context,6),Aero.dp(context,6));
         LinearLayout bar=new LinearLayout(context); bar.setGravity(Gravity.CENTER_VERTICAL);
+        String icon=toolId.equals("@control")?"control":toolId.equals("@appearance")?"appearance":toolId.equals("@files")?"files":toolId.equals("@filemanagers")?"folderapps":toolId.equals("@computer")||toolId.equals("@system")?"computer":toolId.equals("@notes")?"notes":"clock";LinearLayout.LayoutParams iconParams=new LinearLayout.LayoutParams(Aero.dp(context,18),Aero.dp(context,18));iconParams.leftMargin=Aero.dp(context,5);bar.addView(new AeroIcon(context,icon),iconParams);
         TextView label=Aero.text(context,title,13,0xff111b22);label.setShadowLayer(Aero.dp(context,3),0,0,0xffffffff); label.setPadding(Aero.dp(context,8),0,0,0);
         bar.addView(label,new LayoutParams(0,Aero.dp(context,48),1));
         TextView minimize=chrome("—",()->{ hideKeyboard();setVisibility(GONE); changed.run(); });
         maximizeButton=chrome("□",this::toggleMaximize);
-        TextView close=chrome("×",()->{ hideKeyboard();host.removeView(this); changed.run(); });
+        TextView close=chrome("×",()->{ hideKeyboard();if(body instanceof VistaShell)((VistaShell)body).close();host.removeView(this); changed.run(); });
         close.setTextColor(Color.WHITE);
         close.setBackground(Aero.gloss(context,new int[]{0xffefb2a3,0xffcf6550,0xffa92d18,0xffc14f33},3,0xff64362f));
         bar.addView(minimize); bar.addView(maximizeButton); bar.addView(close);

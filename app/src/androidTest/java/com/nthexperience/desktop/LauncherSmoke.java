@@ -62,6 +62,7 @@ public final class LauncherSmoke extends Instrumentation {
             String original=previous;ui(()->reopened.setText(original));
             ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
             progress("note and window checks passed");ui(()->activity.open("@appearance"));
+            ui(()->find(v->"Desktop Background".equals(v.getContentDescription())).performClick());
             check(find(v->"Use Twilight · violet and rose wallpaper".equals(v.getContentDescription()))!=null,"Personalization opens");
             ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
             ui(()->activity.open("@gadgets"));
@@ -80,12 +81,13 @@ public final class LauncherSmoke extends Instrumentation {
             check("12.345".equals(WeatherClient.coordinate(12.34567)),"Weather coordinates use limited precision");
             ui(()->activity.gadgetAction("weather"));check(find(v->"Weather city search".equals(v.getContentDescription()))!=null,"Weather can be configured without location permission");
             ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
-            ui(()->activity.gadgetAction("clock"));check(find(v->v instanceof android.widget.Switch)!=null,"Clock settings opens");
+            ui(()->activity.gadgetAction("clock"));check(find(v->v instanceof android.widget.CheckBox)!=null,"Clock settings opens");
             ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
             snapshot("gadgets-desktop.png");
             ui(()->activity.gadgetAction("calendar"));snapshot("calendar.png");ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
             layoutChecks();
-            result.putString("stream","PASS: landscape, gadget drag/dock/resize, independent saved layouts, layout lock, rotation and activity recreation with window/cursor state; app discovery, Start search/All Programs, autosave, window controls, wallpapers, gadget gallery, sticky notes, clock settings, weather parsing and configuration.\n");
+            shellChecks();
+            result.putString("stream","PASS: Control Panel categories/classic/search, native personalization, Android settings dispatch, Explorer/file-manager folders, real picker grants, nested folder browsing and rotation state; landscape, gadget drag/dock/resize, independent saved layouts, layout lock, rotation and activity recreation with window/cursor state; app discovery, Start search/All Programs, autosave, window controls, wallpapers, gadget gallery, sticky notes, clock settings, weather parsing and configuration.\n");
             restoreGadgets(oldGadgets);((Application)getTargetContext().getApplicationContext()).unregisterActivityLifecycleCallbacks(lifecycle);finish(Activity.RESULT_OK,result);
         } catch(Throwable failure){
             if(previous!=null)getTargetContext().getSharedPreferences("desktop",0).edit().putString("note",previous).commit();
@@ -142,6 +144,43 @@ public final class LauncherSmoke extends Instrumentation {
         for(int i=1;i<=12;i++){inject(down,MotionEvent.ACTION_MOVE,startX+(x-startX)*i/12,startY+(y-startY)*i/12);Thread.sleep(20);}inject(down,MotionEvent.ACTION_UP,x,y);Thread.sleep(300);waitForIdleSync();
     }
     private void inject(long down,int action,float x,float y){MotionEvent event=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,x,y,0);event.setSource(InputDevice.SOURCE_TOUCHSCREEN);getUiAutomation().injectInputEvent(event,true);event.recycle();}
+    private void shellChecks() throws Exception {
+        progress("checking Vista Control Panel and personalization");
+        ui(()->activity.open("@control"));snapshot("control-panel.png");
+        EditText search=(EditText)find(v->"Search Control Panel".equals(v.getContentDescription()));check(search!=null,"Control Panel has settings search");ui(()->search.setText("wireless"));
+        check(find(v->"Wi-Fi".equals(v.getContentDescription()))!=null,"Settings search finds Wi-Fi");
+        ActivityMonitor wifi=addMonitor(new android.content.IntentFilter(android.provider.Settings.ACTION_WIFI_SETTINGS),null,true);ui(()->find(v->"Wi-Fi".equals(v.getContentDescription())).performClick());check(wifi.getHits()==1,"Wi-Fi opens the matching Android settings action");removeMonitor(wifi);
+        ui(()->search.setText(""));ui(()->find(v->v instanceof TextView&&"View ▾".contentEquals(((TextView)v).getText())).performClick());clickSystemText("Classic View");waitForIdleSync();check(new DesktopStore(getTargetContext()).prefs.getBoolean("control_panel_classic",false),"Classic View selection persists");snapshot("control-panel-classic.png");
+        ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
+        ui(()->activity.open("@appearance"));snapshot("personalization.png");ui(()->find(v->"Desktop Background".equals(v.getContentDescription())).performClick());ui(()->find(v->"Use Twilight · violet and rose wallpaper".equals(v.getContentDescription())).performClick());check(new DesktopStore(getTargetContext()).prefs.getInt("wallpaper",0)==1,"Vista background page changes actual wallpaper");ui(()->find(v->"Use Aero · green and blue aurora wallpaper".equals(v.getContentDescription())).performClick());
+        ui(()->find(v->"Back".equals(v.getContentDescription())).performClick());ui(()->find(v->"Taskbar and Start Menu".equals(v.getContentDescription())).performClick());android.widget.CheckBox status=(android.widget.CheckBox)find(v->"Show Android status bar".equals(v.getContentDescription()));boolean original=status.isChecked();ui(status::performClick);check(new DesktopStore(getTargetContext()).prefs.getBoolean("show_status_bar",false)!=original,"Native settings checkbox changes the desktop preference");ui(status::performClick);ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
+        ui(()->activity.open("@system"));check(find(v->v instanceof TextView&&((TextView)v).getText().toString().contains(android.os.Build.MODEL))!=null,"System page shows real device information");snapshot("system.png");ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
+        ui(()->activity.open("@computer"));snapshot("computer.png");rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,Configuration.ORIENTATION_LANDSCAPE);snapshot("computer-landscape.png");ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
+        ui(()->activity.open("@filemanagers"));ui(()->find(v->"Add file manager apps".equals(v.getContentDescription())).performClick());
+        android.widget.ListView choices=(android.widget.ListView)find(v->v instanceof android.widget.ListView);check(choices!=null&&choices.getCount()>1,"File Managers offers installed apps");
+        View choice=find(v->v.getContentDescription()!=null&&v.getContentDescription().toString().startsWith("Choose file manager app: "));check(choice!=null,"An installed app can be chosen");int position=choices.getPositionForView(choice);ui(()->choices.performItemClick(choice,position,choices.getItemIdAtPosition(position)));check(!new DesktopStore(getTargetContext()).fileManagers().isEmpty(),"File manager shortcuts persist");
+        ui(()->find(v->"Back".equals(v.getContentDescription())).performClick());snapshot("file-managers.png");ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
+        progress("granting a real test folder through Android's picker");ui(()->activity.open("@files"));ui(()->find(v->"Link a folder".equals(v.getContentDescription())).performClick());
+        clickSystemDescription("Show roots");clickSystemText("Nth Test Storage");clickSystemText("Archive");clickSystemText("Use this folder");clickSystemText("Allow");
+        awaitView(v->"Chapter.txt".equals(v.getContentDescription()));check(find(v->"Nested".equals(v.getContentDescription()))!=null,"Granted folder children load from the document provider");snapshot("explorer-folder.png");
+        org.json.JSONObject link=DocumentFolders.links(new DesktopStore(getTargetContext())).getJSONObject(0);android.net.Uri tree=android.net.Uri.parse(link.getString("uri"));check(getTargetContext().getContentResolver().getPersistedUriPermissions().stream().anyMatch(p->p.getUri().equals(tree)&&p.isReadPermission()),"Folder read grant is retained");
+        android.net.Uri chapter=android.provider.DocumentsContract.buildDocumentUriUsingTree(tree,"chapter");try(java.io.InputStream input=getTargetContext().getContentResolver().openInputStream(chapter)){byte[] bytes=new byte[128];int count=input==null?0:input.read(bytes);check(count>0&&new String(bytes,0,count,java.nio.charset.StandardCharsets.UTF_8).startsWith("A real document"),"Selected document is readable with the folder grant");}
+        boolean blocked=false;try(android.database.Cursor cursor=getTargetContext().getContentResolver().query(android.provider.DocumentsContract.buildDocumentUriUsingTree(tree,"root"),null,null,null,null)){}catch(SecurityException expected){blocked=true;}check(blocked,"Folder grant cannot escape the selected tree");
+        EditText fileSearch=(EditText)find(v->"Search this folder".equals(v.getContentDescription()));ui(()->fileSearch.setText("chapter"));check(((ListView)find(v->"Folder contents".equals(v.getContentDescription()))).getCount()==1,"Folder search filters the current directory");ui(()->fileSearch.setText(""));
+        ListView listing=(ListView)find(v->"Folder contents".equals(v.getContentDescription()));View nested=find(v->"Nested".equals(v.getContentDescription()));int index=listing.getPositionForView(nested);ui(()->listing.performItemClick(nested,index,listing.getItemIdAtPosition(index)));awaitView(v->"Readme.txt".equals(v.getContentDescription()));
+        EditText nestedSearch=(EditText)find(v->"Search this folder".equals(v.getContentDescription()));ui(()->nestedSearch.setText("Read"));rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,Configuration.ORIENTATION_PORTRAIT);awaitView(v->"Readme.txt".equals(v.getContentDescription()));EditText rotated=(EditText)find(v->"Search this folder".equals(v.getContentDescription()));check("Read".contentEquals(rotated.getText()),"Explorer keeps folder and search through rotation");
+        ui(()->find(v->"Back".equals(v.getContentDescription())).performClick());awaitView(v->"Chapter.txt".equals(v.getContentDescription()));check(find(v->"Nested".equals(v.getContentDescription()))!=null,"Explorer history survives rotation");
+        ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());DocumentFolders.remove(getTargetContext(),new DesktopStore(getTargetContext()),tree.toString());
+        progress("Vista shell and real document-provider checks passed");
+    }
+    private void awaitView(Predicate<View> match) throws Exception {long deadline=SystemClock.uptimeMillis()+8000;while(SystemClock.uptimeMillis()<deadline){waitForIdleSync();if(find(match)!=null)return;Thread.sleep(150);}throw new AssertionError("Expected native view did not appear");}
+    private void clickSystemText(String text) throws Exception {clickSystemNode(node->node.getText()!=null&&text.equalsIgnoreCase(node.getText().toString()));}
+    private void clickSystemDescription(String text) throws Exception {clickSystemNode(node->node.getContentDescription()!=null&&(text.equalsIgnoreCase(node.getContentDescription().toString())||node.getContentDescription().toString().equalsIgnoreCase("Open navigation drawer")));}
+    private void clickSystemNode(Predicate<android.view.accessibility.AccessibilityNodeInfo> match) throws Exception {
+        long deadline=SystemClock.uptimeMillis()+10000;
+        while(SystemClock.uptimeMillis()<deadline){android.view.accessibility.AccessibilityNodeInfo found=systemNode(getUiAutomation().getRootInActiveWindow(),match);if(found!=null){while(!found.isClickable()&&found.getParent()!=null)found=found.getParent();if(found.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)){Thread.sleep(350);return;}}Thread.sleep(150);}throw new AssertionError("System picker or menu item not found");
+    }
+    private android.view.accessibility.AccessibilityNodeInfo systemNode(android.view.accessibility.AccessibilityNodeInfo node,Predicate<android.view.accessibility.AccessibilityNodeInfo> match){if(node==null)return null;if(match.test(node))return node;for(int i=0;i<node.getChildCount();i++){android.view.accessibility.AccessibilityNodeInfo found=systemNode(node.getChild(i),match);if(found!=null)return found;}return null;}
     private void restoreGadgets(String value){android.content.SharedPreferences.Editor e=getTargetContext().getSharedPreferences("desktop",0).edit();if(value==null)e.remove("gadgets");else e.putString("gadgets",value);e.commit();}
     private void snapshot(String name) throws java.io.IOException {
         try{Thread.sleep(250);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new java.io.IOException(interrupted);}

@@ -1,4 +1,4 @@
-# Nth Desktop 0.3.0 artwork
+# Nth Desktop 0.4.0 artwork
 
 The wallpaper is bundled at `app/src/main/assets/wallpapers/aero-aurora.webp` (941 × 1672 pixels). It is encoded as **lossless WebP**: a pixel comparison against the generated PNG confirmed identical RGB pixels. Desktop chrome, icons and live gadget faces are drawn natively and remain sharp at the device's screen resolution.
 
@@ -17,3 +17,7 @@ Prompt: Create an original landscape 16:9 desktop wallpaper matching this refere
 ## Typeface
 
 Selawik Regular and Semibold are bundled without modification from Microsoft's official 1.01 release, under SIL OFL 1.1. The complete license is in `third_party/selawik/LICENSE.txt`. The Nth branding and code-drawn icons remain distinct from Microsoft's product branding.
+
+## Control Panel and Explorer icons
+
+The 0.4.0 folder, drive, Control Panel, network, shield, accounts, accessibility, clock and program icons are original Android Canvas drawings with native gradients and highlights. They remain sharp at the screen resolution and add no bitmap downloads or extracted Windows resources. The lossless portrait and landscape wallpapers are unchanged.

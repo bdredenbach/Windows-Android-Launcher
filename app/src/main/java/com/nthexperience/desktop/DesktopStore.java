@@ -16,6 +16,8 @@ final class DesktopStore {
     }
     List<String> gadgets(){return list("gadgets",Arrays.asList("clock","calendar","weather"));}
     void gadgets(List<String> ids){save("gadgets",ids);}
+    List<String> fileManagers(){return list("file_manager_apps",new ArrayList<>());}
+    void fileManagers(List<String> ids){save("file_manager_apps",ids);}
     List<String> photos(){return list("gadget_photos",new ArrayList<>());}
     void photos(List<String> ids){save("gadget_photos",ids);}
     List<String> recents() { return list("recents", new ArrayList<>()); }

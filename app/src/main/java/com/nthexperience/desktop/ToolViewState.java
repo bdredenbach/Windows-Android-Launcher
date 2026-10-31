@@ -9,6 +9,7 @@ final class ToolViewState {
     static JSONObject capture(View root){JSONObject result=new JSONObject();capture(root,"",result);return result;}
     private static void capture(View view,String path,JSONObject result){
         JSONObject item=new JSONObject();
+        if(view instanceof VistaShell){GadgetLayout.put(item,"shell",((VistaShell)view).state());GadgetLayout.put(result,path,item);return;}
         if(view instanceof EditText){EditText text=(EditText)view;String description=String.valueOf(text.getContentDescription());
             if(!description.equals("Notepad text")&&!description.equals("Sticky note text"))GadgetLayout.put(item,"text",text.getText().toString().substring(0,Math.min(2000,text.length())));
             GadgetLayout.put(item,"start",text.getSelectionStart());GadgetLayout.put(item,"end",text.getSelectionEnd());GadgetLayout.put(item,"focus",text.hasFocus());
@@ -22,6 +23,7 @@ final class ToolViewState {
     private static void restore(View view,String path,JSONObject state){
         JSONObject item=state.optJSONObject(path);
         if(item!=null){
+            if(view instanceof VistaShell){((VistaShell)view).restore(item.optJSONObject("shell"));return;}
             if(view instanceof EditText){EditText text=(EditText)view;if(item.has("text"))text.setText(item.optString("text"));int length=text.length();text.setSelection(Math.max(0,Math.min(length,item.optInt("start",length))),Math.max(0,Math.min(length,item.optInt("end",length))));if(item.optBoolean("focus")&&view.isShown())text.requestFocus();}
             if(view instanceof MonthCalendarView)((MonthCalendarView)view).restore(item.optLong("month"),item.optLong("selected"));
             if(view instanceof ScrollView)view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener(){public void onGlobalLayout(){view.getViewTreeObserver().removeOnGlobalLayoutListener(this);view.scrollTo(item.optInt("scrollX"),item.optInt("scrollY"));}});
