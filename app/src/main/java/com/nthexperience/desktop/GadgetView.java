@@ -56,7 +56,7 @@ final class GadgetView extends View {
         text(c,shorten(weather.city(),18),66,23,12,Color.WHITE,true);
         boolean cloud=s!=null&&(s.symbol.contains("cloud")||s.symbol.contains("rain")||s.symbol.contains("snow")||s.symbol.contains("fog"));
         sun(c,34,53,16,s!=null&&s.symbol.contains("night"));if(cloud)cloud(c,28,53);
-        if(s==null){text(c,"—",94,66,31,Color.WHITE,true);text(c,weather.loading()?"Loading forecast…":"Tap to set location",66,87,11,0xfffff4d9,false);}
+        if(s==null){text(c,"—",94,66,31,Color.WHITE,true);text(c,weather.loading()?"Loading forecast…":weather.configured()?"Forecast unavailable":"Tap to set location",66,87,11,0xfffff4d9,false);}
         else {boolean f=store.prefs.getBoolean("weather_f",Locale.getDefault().getCountry().equals("US"));text(c,s.temperature(f)+"°",94,66,31,Color.WHITE,true);text(c,s.condition(),66,87,12,Color.WHITE,false);}
         String footer=s==null?"Weather · MET Norway":(weather.stale()?"Cached · ":"Updated · ")+android.text.format.DateFormat.getTimeFormat(getContext()).format(new Date(weather.updated()));
         text(c,footer,66,102,8,0xffffe4b7,false);
