@@ -24,6 +24,12 @@ final class AeroIcon extends View {
             rounded(canvas,11,13,53,39,1,0xff4bb7ce,0xff133d6b);
             p.setColor(0xffbfd1dc); canvas.drawRect(27,45,37,53,p); rounded(canvas,18,52,46,56,2,0xffe3eaf0,0xff88a5b7);
             p.setColor(0x559ef5f0); canvas.drawOval(13,15,48,28,p);
+        } else if(kind.endsWith("file")) {
+            Path paper=new Path();paper.moveTo(13,5);paper.lineTo(39,5);paper.lineTo(52,18);paper.lineTo(52,59);paper.lineTo(13,59);paper.close();p.setShader(new LinearGradient(0,5,0,59,0xfffefefe,0xffd7e6ef,Shader.TileMode.CLAMP));canvas.drawPath(paper,p);p.setShader(null);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(1);p.setColor(0xff7794a8);canvas.drawPath(paper,p);p.setStyle(Paint.Style.FILL);Path fold=new Path();fold.moveTo(39,5);fold.lineTo(39,18);fold.lineTo(52,18);fold.close();p.setColor(0xffb9cedc);canvas.drawPath(fold,p);
+            if(kind.equals("picturefile")){rounded(canvas,18,24,47,49,1,0xff8bd8ec,0xffd5eff4);p.setColor(0xfff3cb66);canvas.drawCircle(39,31,4,p);Path hill=new Path();hill.moveTo(18,49);hill.lineTo(29,34);hill.lineTo(35,42);hill.lineTo(42,36);hill.lineTo(47,49);hill.close();p.setColor(0xff5c9464);canvas.drawPath(hill,p);}
+            else if(kind.equals("musicfile")){p.setColor(0xff3e83bb);canvas.drawRect(32,25,36,44,p);canvas.drawRect(34,25,44,29,p);canvas.drawOval(23,40,36,49,p);}
+            else if(kind.equals("videofile")){rounded(canvas,18,25,47,49,1,0xff5e7486,0xff263d50);p.setColor(0xffe9f5ff);Path play=new Path();play.moveTo(29,30);play.lineTo(39,37);play.lineTo(29,44);play.close();canvas.drawPath(play,p);}
+            else{p.setColor(0xff6a91ad);p.setStrokeWidth(2);for(int y=26;y<51;y+=6)canvas.drawLine(20,y,44,y,p);}
         } else if(kind.equals("files")||kind.equals("folderapps")||kind.equals("pictures")||kind.equals("documents")||kind.equals("music")||kind.equals("videos")||kind.equals("downloads")) {
             rounded(canvas,5,14,33,26,3,0xffffe3a0,0xffd59432);
             rounded(canvas,5,21,58,53,4,0xffffde79,0xffd9a13a);
