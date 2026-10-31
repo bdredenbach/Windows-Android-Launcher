@@ -2,7 +2,7 @@
 
 An independently implemented, Vista-inspired Android home launcher by Nth Experience. The first test build is **0.1.0**.
 
-## What works in this build
+## Implemented in this build
 
 - Native Android HOME activity with an optional standard default-home chooser.
 - Original gradient aurora wallpapers, glass-style taskbar, and an original N start orb/icon set.
@@ -66,3 +66,7 @@ adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desk
 ```
 
 The runner restores the previous note after its checks. It is intended for test devices; do not run it against your primary home configuration.
+
+## First-build validation
+
+The debug APK and instrumentation APK compile successfully locally and on GitHub Actions. The five platform-independent launcher behavior checks pass, and the APK signature is verified. Emulator interaction checks have not completed successfully in this environment; acceptance testing on a physical Android device is still pending. Emulator checks are available through a manually dispatched Android build workflow. Normal pushes build both APK packages without starting the emulator.
