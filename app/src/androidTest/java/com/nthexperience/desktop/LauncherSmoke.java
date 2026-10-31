@@ -57,6 +57,8 @@ public final class LauncherSmoke extends Instrumentation {
         }
     }
     private void snapshot(String name) throws java.io.IOException {
+        try{Thread.sleep(250);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new java.io.IOException(interrupted);}
+        waitForIdleSync();
         android.graphics.Bitmap bitmap=getUiAutomation().takeScreenshot();
         if(bitmap==null)throw new java.io.IOException("Screenshot unavailable");
         java.io.File output=new java.io.File(getTargetContext().getFilesDir(),name);

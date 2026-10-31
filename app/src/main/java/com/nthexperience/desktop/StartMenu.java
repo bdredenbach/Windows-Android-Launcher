@@ -48,7 +48,7 @@ final class StartMenu extends LinearLayout {
         list.setDividerHeight(0);list.setAdapter(adapter);list.setClipToPadding(false);list.setContentDescription("Installed programs");
         list.setOnItemClickListener((parent,view,position,id)->actions.open(filtered.get(position).id));
         list.setOnItemLongClickListener((parent,view,position,id)->{actions.options(view,filtered.get(position).id);return true;});
-        FrameLayout programs=new FrameLayout(c);programs.addView(list,new FrameLayout.LayoutParams(-1,-1));
+        FrameLayout programs=new FrameLayout(c);programs.setBackground(Aero.panel(c,0xfffbfdff,0xffe8f0f6,4,0));programs.addView(list,new FrameLayout.LayoutParams(-1,-1));
         TextView empty=Aero.text(c,"No matching programs",15,Aero.INK);empty.setGravity(Gravity.CENTER);empty.setVisibility(GONE);
         programs.addView(empty,new FrameLayout.LayoutParams(-1,-1));list.setEmptyView(empty);
         addView(programs,new LayoutParams(-1,0,1));
