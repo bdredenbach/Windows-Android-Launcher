@@ -54,7 +54,7 @@ jobs:
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             timeout 180s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
             mkdir -p screenshots
-            for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start restored-portrait failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
+            for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
             grep -q 'PASS:' smoke-test.txt
       - uses: actions/upload-artifact@v4
         if: always()
