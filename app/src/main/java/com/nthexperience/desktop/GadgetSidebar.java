@@ -19,6 +19,12 @@ final class GadgetSidebar extends LinearLayout {
     private final Actions actions;
     final WeatherClient weather;
     private final LinearLayout gadgets;
+    final FrameLayout floatingHost;
+    private final FrameLayout workspace;
+    final GadgetLayout layout;
+    private final Map<String,FrameLayout> floating=new LinkedHashMap<>();
+    private int hostWidth,hostHeight;
+    static final class GadgetDrag {final String id;final float offsetX,offsetY;GadgetDrag(String id,View face){this.id=id;offsetX=face.getWidth()/2f;offsetY=face.getHeight()/2f;}}
     private final Map<String,GadgetView> faces=new LinkedHashMap<>();
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ExecutorService photos=Executors.newSingleThreadExecutor();
@@ -28,46 +34,101 @@ final class GadgetSidebar extends LinearLayout {
     private long lastPhotoTime,lastMinute=-1;
     private int photoIndex;
     private final Runnable tick=new Runnable(){@Override public void run(){
-        if(!active||closed||getVisibility()!=VISIBLE)return;
-        long now=System.currentTimeMillis();GadgetView clock=faces.get("clock");if(clock!=null)clock.invalidate();
+        if(!active||closed||!anyVisible())return;
+        long now=System.currentTimeMillis();GadgetView clock=faces.get("clock");if(clock!=null&&visible("clock"))clock.invalidate();
         long minute=now/60000;if(minute!=lastMinute){lastMinute=minute;refreshReadings();weather.refresh(false);for(GadgetView v:faces.values())if(!v.kind.equals("clock"))v.invalidate();}
-        if(faces.containsKey("photo")&&now-lastPhotoTime>20000){lastPhotoTime=now;loadNextPhoto();}
-        boolean seconds=clock!=null&&store.prefs.getBoolean("clock_seconds",true);main.postDelayed(this,seconds?1000-now%1000:60000-now%60000);
+        if(visible("photo")&&now-lastPhotoTime>20000){lastPhotoTime=now;loadNextPhoto();}
+        boolean seconds=visible("clock")&&store.prefs.getBoolean("clock_seconds",true);main.postDelayed(this,seconds?1000-now%1000:60000-now%60000);
     }};
-    GadgetSidebar(Context c,DesktopStore store,AeroWallpaper wallpaper,Actions actions){
-        super(c);this.store=store;this.actions=actions;setOrientation(VERTICAL);setBackground(new AeroGlass(wallpaper,AeroGlass.SIDEBAR));
+    GadgetSidebar(Context c,DesktopStore store,AeroWallpaper wallpaper,Actions actions,FrameLayout workspace,String layoutKey){
+        super(c);this.store=store;this.actions=actions;this.workspace=workspace;layout=new GadgetLayout(store,layoutKey);floatingHost=new FrameLayout(c);floatingHost.setClipChildren(false);floatingHost.setContentDescription("Desktop floating gadgets");workspace.setOnDragListener((v,event)->desktopDrop(event));setOrientation(VERTICAL);setBackground(new AeroGlass(wallpaper,AeroGlass.SIDEBAR));
         weather=new WeatherClient(store,this::refresh);setContentDescription("Desktop gadget sidebar");
         LinearLayout header=new LinearLayout(c);header.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
         TextView plus=Aero.text(c,"＋",23,0xffedf6ff);plus.setGravity(Gravity.CENTER);plus.setContentDescription("Add gadgets");plus.setOnClickListener(v->actions.gallery());header.addView(plus,new LayoutParams(Aero.dp(c,48),Aero.dp(c,36)));
-        TextView hide=Aero.text(c,"›",25,0xffd5e5ee);hide.setGravity(Gravity.CENTER);hide.setContentDescription("Hide gadget sidebar");hide.setOnClickListener(v->{store.prefs.edit().putBoolean("sidebar_visible",false).apply();visibilityFromStore();actions.sidebarChanged();});header.addView(hide,new LayoutParams(Aero.dp(c,36),Aero.dp(c,36)));addView(header,new LayoutParams(-1,Aero.dp(c,36)));
+        TextView hide=Aero.text(c,"›",25,0xffd5e5ee);hide.setGravity(Gravity.CENTER);hide.setContentDescription("Hide gadget sidebar");hide.setOnClickListener(v->{layout.visible(false);visibilityFromStore();actions.sidebarChanged();});header.addView(hide,new LayoutParams(Aero.dp(c,36),Aero.dp(c,36)));addView(header,new LayoutParams(-1,Aero.dp(c,36)));
         ScrollView scroll=new ScrollView(c);scroll.setVerticalScrollBarEnabled(false);scroll.setClipToPadding(false);gadgets=Aero.column(c);gadgets.setGravity(Gravity.CENTER_HORIZONTAL);gadgets.setPadding(Aero.dp(c,2),Aero.dp(c,1),Aero.dp(c,2),Aero.dp(c,16));scroll.addView(gadgets);addView(scroll,new LayoutParams(-1,0,1));rebuild();visibilityFromStore();
     }
     void rebuild(){
-        gadgets.removeAllViews();faces.clear();
-        for(String id:store.gadgets()){
+        if(closed)return;
+        gadgets.removeAllViews();floatingHost.removeAllViews();faces.clear();floating.clear();
+        int docked=0;
+        for(String id:layout.ordered()){
             if(!Arrays.asList(GadgetView.IDS).contains(id))continue;
-            GadgetView face=new GadgetView(getContext(),id,store,weather);face.photo=photo;face.setOnClickListener(v->actions.gadgetAction(id));face.setOnLongClickListener(v->face.startDragAndDrop(ClipData.newPlainText("gadget",id),new View.DragShadowBuilder(face),"gadget:"+id,0));face.setOnTouchListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_DOWN&&event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)){menu(face,id);return true;}return false;});
-            face.setOnDragListener((v,event)->{if(!(event.getLocalState() instanceof String)||!((String)event.getLocalState()).startsWith("gadget:"))return false;
-                if(event.getAction()==DragEvent.ACTION_DRAG_ENTERED)v.setAlpha(.5f);if(event.getAction()==DragEvent.ACTION_DRAG_EXITED||event.getAction()==DragEvent.ACTION_DRAG_ENDED)v.setAlpha(1);
-                if(event.getAction()==DragEvent.ACTION_DROP){String moving=((String)event.getLocalState()).substring(7);store.gadgets(LauncherState.move(store.gadgets(),moving,id));main.post(this::rebuild);}return true;});
-            LayoutParams lp=new LayoutParams(Aero.dp(getContext(),132),Aero.dp(getContext(),GadgetView.height(id)));lp.bottomMargin=Aero.dp(getContext(),9);gadgets.addView(face,lp);faces.put(id,face);
+            GadgetView face=new GadgetView(getContext(),id,store,weather);face.photo=photo;
+            face.setOnClickListener(v->actions.gadgetAction(id));
+            face.setOnLongClickListener(v->beginDrag(face,id));
+            face.setOnTouchListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_DOWN&&event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)){menu(face,id);return true;}return false;});
+            FrameLayout holder=new FrameLayout(getContext());holder.setContentDescription(GadgetView.title(id)+(layout.docked(id)?" docked gadget":" floating gadget"));
+            holder.addView(face,new FrameLayout.LayoutParams(dp(132),dp(GadgetView.height(id))));
+            TextView options=Aero.text(getContext(),"⋮",20,0xffedf6ff);options.setGravity(Gravity.CENTER);options.setBackground(Aero.panel(getContext(),0x88415a6b,0x88304454,3,0x77b0c7d2));options.setContentDescription("Options for "+GadgetView.title(id)+" gadget");options.setOnClickListener(v->menu(face,id));
+            holder.addView(options,new FrameLayout.LayoutParams(dp(24),dp(32),Gravity.TOP|Gravity.END));
+            faces.put(id,face);
+            if(layout.docked(id)){
+                docked++;holder.setOnDragListener((v,event)->dockDrop(event,id));
+                LayoutParams lp=new LayoutParams(dp(132),dp(GadgetView.height(id)));lp.bottomMargin=dp(9);gadgets.addView(holder,lp);
+            }else{
+                floating.put(id,holder);floatingHost.addView(holder,new FrameLayout.LayoutParams(dp(156),dp(GadgetView.height(id))));
+                TextView grip=Aero.text(getContext(),"◢",18,0xffe7f6ff);grip.setGravity(Gravity.CENTER);grip.setBackground(Aero.panel(getContext(),0x88415a6b,0x88304454,3,0x77b0c7d2));grip.setContentDescription("Resize "+GadgetView.title(id)+" gadget");
+                holder.addView(grip,new FrameLayout.LayoutParams(dp(24),dp(32),Gravity.BOTTOM|Gravity.END));
+                grip.setOnTouchListener(new View.OnTouchListener(){float downX,downY,initialScale,anchorX,anchorY;int initialW,initialH;
+                    public boolean onTouch(View v,MotionEvent event){
+                        if(locked())return false;
+                        if(event.getActionMasked()==MotionEvent.ACTION_DOWN){downX=event.getRawX();downY=event.getRawY();initialScale=layout.scale(id);anchorX=holder.getX();anchorY=holder.getY();initialW=holder.getWidth()-dp(24);initialH=holder.getHeight();holder.bringToFront();return true;}
+                        if(event.getActionMasked()==MotionEvent.ACTION_MOVE){float factor=Math.max((initialW+event.getRawX()-downX)/Math.max(1,initialW),(initialH+event.getRawY()-downY)/Math.max(1,initialH));float size=initialScale*factor;int[] bounds=DesktopGeometry.gadget(hostWidth,hostHeight,dp(132),dp(GadgetView.height(id)),dp(24),size,0,0);applyBounds(id,size,DesktopGeometry.fraction(anchorX,hostWidth-bounds[2]),DesktopGeometry.fraction(anchorY,hostHeight-bounds[3]));return true;}
+                        if(event.getActionMasked()==MotionEvent.ACTION_UP){float scale=(holder.getLayoutParams().width-dp(24))/(float)dp(132);layout.position(id,DesktopGeometry.fraction(holder.getX(),hostWidth-holder.getLayoutParams().width),DesktopGeometry.fraction(holder.getY(),hostHeight-holder.getLayoutParams().height),scale);v.performClick();return true;}
+                        if(event.getActionMasked()==MotionEvent.ACTION_CANCEL){fit(id);return true;}return false;
+                    }
+                });
+            }
         }
-        if(faces.isEmpty()){TextView empty=Aero.text(getContext(),"Add a gadget\nto your Sidebar",13,0xffe8f2f7);empty.setGravity(Gravity.CENTER);Aero.pad(empty,14);empty.setOnClickListener(v->actions.gallery());gadgets.addView(empty);}
-        refreshReadings();weather.active(active&&getVisibility()==VISIBLE&&faces.containsKey("weather"));restartTick();
+        if(docked==0){TextView empty=Aero.text(getContext(),"Add a gadget\nto your Sidebar",13,0xffe8f2f7);empty.setGravity(Gravity.CENTER);Aero.pad(empty,14);empty.setOnClickListener(v->actions.gallery());gadgets.addView(empty);}
+        setOnDragListener((v,event)->dockDrop(event,null));
+        for(String id:floating.keySet())fit(id);
+        refreshReadings();updateActivity();
     }
+    private int dp(int value){return Aero.dp(getContext(),value);}
+    boolean locked(){return store.prefs.getBoolean("layout_locked",false);}
+    private boolean beginDrag(GadgetView face,String id){if(locked()){Toast.makeText(getContext(),"Unlock the desktop layout in Gadgets to arrange it",Toast.LENGTH_SHORT).show();return true;}return face.startDragAndDrop(ClipData.newPlainText("gadget",id),new View.DragShadowBuilder(face),new GadgetDrag(id,face),0);}
+    private boolean desktopDrop(DragEvent event){
+        if(!(event.getLocalState() instanceof GadgetDrag)||locked())return false;
+        GadgetDrag drag=(GadgetDrag)event.getLocalState();
+        if(event.getAction()==DragEvent.ACTION_DROP){
+            int[] bounds=DesktopGeometry.gadget(workspace.getWidth(),workspace.getHeight(),dp(132),dp(GadgetView.height(drag.id)),dp(24),layout.scale(drag.id),0,0);
+            float grid=store.prefs.getBoolean("snap_gadgets",true)?dp(8):0;
+            float x=DesktopGeometry.snap(event.getX()-drag.offsetX,grid),y=DesktopGeometry.snap(event.getY()-drag.offsetY,grid);
+            layout.position(drag.id,DesktopGeometry.fraction(x,workspace.getWidth()-bounds[2]),DesktopGeometry.fraction(y,workspace.getHeight()-bounds[3]),layout.scale(drag.id));main.post(this::rebuild);
+        }return true;
+    }
+    private boolean dockDrop(DragEvent event,String target){
+        if(!(event.getLocalState() instanceof GadgetDrag)||locked())return false;
+        if(event.getAction()==DragEvent.ACTION_DROP){String id=((GadgetDrag)event.getLocalState()).id;layout.dock(id);if(target!=null)layout.before(id,target);main.post(this::rebuild);}return true;
+    }
+    void workspaceSize(int width,int height){if(width==hostWidth&&height==hostHeight)return;hostWidth=width;hostHeight=height;for(String id:floating.keySet())fit(id);}
+    private void fit(String id){applyBounds(id,layout.scale(id),layout.x(id),layout.y(id));}
+    private void applyBounds(String id,float scale,float x,float y){
+        FrameLayout holder=floating.get(id);if(holder==null||hostWidth<1||hostHeight<1)return;
+        int[] b=DesktopGeometry.gadget(hostWidth,hostHeight,dp(132),dp(GadgetView.height(id)),dp(24),scale,x,y);
+        FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)holder.getLayoutParams();if(lp.width!=b[2]||lp.height!=b[3]){lp.width=b[2];lp.height=b[3];holder.setLayoutParams(lp);}holder.setX(b[0]);holder.setY(b[1]);
+        GadgetView face=faces.get(id);FrameLayout.LayoutParams fp=(FrameLayout.LayoutParams)face.getLayoutParams();int fw=Math.max(1,b[2]-dp(24));if(fp.width!=fw||fp.height!=b[3]){fp.width=fw;fp.height=b[3];face.setLayoutParams(fp);}
+    }
+    private boolean visible(String id){return faces.containsKey(id)&&(!layout.docked(id)||getVisibility()==VISIBLE);}
+    private boolean anyVisible(){for(String id:faces.keySet())if(visible(id))return true;return false;}
+    private void updateActivity(){weather.active(active&&visible("weather"));restartTick();}
     void refresh(){for(GadgetView v:faces.values())v.invalidate();actions.readingsChanged();}
-    void setActive(boolean value){active=value;weather.active(value&&getVisibility()==VISIBLE&&faces.containsKey("weather"));restartTick();}
-    private void restartTick(){main.removeCallbacks(tick);if(active&&getVisibility()==VISIBLE)main.post(tick);}
-    void visibilityFromStore(){setVisibility(store.prefs.getBoolean("sidebar_visible",true)?VISIBLE:GONE);weather.active(active&&getVisibility()==VISIBLE&&faces.containsKey("weather"));restartTick();}
-    void reveal(){store.prefs.edit().putBoolean("sidebar_visible",true).apply();visibilityFromStore();actions.sidebarChanged();}
-    boolean ticking(){return active&&getVisibility()==VISIBLE;}
+    void setActive(boolean value){active=value;updateActivity();}
+    private void restartTick(){main.removeCallbacks(tick);if(active&&!closed&&anyVisible())main.post(tick);}
+    void visibilityFromStore(){setVisibility(layout.visible()?VISIBLE:GONE);updateActivity();}
+    void reveal(){layout.visible(true);visibilityFromStore();actions.sidebarChanged();}
+    boolean ticking(){return active&&anyVisible();}
     void menu(GadgetView face,String id){
         PopupMenu menu=new PopupMenu(getContext(),face);menu.getMenu().add("Open "+GadgetView.title(id)).setOnMenuItemClickListener(v->{actions.gadgetAction(id);return true;});
-        menu.getMenu().add("Drag to rearrange").setOnMenuItemClickListener(v->{face.startDragAndDrop(ClipData.newPlainText("gadget",id),new View.DragShadowBuilder(face),"gadget:"+id,0);return true;});
-        List<String> ids=store.gadgets();int index=ids.indexOf(id);
-        if(index>0)menu.getMenu().add("Move up").setOnMenuItemClickListener(v->{Collections.swap(ids,index,index-1);store.gadgets(ids);rebuild();return true;});
-        if(index>=0&&index<ids.size()-1)menu.getMenu().add("Move down").setOnMenuItemClickListener(v->{Collections.swap(ids,index,index+1);store.gadgets(ids);rebuild();return true;});
-        menu.getMenu().add("Close gadget").setOnMenuItemClickListener(v->{ids.remove(id);store.gadgets(ids);rebuild();return true;});menu.show();
+        if(!locked()){
+            menu.getMenu().add(layout.docked(id)?"Move to desktop":"Dock in Sidebar").setOnMenuItemClickListener(v->{if(layout.docked(id))layout.position(id,.35f,.15f,layout.scale(id));else layout.dock(id);rebuild();return true;});
+            android.view.SubMenu sizes=menu.getMenu().addSubMenu("Gadget size");String[] labels={"Small","Normal","Large","Extra large"};float[] scales={.8f,1,1.35f,1.75f};
+            for(int i=0;i<labels.length;i++){final float scale=scales[i];sizes.add(labels[i]).setOnMenuItemClickListener(v->{layout.position(id,layout.x(id),layout.y(id),scale);rebuild();return true;});}
+            menu.getMenu().add("Drag to arrange").setOnMenuItemClickListener(v->{beginDrag(face,id);return true;});
+        }
+        menu.getMenu().add("Close gadget").setOnMenuItemClickListener(v->{List<String> ids=store.gadgets();ids.remove(id);store.gadgets(ids);rebuild();return true;});menu.show();
     }
     private void refreshReadings(){
         Intent battery=getContext().registerReceiver(null,new IntentFilter(Intent.ACTION_BATTERY_CHANGED));int level=battery==null?-1:battery.getIntExtra(BatteryManager.EXTRA_LEVEL,-1),scale=battery==null?-1:battery.getIntExtra(BatteryManager.EXTRA_SCALE,-1);

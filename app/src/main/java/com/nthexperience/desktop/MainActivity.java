@@ -22,9 +22,12 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.json.*;
 
 public final class MainActivity extends Activity implements StartMenu.Actions,GadgetSidebar.Actions {
     private DesktopStore store;
+    private String layoutKey;
+    private JSONObject pausedSession;
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final Handler main=new Handler(Looper.getMainLooper());
     private final Map<String,AppCatalog.Entry> entries=new LinkedHashMap<>();
@@ -48,11 +51,15 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private final Runnable clockTick=new Runnable(){public void run(){updateClock();main.postDelayed(this,60000-System.currentTimeMillis()%60000);}};
 
     @Override public void onCreate(Bundle saved){
-        super.onCreate(saved);store=new DesktopStore(this);
+        super.onCreate(saved);store=new DesktopStore(this);layoutKey=getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE?"landscape":"portrait";
         getWindow().setStatusBarColor(Color.TRANSPARENT);getWindow().setNavigationBarColor(0xff0a263b);
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         else getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         buildDesktop();applySystemChrome();
+        if(saved!=null&&saved.containsKey("desktop_session")){
+            String session=saved.getString("desktop_session");
+            workspace.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener(){public void onGlobalLayout(){if(workspace.getWidth()<1||workspace.getHeight()<1)return;workspace.getViewTreeObserver().removeOnGlobalLayoutListener(this);restoreSession(session);}});
+        }
         if(Build.VERSION.SDK_INT>=33){backCallback=this::handleBack;getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT,backCallback);}
         IntentFilter packageFilter=new IntentFilter();packageFilter.addAction(Intent.ACTION_PACKAGE_ADDED);packageFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);packageFilter.addAction(Intent.ACTION_PACKAGE_CHANGED);packageFilter.addAction(Intent.ACTION_PACKAGE_REPLACED);packageFilter.addDataScheme("package");
         // These receivers accept only Android's protected package/time broadcasts.
@@ -73,7 +80,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         workspace=new FrameLayout(this);shell.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
         ScrollView scroll=new ScrollView(this);desktopScroll=scroll;scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.setPadding(dp(7),dp(10),dp(7),dp(12));scroll.setVerticalScrollBarEnabled(false);
         desktop=new GridLayout(this);desktop.setOrientation(GridLayout.VERTICAL);desktop.setAlignmentMode(GridLayout.ALIGN_BOUNDS);scroll.addView(desktop,new ScrollView.LayoutParams(-1,-2));workspace.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
-        sidebar=new GadgetSidebar(this,store,wallpaper,this);FrameLayout.LayoutParams sideParams=new FrameLayout.LayoutParams(dp(140),-1,Gravity.END);workspace.addView(sidebar,sideParams);
+        sidebar=new GadgetSidebar(this,store,wallpaper,this,workspace,layoutKey);FrameLayout.LayoutParams sideParams=new FrameLayout.LayoutParams(dp(140),-1,Gravity.END);workspace.addView(sidebar,sideParams);workspace.addView(sidebar.floatingHost,new FrameLayout.LayoutParams(-1,-1));
         GestureDetector gestures=new GestureDetector(this,new GestureDetector.SimpleOnGestureListener(){
             public boolean onDown(MotionEvent e){return true;}
             public boolean onFling(MotionEvent a,MotionEvent b,float vx,float vy){if(a!=null&&a.getY()-b.getY()>dp(80)&&Math.abs(vy)>300){showStart(true);return true;}return false;}
@@ -88,6 +95,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             int next=Math.max(1,Math.min(9,(r-l-reserved-dp(12))/dp(82)));
             int rows=Math.max(1,(b-t-dp(16))/dp(94));
             if(next!=columns||rows!=desktopRows){columns=next;desktopRows=rows;renderDesktop();}
+            sidebar.workspaceSize(r-l,b-t);
             for(DesktopWindow tool:windows.values())tool.fitToHost();
             if(startMenu!=null){startMenu.availableHeight(b-t);FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)startMenu.getLayoutParams();int h=Math.min(dp(540),Math.max(1,b-t-dp(8)));int w=Math.min(dp(420),Math.max(1,r-l-dp(12)));if(lp.height!=h||lp.width!=w){lp.height=h;lp.width=w;startMenu.setLayoutParams(lp);}}
         });
@@ -118,11 +126,11 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         for(int index=0;index<ids.size();index++){
             String id=ids.get(index);LinearLayout tile=Aero.column(this);tile.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);tile.setPadding(dp(2),dp(6),dp(2),dp(3));View icon=icon(id,46);tile.addView(icon,new LinearLayout.LayoutParams(dp(46),dp(46)));
             TextView label=Aero.text(this,label(id),11,Color.WHITE);label.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);label.setMaxLines(2);label.setEllipsize(TextUtils.TruncateAt.END);label.setShadowLayer(dp(3),0,dp(1),0xff000000);tile.addView(label,new LinearLayout.LayoutParams(-1,-2));
-            android.graphics.drawable.StateListDrawable background=new android.graphics.drawable.StateListDrawable();background.addState(new int[]{android.R.attr.state_pressed},Aero.panel(this,0x44d0edff,0x2270add0,3,0x779fcde4));background.addState(new int[]{},Aero.panel(this,0x00ffffff,0x00ffffff,3,0));tile.setBackground(background);tile.setContentDescription(label(id)+". Hold and drag to swap shortcut positions.");tile.setOnClickListener(v->open(id));tile.setFocusable(true);tile.setOnLongClickListener(v->v.startDragAndDrop(ClipData.newPlainText("desktop-shortcut",id),new View.DragShadowBuilder(v),id,0));
+            android.graphics.drawable.StateListDrawable background=new android.graphics.drawable.StateListDrawable();background.addState(new int[]{android.R.attr.state_pressed},Aero.panel(this,0x44d0edff,0x2270add0,3,0x779fcde4));background.addState(new int[]{},Aero.panel(this,0x00ffffff,0x00ffffff,3,0));tile.setBackground(background);tile.setContentDescription(label(id)+". Hold and drag to swap shortcut positions.");tile.setOnClickListener(v->open(id));tile.setFocusable(true);tile.setOnLongClickListener(v->!store.prefs.getBoolean("layout_locked",false)&&v.startDragAndDrop(ClipData.newPlainText("desktop-shortcut",id),new View.DragShadowBuilder(v),id,0));
             tile.setOnDragListener((v,event)->{boolean own=event.getLocalState() instanceof String&&!((String)event.getLocalState()).startsWith("gadget:");switch(event.getAction()){
                 case DragEvent.ACTION_DRAG_STARTED:return own;case DragEvent.ACTION_DRAG_ENTERED:if(own)v.setAlpha(.5f);return own;
                 case DragEvent.ACTION_DRAG_EXITED:case DragEvent.ACTION_DRAG_ENDED:v.setAlpha(1);return own;
-                case DragEvent.ACTION_DROP:if(!own)return false;store.desktop(LauncherState.move(store.desktop(),(String)event.getLocalState(),id));desktop.post(this::renderDesktop);return true;default:return own;}});
+                case DragEvent.ACTION_DROP:if(!own||store.prefs.getBoolean("layout_locked",false))return false;store.desktop(LauncherState.move(store.desktop(),(String)event.getLocalState(),id));desktop.post(this::renderDesktop);return true;default:return own;}});
             GridLayout.LayoutParams lp=new GridLayout.LayoutParams(GridLayout.spec(index%rows),GridLayout.spec(index/rows));lp.width=dp(80);lp.height=dp(94);desktop.addView(tile,lp);
         }
     }
@@ -147,6 +155,8 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         startMenu.hide();
         switch(id){
             case "@gadgets":gadgetGallery();return;
+            case "@clock":clockOptions();return;
+            case "@weather":weatherSettings();return;
             case "@sticky":stickyNote();return;
             case "@calendar":calendar();return;
             case "@pictures":choosePhotos();return;
@@ -181,7 +191,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private void showDesktop(){((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(workspace.getWindowToken(),0);startMenu.hide();for(DesktopWindow window:windows.values())window.setVisibility(View.GONE);renderTaskbar();}
     private void window(String id,String title,View body){
         DesktopWindow current=windows.get(id);if(current!=null&&current.getParent()!=null){current.restore();return;}
-        DesktopWindow next=new DesktopWindow(this,workspace,title,body,wallpaper,this::renderTaskbar);windows.put(id,next);
+        DesktopWindow next=new DesktopWindow(this,workspace,title,body,wallpaper,this::renderTaskbar,store,id,layoutKey);windows.put(id,next);
         if(workspace.getWidth()>0){next.open();renderTaskbar();}else workspace.post(()->{if(!destroyed&&next.getParent()==null){next.open();renderTaskbar();}});
     }
     private void notes(){
@@ -194,7 +204,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private void computer(){
         LinearLayout content=Aero.column(this);Aero.pad(content,18);
         TextView title=Aero.text(this,"Welcome to Nth Desktop",23,Aero.INK);Aero.bold(title);content.addView(title);
-        paragraph(content,"A Vista-inspired home for your Android.\nVersion 0.2.0 · Aero & gadgets");
+        paragraph(content,"A Vista-inspired home for your Android.\nVersion 0.3.0 · Your desktop, your way");
         paragraph(content,"Tap the N orb to find your installed apps. Hold a program to add it to the desktop. Hold and drag desktop shortcuts to swap their positions.");
         paragraph(content,"The narrow strip at the far right of the taskbar shows your desktop. Minimized built-in tools stay in the taskbar; Android apps open normally.");
         paragraph(content,isHome()?"Nth Desktop is your default home app.":"Try the desktop first, then choose it as your home app when you're ready.");
@@ -214,6 +224,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             preview.setContentDescription("Use "+names[i]+" wallpaper");preview.setOnClickListener(v->{store.prefs.edit().putInt("wallpaper",theme).apply();wallpaper.theme(theme);toast("Wallpaper changed");});preview.setFocusable(true);
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(105));lp.bottomMargin=dp(12);content.addView(preview,lp);
         }
+        paragraph(content,"Rotate your device for a wide desktop. Enable Android auto-rotate to follow the device. Each orientation remembers its own gadget arrangement.");
         addAction(content,"Desktop gadgets",this::gadgetGallery);
         android.widget.Switch status=new android.widget.Switch(this);status.setTypeface(Aero.face(this));status.setText("Show Android status bar");status.setTextColor(Aero.INK);status.setChecked(store.prefs.getBoolean("show_status_bar",false));status.setPadding(dp(4),dp(12),dp(4),dp(12));status.setOnCheckedChangeListener((v,checked)->{store.prefs.edit().putBoolean("show_status_bar",checked).apply();applySystemChrome();});content.addView(status);
         addAction(content,"Manage desktop shortcuts",this::manageShortcuts);
@@ -261,8 +272,29 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     }
     @Override public void onBackPressed(){handleBack();}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);if(startMenu!=null)startMenu.hide();}
-    @Override protected void onResume(){super.onResume();main.removeCallbacks(clockTick);main.post(clockTick);if(store!=null)scanApps();if(sidebar!=null)sidebar.setActive(true);}
-    @Override protected void onPause(){super.onPause();main.removeCallbacks(clockTick);if(sidebar!=null)sidebar.setActive(false);cancelLocation();if(startMenu!=null)startMenu.hide();}
+    @Override protected void onResume(){super.onResume();pausedSession=null;main.removeCallbacks(clockTick);main.post(clockTick);if(store!=null)scanApps();if(sidebar!=null)sidebar.setActive(true);}
+    @Override protected void onPause(){pausedSession=captureSession();super.onPause();main.removeCallbacks(clockTick);if(sidebar!=null)sidebar.setActive(false);cancelLocation();if(startMenu!=null)startMenu.hide();}
+    @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putString("desktop_session",(pausedSession==null?captureSession():pausedSession).toString());}
+    private JSONObject captureSession(){
+        JSONObject session=new JSONObject();JSONArray tools=new JSONArray();
+        if(workspace==null)return session;
+        for(int i=0;i<workspace.getChildCount();i++)if(workspace.getChildAt(i) instanceof DesktopWindow){
+            DesktopWindow tool=(DesktopWindow)workspace.getChildAt(i);tool.saveGeometry();JSONObject item=new JSONObject();GadgetLayout.put(item,"id",tool.toolId);GadgetLayout.put(item,"visible",tool.getVisibility()==View.VISIBLE);GadgetLayout.put(item,"geometry",tool.geometry());GadgetLayout.put(item,"ui",ToolViewState.capture(tool));tools.put(item);
+        }
+        GadgetLayout.put(session,"tools",tools);GadgetLayout.put(session,"start",startMenu.state());GadgetLayout.put(session,"desktopScroll",desktopScroll.getScrollY());return session;
+    }
+    private void restoreSession(String saved){
+        if(destroyed||saved==null)return;
+        try{
+            JSONObject session=new JSONObject(saved);JSONArray tools=session.optJSONArray("tools");
+            if(tools!=null)for(int i=0;i<tools.length();i++){
+                JSONObject item=tools.optJSONObject(i);if(item==null)continue;String id=item.optString("id");
+                if(!Arrays.asList("@notes","@sticky","@calendar","@gadgets","@clock","@weather","@appearance","@computer").contains(id))continue;
+                open(id);DesktopWindow tool=windows.get(id);if(tool==null)continue;tool.readGeometry(item.optJSONObject("geometry"));tool.setVisibility(item.optBoolean("visible",true)?View.VISIBLE:View.GONE);ToolViewState.restore(tool,item.optJSONObject("ui"));
+            }
+            desktopScroll.post(()->desktopScroll.scrollTo(0,session.optInt("desktopScroll")));startMenu.restore(session.optJSONObject("start"));renderTaskbar();
+        }catch(JSONException ignored){}
+    }
     @Override protected void onDestroy(){destroyed=true;main.removeCallbacksAndMessages(null);worker.shutdownNow();if(sidebar!=null)sidebar.close();cancelLocation();if(receiverRegistered){unregisterReceiver(packages);unregisterReceiver(timeChanged);}if(Build.VERSION.SDK_INT>=33&&backCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);super.onDestroy();}
     private TextView weatherSummary;
     private void applySystemChrome(){
@@ -286,7 +318,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private void gadgetGallery(){
         startMenu.hide();if(restoreTool("@gadgets"))return;
         LinearLayout content=Aero.column(this);Aero.pad(content,14);TextView heading=Aero.text(this,"Add gadgets to your desktop",18,0xff173a65);content.addView(heading);
-        TextView hint=Aero.text(this,"Hold and drag to arrange. Tap a gadget to use it.",12,0xff5c6c77);hint.setTypeface(android.graphics.Typeface.create(Aero.face(this),android.graphics.Typeface.ITALIC));hint.setPadding(0,dp(8),0,dp(10));content.addView(hint);
+        TextView hint=Aero.text(this,"Hold a gadget and drag it onto the desktop or Sidebar. Use ⋮ for sizes and docking; drag ◢ to resize.",12,0xff5c6c77);hint.setTypeface(android.graphics.Typeface.create(Aero.face(this),android.graphics.Typeface.ITALIC));hint.setPadding(0,dp(8),0,dp(10));content.addView(hint);
         GridLayout grid=new GridLayout(this);grid.setColumnCount(2);content.addView(grid);
         for(String id:GadgetView.IDS){
             LinearLayout cell=Aero.column(this);cell.setGravity(Gravity.CENTER);Aero.pad(cell,5);
@@ -296,6 +328,9 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             GridLayout.LayoutParams lp=new GridLayout.LayoutParams();lp.columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f);lp.width=0;lp.bottomMargin=dp(10);grid.addView(cell,lp);
         }
         addAction(content,"Show Sidebar",()->{sidebar.reveal();toast("Sidebar shown");});
+        Switch lock=new Switch(this);lock.setTypeface(Aero.face(this));lock.setText("Lock desktop layout");lock.setContentDescription("Lock desktop layout");lock.setChecked(store.prefs.getBoolean("layout_locked",false));Aero.pad(lock,10);lock.setOnCheckedChangeListener((v,checked)->store.prefs.edit().putBoolean("layout_locked",checked).apply());content.addView(lock);
+        Switch snap=new Switch(this);snap.setTypeface(Aero.face(this));snap.setText("Snap gadgets to grid");snap.setChecked(store.prefs.getBoolean("snap_gadgets",true));Aero.pad(snap,10);snap.setOnCheckedChangeListener((v,checked)->store.prefs.edit().putBoolean("snap_gadgets",checked).apply());content.addView(snap);
+        paragraph(content,"Portrait and landscape save separate positions and sizes. Gadget content is shared between them.");
         ScrollView scroll=new ScrollView(this);scroll.addView(content);window("@gadgets","Desktop Gadget Gallery",scroll);
     }
     private void clockOptions(){

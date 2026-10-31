@@ -15,13 +15,13 @@ final class AeroWallpaper extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
     private int theme;
-    private static Bitmap artwork;
+    private static Bitmap artwork,wideArtwork;
     private final java.util.List<java.lang.ref.WeakReference<AeroGlass>> surfaces=new java.util.ArrayList<>();
     private Bitmap softened;
     private int softWidth,softHeight,softTheme=-1;
     private final int[] ownLocation=new int[2],targetLocation=new int[2];
     AeroWallpaper(Context context, int theme) { super(context); this.theme = theme;
-        if(artwork==null){try{artwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora.webp"));}catch(java.io.IOException ignored){}} setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); }
+        if(artwork==null){try{artwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora.webp"));}catch(java.io.IOException ignored){}} if(wideArtwork==null){try{wideArtwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora-landscape.webp"));}catch(java.io.IOException ignored){}} setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); }
     void theme(int value) { theme = value; softened=null; invalidate();for(java.util.Iterator<java.lang.ref.WeakReference<AeroGlass>> i=surfaces.iterator();i.hasNext();){AeroGlass glass=i.next().get();if(glass==null)i.remove();else glass.invalidateSelf();} }
     void register(AeroGlass glass){surfaces.add(new java.lang.ref.WeakReference<>(glass));}
     @Override protected void onDraw(Canvas c) {
@@ -52,13 +52,14 @@ final class AeroWallpaper extends View {
         for(int i=0;i<24;i++) { float x=((i*167+41)%997)/997f*w, y=((i*107+73)%997)/997f*h; c.drawCircle(x,y,1+(i%3),paint); }
     }
     private void drawArtwork(Canvas c,float w,float h){
-        float scale=Math.max(w/artwork.getWidth(),h/artwork.getHeight());
-        float rw=artwork.getWidth()*scale,rh=artwork.getHeight()*scale;
+        Bitmap image=w>h&&wideArtwork!=null?wideArtwork:artwork;
+        float scale=Math.max(w/image.getWidth(),h/image.getHeight());
+        float rw=image.getWidth()*scale,rh=image.getHeight()*scale;
         paint.setShader(null);paint.setFilterBitmap(true);
         if(theme==1){float[] m={.65f,0,.45f,0,10, 0,.5f,0,0,0, .35f,0,1,0,15, 0,0,0,1,0};paint.setColorFilter(new ColorMatrixColorFilter(m));}
         else if(theme==2){float[] m={.55f,.25f,0,0,0, .05f,.9f,0,0,0, 0,.25f,.5f,0,0, 0,0,0,1,0};paint.setColorFilter(new ColorMatrixColorFilter(m));}
         else paint.setColorFilter(null);
-        c.drawBitmap(artwork,null,new RectF((w-rw)/2,(h-rh)/2,(w+rw)/2,(h+rh)/2),paint);paint.setColorFilter(null);
+        c.drawBitmap(image,null,new RectF((w-rw)/2,(h-rh)/2,(w+rw)/2,(h+rh)/2),paint);paint.setColorFilter(null);
     }
     void drawGlass(Canvas canvas,View target){
         if(getWidth()<1||getHeight()<1)return;

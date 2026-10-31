@@ -14,6 +14,8 @@ final class MonthCalendarView extends View {
     private final Changed listener;
     MonthCalendarView(Context c,Changed listener){super(c);this.listener=listener;month.set(Calendar.DAY_OF_MONTH,1);setFocusable(true);updateDescription();}
     String title(){return new SimpleDateFormat("MMMM yyyy",Locale.getDefault()).format(month.getTime());}
+    long monthTime(){return month.getTimeInMillis();}
+    void restore(long monthTime,long selectedTime){month.setTimeInMillis(monthTime);selected.setTimeInMillis(selectedTime);updateDescription();invalidate();listener.changed();}
     Date selected(){return selected.getTime();}
     void offset(int direction){month.add(Calendar.MONTH,direction);updateDescription();invalidate();listener.changed();}
     void today(){Calendar now=Calendar.getInstance();month.setTime(now.getTime());month.set(Calendar.DAY_OF_MONTH,1);selected.setTime(now.getTime());updateDescription();invalidate();listener.changed();}

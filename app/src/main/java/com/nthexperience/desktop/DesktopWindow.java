@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import org.json.*;
 
 /** Floating windows are for our built-in tools; Android apps launch normally. */
 final class DesktopWindow extends LinearLayout {
@@ -15,10 +16,14 @@ final class DesktopWindow extends LinearLayout {
     private final Runnable changed;
     private final TextView maximizeButton;
     private boolean maximized;
-    private int normalX, normalY, normalW, normalH;
+    private int normalW, normalH;
+    private float positionX=.5f,positionY=.33f;
+    private final DesktopStore store;
+    private final String geometryKey;
+    final String toolId;
     private float downX, downY, originX, originY;
-    DesktopWindow(Context context, FrameLayout host, String title, View body, AeroWallpaper wallpaper,Runnable changed) {
-        super(context); this.host=host; this.changed=changed;
+    DesktopWindow(Context context, FrameLayout host, String title, View body, AeroWallpaper wallpaper,Runnable changed,DesktopStore store,String toolId,String layoutKey) {
+        super(context); this.host=host; this.changed=changed;this.store=store;this.toolId=toolId;geometryKey="window_"+layoutKey+"_"+toolId;
         setOrientation(VERTICAL); setElevation(Aero.dp(context,16));
         setBackground(new AeroGlass(wallpaper,AeroGlass.WINDOW));
         setPadding(Aero.dp(context,6),Aero.dp(context,2),Aero.dp(context,6),Aero.dp(context,6));
@@ -39,7 +44,8 @@ final class DesktopWindow extends LinearLayout {
                 if(!maximized){ setX(clamp(originX+e.getRawX()-downX,0,Math.max(0,host.getWidth()-getWidth()))); setY(clamp(originY+e.getRawY()-downY,0,Math.max(0,host.getHeight()-getHeight())));invalidate(); }
                 return true;
             }
-            if(e.getActionMasked()==MotionEvent.ACTION_UP){ v.performClick(); return true; }
+            if(e.getActionMasked()==MotionEvent.ACTION_UP){if(!maximized){positionX=DesktopGeometry.fraction(getX(),host.getWidth()-getWidth());positionY=DesktopGeometry.fraction(getY(),host.getHeight()-getHeight());saveGeometry();}v.performClick();return true;}
+            if(e.getActionMasked()==MotionEvent.ACTION_CANCEL){fitToHost();return true;}
             return true;
         });
         label.setContentDescription(title+". Drag to move window.");
@@ -57,7 +63,7 @@ final class DesktopWindow extends LinearLayout {
         int height=Math.min(Aero.dp(getContext(),490),host.getHeight()-margin*2);
         FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(Math.max(1,width),Math.max(1,height));
         normalW=width;normalH=height;host.addView(this,lp); setX((host.getWidth()-width)/2f); setY(Math.max(margin,(host.getHeight()-height)/3f));
-        changed.run();
+        readGeometry(null);fitToHost();changed.run();
     }
     private void hideKeyboard(){
         ((android.view.inputmethod.InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(getWindowToken(),0);
@@ -70,17 +76,27 @@ final class DesktopWindow extends LinearLayout {
         int margin=Aero.dp(getContext(),8);
         int width=maximized?host.getWidth():Math.max(1,Math.min(normalW,host.getWidth()-margin*2));
         int height=maximized?host.getHeight():Math.max(1,Math.min(normalH,host.getHeight()-margin*2));
-        setX(clamp(getX(),0,Math.max(0,host.getWidth()-width)));
-        setY(clamp(getY(),0,Math.max(0,host.getHeight()-height)));
+        setX(maximized?0:positionX*Math.max(0,host.getWidth()-width));
+        setY(maximized?0:positionY*Math.max(0,host.getHeight()-height));
         // Called from the host layout listener. Reapplying identical parameters
         // would request another layout forever once any tool window is open.
         if(lp.width!=width||lp.height!=height){lp.width=width;lp.height=height;setLayoutParams(lp);}
     }
     private void toggleMaximize(){
-        FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)getLayoutParams();
-        if(!maximized){ normalX=Math.round(getX());normalY=Math.round(getY());normalW=getWidth();normalH=getHeight();lp.width=host.getWidth();lp.height=host.getHeight();setX(0);setY(0); }
-        else {lp.width=normalW;lp.height=normalH;setX(normalX);setY(normalY);}
-        maximized=!maximized;maximizeButton.setText(maximized?"❐":"□");setLayoutParams(lp);fitToHost();
+        maximized=!maximized;maximizeButton.setText(maximized?"❐":"□");fitToHost();saveGeometry();changed.run();
+    }
+    JSONObject geometry(){
+        JSONObject result=new JSONObject();float density=getResources().getDisplayMetrics().density;
+        GadgetLayout.put(result,"x",positionX);GadgetLayout.put(result,"y",positionY);GadgetLayout.put(result,"w",normalW/density);GadgetLayout.put(result,"h",normalH/density);GadgetLayout.put(result,"maximized",maximized);return result;
+    }
+    void saveGeometry(){store.prefs.edit().putString(geometryKey,geometry().toString()).apply();}
+    void readGeometry(JSONObject fallback){
+        JSONObject value=fallback;String saved=store.prefs.getString(geometryKey,null);if(saved!=null)try{value=new JSONObject(saved);}catch(JSONException ignored){}
+        if(value==null)return;
+        positionX=DesktopGeometry.clamp((float)value.optDouble("x",.5),0,1);positionY=DesktopGeometry.clamp((float)value.optDouble("y",.33),0,1);
+        normalW=Aero.dp(getContext(),Math.round(DesktopGeometry.clamp((float)value.optDouble("w",520),180,900)));
+        normalH=Aero.dp(getContext(),Math.round(DesktopGeometry.clamp((float)value.optDouble("h",490),180,900)));
+        maximized=(fallback==null?value:fallback).optBoolean("maximized");maximizeButton.setText(maximized?"❐":"□");fitToHost();
     }
     private float clamp(float value,float low,float high){return Math.max(low,Math.min(high,value));}
 }

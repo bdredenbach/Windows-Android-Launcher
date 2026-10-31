@@ -20,6 +20,7 @@ final class StartMenu extends LinearLayout {
     private final List<AppCatalog.Entry> all=new ArrayList<>(),filtered=new ArrayList<>();
     private final ListAdapter adapter=new ListAdapter();
     private boolean allPrograms;
+    private int pendingListPosition=-1;
     StartMenu(Context c,Actions actions,DesktopStore store,AeroWallpaper wallpaper){
         super(c);this.actions=actions;this.store=store;setOrientation(HORIZONTAL);setElevation(Aero.dp(c,22));setPadding(Aero.dp(c,7),Aero.dp(c,7),Aero.dp(c,6),Aero.dp(c,7));setBackground(new AeroGlass(wallpaper,AeroGlass.START));
         LinearLayout left=Aero.column(c);left.setBackground(Aero.panel(c,0xfffdfefe,0xfff6f9fb,4,0xff8b9eaa));
@@ -34,14 +35,16 @@ final class StartMenu extends LinearLayout {
         profile=Aero.column(c);profile.setGravity(Gravity.CENTER);AeroIcon avatar=new AeroIcon(c,"orb");profile.addView(avatar,new LayoutParams(Aero.dp(c,49),Aero.dp(c,49)));TextView name=Aero.text(c,store.prefs.getString("desktop_name","Nth Desktop"),13,Color.WHITE);name.setGravity(Gravity.CENTER);name.setShadowLayer(2,0,1,0xff000000);profile.addView(name,new LayoutParams(-1,Aero.dp(c,27)));right.addView(profile,new LayoutParams(-1,Aero.dp(c,86)));
         navigation=Aero.column(c);String[][] items={{"Documents","@files"},{"Pictures","@pictures"},{"Music","@music"},{"Computer","@computer"},{"Control Panel","@appearance"},{"Gadgets","@gadgets"}};
         for(String[] item:items){TextView nav=Aero.text(c,item[0],12,Color.WHITE);nav.setSingleLine(true);nav.setEllipsize(TextUtils.TruncateAt.END);nav.setPadding(Aero.dp(c,7),0,0,0);nav.setShadowLayer(2,0,1,0xff000000);nav.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x5571b6dc),Aero.panel(c,0x00ffffff,0x00ffffff,3,0),null));nav.setOnClickListener(v->actions.open(item[1]));navigation.addView(nav,new LayoutParams(-1,Aero.dp(c,43)));}
-        right.addView(navigation,new LayoutParams(-1,-2));right.addView(new View(c),new LayoutParams(1,0,1));
+        ScrollView navScroll=new ScrollView(c);navScroll.setVerticalScrollBarEnabled(false);navScroll.addView(navigation);right.addView(navScroll,new LayoutParams(-1,0,1));
         TextView home=Aero.text(c,"⌂  Make home",11,Color.WHITE);home.setGravity(Gravity.CENTER);home.setBackground(Aero.gloss(c,new int[]{0xff5a735c,0xff37543d,0xff293f30,0xff3f5b45},3,0xff9cae9a));home.setOnClickListener(v->actions.home());right.addView(home,new LayoutParams(-1,Aero.dp(c,35)));
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int n,int f){}public void onTextChanged(CharSequence s,int start,int before,int n){filter();}public void afterTextChanged(Editable e){}});
     }
-    void availableHeight(int height){boolean compact=height<Aero.dp(getContext(),420);profile.setVisibility(compact?GONE:VISIBLE);navigation.setVisibility(height<Aero.dp(getContext(),320)?GONE:VISIBLE);}
-    void entries(List<AppCatalog.Entry> values){all.clear();all.addAll(values);filter();}
+    void availableHeight(int height){boolean compact=height<Aero.dp(getContext(),420);profile.setVisibility(compact?GONE:VISIBLE);}
+    void entries(List<AppCatalog.Entry> values){all.clear();all.addAll(values);filter();if(pendingListPosition>=0&&!values.isEmpty()){list.setSelection(pendingListPosition);pendingListPosition=-1;}}
     void show(boolean keyboard){setVisibility(VISIBLE);bringToFront();allPrograms=false;programs.setText("All Programs  ›");search.setText("");filter();setAlpha(0);animate().alpha(1).setDuration(120).start();if(keyboard){search.requestFocus();search.post(()->((InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(search,InputMethodManager.SHOW_IMPLICIT));}else{search.clearFocus();requestFocus();}}
     void hide(){animate().cancel();((InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(getWindowToken(),0);search.clearFocus();setVisibility(GONE);}
+    org.json.JSONObject state(){org.json.JSONObject result=new org.json.JSONObject();GadgetLayout.put(result,"visible",getVisibility()==VISIBLE);GadgetLayout.put(result,"all",allPrograms);GadgetLayout.put(result,"position",list.getFirstVisiblePosition());GadgetLayout.put(result,"ui",ToolViewState.capture(this));return result;}
+    void restore(org.json.JSONObject state){if(state==null||!state.optBoolean("visible"))return;setVisibility(VISIBLE);setAlpha(1);bringToFront();allPrograms=state.optBoolean("all");programs.setText(allPrograms?"‹  Back":"All Programs  ›");ToolViewState.restore(this,state.optJSONObject("ui"));filter();pendingListPosition=state.optInt("position");list.setSelection(pendingListPosition);}
     private void filter(){
         String query=search.getText().toString().trim().toLowerCase(Locale.getDefault());filtered.clear();
         if(!query.isEmpty()||allPrograms){for(AppCatalog.Entry e:all)if(e.label.toLowerCase(Locale.getDefault()).contains(query))filtered.add(e);}

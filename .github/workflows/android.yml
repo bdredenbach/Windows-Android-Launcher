@@ -25,15 +25,16 @@ jobs:
           log-accepted-android-sdk-licenses: 'false'
       - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Check shortcut and recent-launch behavior
+      - name: Check launcher state and layout geometry
         run: |
           mkdir -p build/state-check
-          javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java
+          javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java
           java -cp build/state-check LauncherStateCheck
+          java -cp build/state-check DesktopGeometryCheck
       - run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: Nth-Desktop-0.2.0-debug
+          name: Nth-Desktop-0.3.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - name: Enable emulator acceleration
         run: |
@@ -51,15 +52,10 @@ jobs:
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            timeout 120s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
-            grep -q 'PASS:' smoke-test.txt
+            timeout 180s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
             mkdir -p screenshots
-            adb exec-out run-as com.nthexperience.desktop cat files/desktop.png > screenshots/desktop.png
-            adb exec-out run-as com.nthexperience.desktop cat files/start-menu.png > screenshots/start-menu.png
-            adb exec-out run-as com.nthexperience.desktop cat files/notepad.png > screenshots/notepad.png
-            adb exec-out run-as com.nthexperience.desktop cat files/gadget-gallery.png > screenshots/gadget-gallery.png
-            adb exec-out run-as com.nthexperience.desktop cat files/gadgets-desktop.png > screenshots/gadgets-desktop.png
-            adb exec-out run-as com.nthexperience.desktop cat files/calendar.png > screenshots/calendar.png
+            for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start restored-portrait failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
+            grep -q 'PASS:' smoke-test.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

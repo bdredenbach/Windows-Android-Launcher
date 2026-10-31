@@ -1,10 +1,10 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.2.0 — Aero & gadgets** brings a dark reflective taskbar, a two-column Start menu with bottom search, Selawik typography, vertical desktop shortcuts, glass window borders, and a docked gadget Sidebar.
+A Vista-style Android home launcher by Nth Experience. **0.3.0 — Your desktop, your way** adds landscape, floating and resizable gadgets, and separate saved arrangements for portrait and landscape. A dark reflective taskbar, two-column Start menu, Selawik typography and glass tool windows complete the Vista-inspired desktop.
 
 ## Desktop gadgets
 
-Open **Start → Gadgets**, or hold blank desktop space and choose **Gadgets**. Add or remove gadgets in the gallery. Hold and drag a gadget onto another gadget to swap their order. Tap a gadget to use or configure it. The Sidebar can be hidden and reopened from the gallery. Its selection and order survive restarts.
+Open **Start → Gadgets**, or hold blank desktop space and choose **Gadgets**. Add or remove gadgets in the gallery. Hold a gadget and drag it onto the desktop to detach it, or drop it on the Sidebar to dock it again. Drop onto another docked gadget to place it before that gadget. Use **⋮** for size presets, docking and removal; drag the **◢** corner grip to resize a floating gadget. Tap its face to use or configure it. The gallery includes optional grid snapping and a desktop layout lock.
 
 | Gadget | Behavior |
 | --- | --- |
@@ -15,7 +15,13 @@ Open **Start → Gadgets**, or hold blank desktop space and choose **Gadgets**. 
 | Photo Frame | Choose up to 12 images with Android's document picker; slideshow while the launcher is visible |
 | System Meter | Actual battery level and physical memory usage on two analog dials |
 
-The initial Sidebar includes Clock, Calendar and Weather. Weather shows a setup prompt until you choose a location; it never displays a sample forecast as real weather. Gadgets stop ticking while the launcher is in the background. Weather requests honor provider cache expiry and remain off when the Sidebar or Weather gadget is hidden.
+The initial Sidebar includes Clock, Calendar and Weather. Weather shows a setup prompt until you choose a location; it never displays a sample forecast as real weather. Gadgets stop ticking while the launcher is in the background. Weather requests honor provider cache expiry and remain off when Weather is removed or its dock is hidden. Floating gadgets continue updating while the launcher is visible, even if the Sidebar is hidden.
+
+## Landscape and saved layouts
+
+Enable Android auto-rotate and rotate your device. Landscape uses a matching wide lossless WebP wallpaper, reflows desktop icons and keeps Start navigation scrollable. Portrait and landscape each remember gadget positions, sizes, dock order, Sidebar visibility and built-in window geometry. The first arrangement for a new orientation starts from your current one; changes afterward are independent. Enabled gadgets, notes, photos and preferences are shared.
+
+Open tool windows, their stacking/minimized state, editor cursors, calendar selection, scroll positions and an open Start search survive Android activity recreation, including rotation. Note contents also persist on the device. Saved arrangements survive app restarts; open tool sessions are restored through Android's saved activity state, rather than reopening after a force-stop or explicit fresh launch. Gadgets fit temporarily smaller viewports, including the keyboard, without overwriting their saved position or requested size.
 
 ## Launcher behavior
 
@@ -33,7 +39,7 @@ These are native built-in desktop gadgets. This release does not yet host third-
 
 ## Install and update
 
-Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.2.0 handoff APK uses the same preserved test signing key as 0.1.0, so it can be installed as an update.
+Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.3.0 handoff APK uses the same preserved test signing key as 0.1.0 and 0.2.0, so it can be installed as an update.
 
 Notes, selected photo references, preferences and cached forecasts are stored locally. Photo access uses the document picker's retained grants; no broad photo/storage permission is requested. Approximate location is requested only when you tap **Use my approximate location**. A city can be chosen without granting location access. Forecasts require Internet access; city search depends on the device's Android Geocoder service. Selected weather coordinates are sent to MET Norway. Uninstalling clears local app data.
 
@@ -51,8 +57,9 @@ Output: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ```sh
 mkdir -p build/state-check
-javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java
+javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java
 java -cp build/state-check LauncherStateCheck
+java -cp build/state-check DesktopGeometryCheck
 ```
 
 On a disposable emulator:
@@ -63,7 +70,7 @@ adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke
 ```
 
-The instrumentation runner checks app discovery, Start search/All Programs, note persistence, window controls, wallpaper settings, gadget selection, sticky notes, clock settings, calendar, weather parsing/unit conversion and configuration. It captures real desktop, menu, window and gadget-gallery screens. It does not require live weather or location permission to pass. GitHub Actions builds and runs these checks on Android 11. Physical-device acceptance testing is separate.
+The dependency-free checks exercise boundary fitting, normalized positions, grid snapping and corrupt geometry. The instrumentation runner exercises real touch drag, docking, corner resizing, layout lock, independent orientation layouts, rotation and explicit activity recreation with note/cursor and Start query continuity. It also checks app discovery, Start search/All Programs, note persistence, window controls, wallpaper settings, gadget selection, sticky notes, clock settings, calendar, weather parsing/unit conversion and configuration. It captures real desktop, menu, window and gadget-gallery screens. It does not require live weather or location permission to pass. GitHub Actions builds and runs these checks on Android 11. Physical-device acceptance testing is separate.
 
 ## Origin and credits
 
