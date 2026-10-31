@@ -66,11 +66,13 @@ final class DesktopWindow extends LinearLayout {
         if(getParent()==null)return;
         FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)getLayoutParams();
         int margin=Aero.dp(getContext(),8);
-        lp.width=maximized?host.getWidth():Math.max(1,Math.min(normalW,host.getWidth()-margin*2));
-        lp.height=maximized?host.getHeight():Math.max(1,Math.min(normalH,host.getHeight()-margin*2));
-        setX(clamp(getX(),0,Math.max(0,host.getWidth()-lp.width)));
-        setY(clamp(getY(),0,Math.max(0,host.getHeight()-lp.height)));
-        setLayoutParams(lp);
+        int width=maximized?host.getWidth():Math.max(1,Math.min(normalW,host.getWidth()-margin*2));
+        int height=maximized?host.getHeight():Math.max(1,Math.min(normalH,host.getHeight()-margin*2));
+        setX(clamp(getX(),0,Math.max(0,host.getWidth()-width)));
+        setY(clamp(getY(),0,Math.max(0,host.getHeight()-height)));
+        // Called from the host layout listener. Reapplying identical parameters
+        // would request another layout forever once any tool window is open.
+        if(lp.width!=width||lp.height!=height){lp.width=width;lp.height=height;setLayoutParams(lp);}
     }
     private void toggleMaximize(){
         FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)getLayoutParams();
