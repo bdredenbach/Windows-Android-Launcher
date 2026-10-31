@@ -55,6 +55,7 @@ jobs:
             timeout 240s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
             mkdir -p screenshots
             for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
+            adb exec-out run-as com.nthexperience.desktop cat files/picker-tree.txt > screenshots/picker-tree.txt 2>/dev/null || true
             grep -q 'PASS:' smoke-test.txt
       - uses: actions/upload-artifact@v4
         if: always()

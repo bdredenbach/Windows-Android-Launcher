@@ -92,7 +92,7 @@ public final class LauncherSmoke extends Instrumentation {
         } catch(Throwable failure){
             if(previous!=null)getTargetContext().getSharedPreferences("desktop",0).edit().putString("note",previous).commit();
             getTargetContext().getSharedPreferences("desktop",0).edit().putString("gadget_note",oldSticky).commit();restoreGadgets(oldGadgets);
-            failure.printStackTrace();try{snapshot("failure.png");}catch(Exception ignored){}
+            failure.printStackTrace();try{snapshot("failure.png");StringBuilder dump=new StringBuilder();dumpSystem(getUiAutomation().getRootInActiveWindow(),dump,0);try(java.io.FileOutputStream output=new java.io.FileOutputStream(new java.io.File(getTargetContext().getFilesDir(),"picker-tree.txt"))){output.write(dump.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));}}catch(Exception ignored){}
             ((Application)getTargetContext().getApplicationContext()).unregisterActivityLifecycleCallbacks(lifecycle);result.putString("stream","FAIL: "+failure+"\n");finish(Activity.RESULT_CANCELED,result);
         }
     }
@@ -160,8 +160,10 @@ public final class LauncherSmoke extends Instrumentation {
         android.widget.ListView choices=(android.widget.ListView)find(v->v instanceof android.widget.ListView);check(choices!=null&&choices.getCount()>1,"File Managers offers installed apps");
         View choice=find(v->v.getContentDescription()!=null&&v.getContentDescription().toString().startsWith("Choose file manager app: "));check(choice!=null,"An installed app can be chosen");int position=choices.getPositionForView(choice);ui(()->choices.performItemClick(choice,position,choices.getItemIdAtPosition(position)));check(!new DesktopStore(getTargetContext()).fileManagers().isEmpty(),"File manager shortcuts persist");
         ui(()->find(v->"Back".equals(v.getContentDescription())).performClick());snapshot("file-managers.png");ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());
-        progress("granting a real test folder through Android's picker");ui(()->activity.open("@files"));ui(()->find(v->"Link a folder".equals(v.getContentDescription())).performClick());
-        clickSystemDescription("Show roots");clickSystemText("Nth Test Storage");clickSystemText("Archive");clickSystemText("Use this folder");clickSystemText("Allow");
+        progress("granting a real test folder through Android's picker");
+        ActivityMonitor pickerLocation=new ActivityMonitor(){@Override public ActivityResult onStartActivity(Intent intent){if(Intent.ACTION_OPEN_DOCUMENT_TREE.equals(intent.getAction()))intent.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,android.provider.DocumentsContract.buildDocumentUri("com.nthexperience.desktop.test.documents","archive"));return null;}};addMonitor(pickerLocation);
+        ui(()->activity.open("@files"));ui(()->find(v->"Link a folder".equals(v.getContentDescription())).performClick());
+        clickSystemText("Use this folder");clickSystemText("Allow");removeMonitor(pickerLocation);
         awaitView(v->"Chapter.txt".equals(v.getContentDescription()));check(find(v->"Nested".equals(v.getContentDescription()))!=null,"Granted folder children load from the document provider");snapshot("explorer-folder.png");
         org.json.JSONObject link=DocumentFolders.links(new DesktopStore(getTargetContext())).getJSONObject(0);android.net.Uri tree=android.net.Uri.parse(link.getString("uri"));check(getTargetContext().getContentResolver().getPersistedUriPermissions().stream().anyMatch(p->p.getUri().equals(tree)&&p.isReadPermission()),"Folder read grant is retained");
         android.net.Uri chapter=android.provider.DocumentsContract.buildDocumentUriUsingTree(tree,"chapter");try(java.io.InputStream input=getTargetContext().getContentResolver().openInputStream(chapter)){byte[] bytes=new byte[128];int count=input==null?0:input.read(bytes);check(count>0&&new String(bytes,0,count,java.nio.charset.StandardCharsets.UTF_8).startsWith("A real document"),"Selected document is readable with the folder grant");}
@@ -173,14 +175,15 @@ public final class LauncherSmoke extends Instrumentation {
         ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());DocumentFolders.remove(getTargetContext(),new DesktopStore(getTargetContext()),tree.toString());
         progress("Vista shell and real document-provider checks passed");
     }
-    private void awaitView(Predicate<View> match) throws Exception {long deadline=SystemClock.uptimeMillis()+8000;while(SystemClock.uptimeMillis()<deadline){waitForIdleSync();if(find(match)!=null)return;Thread.sleep(150);}throw new AssertionError("Expected native view did not appear");}
-    private void clickSystemText(String text) throws Exception {clickSystemNode(node->node.getText()!=null&&text.equalsIgnoreCase(node.getText().toString()));}
+    private void awaitView(Predicate<View> match) throws Exception {long deadline=SystemClock.uptimeMillis()+8000;while(SystemClock.uptimeMillis()<deadline){MainActivity latest;while((latest=resumed.poll())!=null)if(!latest.isDestroyed()){activity=latest;root=activity.getWindow().getDecorView();}waitForIdleSync();if(find(match)!=null)return;Thread.sleep(150);}throw new AssertionError("Expected native view did not appear");}
+    private void clickSystemText(String text) throws Exception {try{clickSystemNode(node->node.getText()!=null&&text.equalsIgnoreCase(node.getText().toString()));}catch(AssertionError ex){throw new AssertionError("System item not found: "+text,ex);}}
     private void clickSystemDescription(String text) throws Exception {clickSystemNode(node->node.getContentDescription()!=null&&(text.equalsIgnoreCase(node.getContentDescription().toString())||node.getContentDescription().toString().equalsIgnoreCase("Open navigation drawer")));}
     private void clickSystemNode(Predicate<android.view.accessibility.AccessibilityNodeInfo> match) throws Exception {
         long deadline=SystemClock.uptimeMillis()+10000;
         while(SystemClock.uptimeMillis()<deadline){android.view.accessibility.AccessibilityNodeInfo found=systemNode(getUiAutomation().getRootInActiveWindow(),match);if(found!=null){while(!found.isClickable()&&found.getParent()!=null)found=found.getParent();if(found.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)){Thread.sleep(350);return;}}Thread.sleep(150);}throw new AssertionError("System picker or menu item not found");
     }
     private android.view.accessibility.AccessibilityNodeInfo systemNode(android.view.accessibility.AccessibilityNodeInfo node,Predicate<android.view.accessibility.AccessibilityNodeInfo> match){if(node==null)return null;if(match.test(node))return node;for(int i=0;i<node.getChildCount();i++){android.view.accessibility.AccessibilityNodeInfo found=systemNode(node.getChild(i),match);if(found!=null)return found;}return null;}
+    private void dumpSystem(android.view.accessibility.AccessibilityNodeInfo node,StringBuilder out,int depth){if(node==null||depth>30)return;out.append(depth).append(" ").append(node.getViewIdResourceName()).append(" text=").append(node.getText()).append(" description=").append(node.getContentDescription()).append("\n");for(int i=0;i<node.getChildCount();i++)dumpSystem(node.getChild(i),out,depth+1);}
     private void restoreGadgets(String value){android.content.SharedPreferences.Editor e=getTargetContext().getSharedPreferences("desktop",0).edit();if(value==null)e.remove("gadgets");else e.putString("gadgets",value);e.commit();}
     private void snapshot(String name) throws java.io.IOException {
         try{Thread.sleep(250);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new java.io.IOException(interrupted);}
