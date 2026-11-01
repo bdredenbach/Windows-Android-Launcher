@@ -37,7 +37,8 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private GridLayout desktop;
     private ScrollView desktopScroll;
     private GadgetSidebar sidebar;
-    private int desktopRows;
+    private DesktopContextMenu desktopMenu;
+    private int desktopRows,desktopCutoutLeft,desktopCutoutRight;
     private android.location.LocationListener locationListener;
     private android.os.CancellationSignal locationCancellation;
     private LinearLayout shell,taskItems;
@@ -54,8 +55,9 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     @Override public void onCreate(Bundle saved){
         super.onCreate(saved);store=new DesktopStore(this);layoutKey=getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE?"landscape":"portrait";
         if(saved!=null)pendingFolderWindow=saved.getString("folder_window","@files");
-        if(!store.prefs.getBoolean("desktop_v4",false)){List<String> shortcuts=store.desktop();if(!shortcuts.contains("@filemanagers"))shortcuts.add("@filemanagers");store.desktop(shortcuts);store.prefs.edit().putBoolean("desktop_v4",true).apply();}
+        store.migrateDesktop();
         getWindow().setStatusBarColor(Color.TRANSPARENT);getWindow().setNavigationBarColor(0xff0a263b);
+        if(Build.VERSION.SDK_INT>=28){WindowManager.LayoutParams attributes=getWindow().getAttributes();attributes.layoutInDisplayCutoutMode=Build.VERSION.SDK_INT>=30?WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS:WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;getWindow().setAttributes(attributes);}
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         else getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         buildDesktop();applySystemChrome();
@@ -76,9 +78,9 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         shell=Aero.column(this);root.addView(shell,new FrameLayout.LayoutParams(-1,-1));
         shell.setOnApplyWindowInsetsListener((v,insets)->{
             int left,top,right,bottom;
-            if(Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());android.graphics.Insets ime=insets.getInsets(WindowInsets.Type.ime());left=bars.left;top=bars.top;right=bars.right;bottom=Math.max(bars.bottom,ime.bottom);}
+            if(Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());android.graphics.Insets cutout=insets.getInsets(WindowInsets.Type.displayCutout());android.graphics.Insets ime=insets.getInsets(WindowInsets.Type.ime());desktopCutoutLeft=Math.max(0,cutout.left-bars.left);desktopCutoutRight=Math.max(0,cutout.right-bars.right);left=bars.left;top=Math.max(bars.top,cutout.top);right=bars.right;bottom=Math.max(Math.max(bars.bottom,cutout.bottom),ime.bottom);}
             else{left=insets.getSystemWindowInsetLeft();top=insets.getSystemWindowInsetTop();right=insets.getSystemWindowInsetRight();bottom=insets.getSystemWindowInsetBottom();}
-            shell.setPadding(left,top,right,bottom);return insets;
+            shell.setPadding(left,top,right,bottom);if(workspace!=null)workspace.post(this::layoutWorkspace);return insets;
         });
         workspace=new FrameLayout(this);shell.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
         ScrollView scroll=new ScrollView(this);desktopScroll=scroll;scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.setPadding(dp(7),dp(10),dp(7),dp(12));scroll.setVerticalScrollBarEnabled(false);
@@ -87,29 +89,33 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         GestureDetector gestures=new GestureDetector(this,new GestureDetector.SimpleOnGestureListener(){
             public boolean onDown(MotionEvent e){return true;}
             public boolean onFling(MotionEvent a,MotionEvent b,float vx,float vy){if(a!=null&&a.getY()-b.getY()>dp(80)&&Math.abs(vy)>300){showStart(true);return true;}return false;}
-            public void onLongPress(MotionEvent e){desktopOptions();}
+            public void onLongPress(MotionEvent e){desktopOptions(e.getRawX(),e.getRawY());}
             public boolean onSingleTapUp(MotionEvent e){startMenu.hide();return true;}
         });
-        desktop.setOnTouchListener((v,event)->gestures.onTouchEvent(event));
-        workspace.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{
-            int reserved=sidebar.getVisibility()==View.VISIBLE?dp(144):0;
-            FrameLayout.LayoutParams desktopParams=(FrameLayout.LayoutParams)desktopScroll.getLayoutParams();
-            if(desktopParams.rightMargin!=reserved){desktopParams.rightMargin=reserved;desktopScroll.setLayoutParams(desktopParams);}
-            int next=Math.max(1,Math.min(9,(r-l-reserved-dp(12))/dp(82)));
-            int rows=Math.max(1,(b-t-dp(16))/dp(94));
-            if(next!=columns||rows!=desktopRows){columns=next;desktopRows=rows;renderDesktop();}
-            sidebar.workspaceSize(r-l,b-t);
-            for(DesktopWindow tool:windows.values())tool.fitToHost();
-            if(startMenu!=null){startMenu.availableHeight(b-t);FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)startMenu.getLayoutParams();int h=Math.min(dp(540),Math.max(1,b-t-dp(8)));int w=Math.min(dp(420),Math.max(1,r-l-dp(12)));if(lp.height!=h||lp.width!=w){lp.height=h;lp.width=w;startMenu.setLayoutParams(lp);}}
-        });
+        desktop.setContentDescription("Desktop workspace");
+        desktop.setOnTouchListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_DOWN&&event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)){desktopOptions(event.getRawX(),event.getRawY());return true;}return gestures.onTouchEvent(event);});
+        desktop.setOnGenericMotionListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_BUTTON_PRESS&&event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)){desktopOptions(event.getRawX(),event.getRawY());return true;}return false;});
+        workspace.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->layoutWorkspace());
         buildTaskbar();
         startMenu=new StartMenu(this,this,store,wallpaper);startMenu.setFocusableInTouchMode(true);startMenu.setVisibility(View.GONE);
         FrameLayout.LayoutParams menuParams=new FrameLayout.LayoutParams(dp(390),dp(520),Gravity.BOTTOM|Gravity.START);menuParams.setMargins(dp(6),dp(4),dp(6),dp(4));workspace.addView(startMenu,menuParams);
         setContentView(root);shell.requestApplyInsets();renderDesktop();
     }
+    private void layoutWorkspace(){
+        if(destroyed||workspace==null||workspace.getWidth()==0)return;int width=workspace.getWidth(),height=workspace.getHeight();
+            int reserved=sidebar.getVisibility()==View.VISIBLE?dp(144):desktopCutoutRight;
+            FrameLayout.LayoutParams desktopParams=(FrameLayout.LayoutParams)desktopScroll.getLayoutParams();
+            if(desktopParams.rightMargin!=reserved||desktopParams.leftMargin!=desktopCutoutLeft){desktopParams.rightMargin=reserved;desktopParams.leftMargin=desktopCutoutLeft;desktopScroll.setLayoutParams(desktopParams);}
+            int next=Math.max(1,Math.min(9,(width-reserved-desktopCutoutLeft-dp(12))/dp(82)));
+            int rows=Math.max(1,(height-dp(16))/dp(94));
+            if(next!=columns||rows!=desktopRows){columns=next;desktopRows=rows;renderDesktop();}
+            sidebar.workspaceSize(width,height);
+            for(DesktopWindow tool:windows.values())tool.fitToHost();
+            if(startMenu!=null){startMenu.availableHeight(height);FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)startMenu.getLayoutParams();int h=Math.min(dp(540),Math.max(1,height-dp(8)));int w=Math.min(dp(420),Math.max(1,width-dp(12)));if(lp.height!=h||lp.width!=w){lp.height=h;lp.width=w;startMenu.setLayoutParams(lp);}}
+    }
     private void buildTaskbar(){
         shell.setClipChildren(false);shell.setClipToPadding(false);
-        LinearLayout taskbar=new LinearLayout(this);taskbar.setGravity(Gravity.CENTER_VERTICAL);taskbar.setClipChildren(false);taskbar.setPadding(dp(3),0,dp(3),0);taskbar.setBackground(new AeroGlass(wallpaper,AeroGlass.TASKBAR));taskbar.setElevation(dp(5));
+        LinearLayout taskbar=new LinearLayout(this);taskbar.setContentDescription("Desktop taskbar");taskbar.setGravity(Gravity.CENTER_VERTICAL);taskbar.setClipChildren(false);taskbar.setPadding(dp(3),0,dp(3),0);taskbar.setBackground(new AeroGlass(wallpaper,AeroGlass.TASKBAR));taskbar.setElevation(dp(5));
         AeroIcon orb=new AeroIcon(this,"orb");orb.setContentDescription("Start menu");orb.setFocusable(true);orb.setOnClickListener(v->{if(startMenu.getVisibility()==View.VISIBLE)startMenu.hide();else showStart(false);});taskbar.addView(orb,new LinearLayout.LayoutParams(dp(53),dp(53)));
         HorizontalScrollView strip=new HorizontalScrollView(this);strip.setHorizontalScrollBarEnabled(false);strip.setFillViewport(true);taskItems=new LinearLayout(this);taskItems.setGravity(Gravity.CENTER_VERTICAL);strip.addView(taskItems,new HorizontalScrollView.LayoutParams(-2,-1));FrameLayout taskClip=new FrameLayout(this);taskClip.setClipChildren(true);taskClip.addView(strip,new FrameLayout.LayoutParams(-1,-1));taskbar.addView(taskClip,new LinearLayout.LayoutParams(0,dp(44),1));
         clock=Aero.text(this,"",10,Color.WHITE);clock.setGravity(Gravity.CENTER);clock.setPadding(dp(5),0,dp(5),0);clock.setMinWidth(dp(67));clock.setOnClickListener(v->calendar());clock.setContentDescription("Clock and calendar");taskbar.addView(clock,new LinearLayout.LayoutParams(-2,dp(44)));
@@ -186,8 +192,13 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         PopupMenu menu=new PopupMenu(this,anchor);menu.getMenu().add(store.pinned(id)?"Remove from desktop":"Add to desktop").setOnMenuItemClickListener(item->{store.toggle(id);renderDesktop();return true;});
         ComponentName component=ComponentName.unflattenFromString(id);if(component!=null)menu.getMenu().add("App info").setOnMenuItemClickListener(item->{launchSystem(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+component.getPackageName())));return true;});menu.show();
     }
-    private void desktopOptions(){
-        new AlertDialog.Builder(this).setTitle("Desktop").setItems(new String[]{"All programs","Personalize","Gadgets","Manage desktop shortcuts","Make default home","Control Panel"},(dialog,which)->{if(which==0)showStart(false);if(which==1)appearance();if(which==2)gadgetGallery();if(which==3)manageShortcuts();if(which==4)home();if(which==5)open("@control");}).show();
+    private void desktopOptions(float x,float y){
+        if(desktopMenu!=null)desktopMenu.dismiss();startMenu.hide();desktopMenu=new DesktopContextMenu(this);
+        desktopMenu.item("All programs","programs",()->showStart(false));desktopMenu.item("Refresh","refresh",()->{scanApps();sidebar.refresh();});desktopMenu.separator();
+        desktopMenu.item("Computer","computer",this::computer);desktopMenu.item("Control Panel","control",()->open("@control"));desktopMenu.item("Gadgets","clock",this::gadgetGallery);desktopMenu.separator();
+        desktopMenu.item("Manage desktop shortcuts","computer",this::manageShortcuts);desktopMenu.item("Personalize","appearance",this::appearance);
+        if(!isHome()){desktopMenu.separator();desktopMenu.item("Make default home","orb",this::home);}
+        desktopMenu.show(root,x,y,shell.getPaddingLeft(),shell.getPaddingTop(),shell.getPaddingRight(),shell.getPaddingBottom());
     }
     private void manageShortcuts(){
         List<String> ids=store.desktop();String[] labels=new String[ids.size()];for(int i=0;i<ids.size();i++)labels[i]=label(ids.get(i));
@@ -222,7 +233,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         switch(id){
             case "chrome":applySystemChrome();return;case "desktop":renderDesktop();return;case "gadgets":sidebar.setActive(true);sidebar.refresh();return;case "wallpaper":wallpaper.theme(store.prefs.getInt("wallpaper",0));return;
             case "profile":startMenu.refreshName();return;case "home":home();return;case "shortcuts":manageShortcuts();return;
-            case "reset-icons":new AlertDialog.Builder(this).setTitle("Restore desktop icons?").setMessage("Restore the original desktop icons and their order? Your notes and apps are kept.").setPositiveButton("Restore",(d,w)->{store.prefs.edit().remove("shortcuts").apply();List<String> shortcuts=store.desktop();shortcuts.add("@filemanagers");store.desktop(shortcuts);renderDesktop();}).setNegativeButton("Cancel",null).show();return;
+            case "reset-icons":new AlertDialog.Builder(this).setTitle("Restore desktop icons?").setMessage("Restore the original desktop icons and their order? Your notes and apps are kept.").setPositiveButton("Restore",(d,w)->{store.prefs.edit().remove("shortcuts").apply();renderDesktop();}).setNegativeButton("Cancel",null).show();return;
         }
         String action;
         switch(id){
@@ -251,7 +262,8 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         if(Build.VERSION.SDK_INT>=29){RoleManager roles=getSystemService(RoleManager.class);if(roles!=null&&roles.isRoleAvailable(RoleManager.ROLE_HOME)&&!roles.isRoleHeld(RoleManager.ROLE_HOME)){try{startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_HOME),12);return;}catch(ActivityNotFoundException ignored){}}}
         launchSystem(new Intent(Settings.ACTION_HOME_SETTINGS));
     }
-    private boolean isHome(){
+    @Override public boolean isHome(){
+        if(Build.VERSION.SDK_INT>=29){RoleManager roles=getSystemService(RoleManager.class);if(roles!=null&&roles.isRoleAvailable(RoleManager.ROLE_HOME))return roles.isRoleHeld(RoleManager.ROLE_HOME);}
         Intent home=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);android.content.pm.ResolveInfo result=getPackageManager().resolveActivity(home,PackageManager.MATCH_DEFAULT_ONLY);return result!=null&&getPackageName().equals(result.activityInfo.packageName);
     }
     @Override public void settings(){open("@control");}
@@ -280,13 +292,14 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private void toast(String message){Toast.makeText(this,message,Toast.LENGTH_SHORT).show();}
     private void updateClock(){if(clock!=null){Date now=new Date();clock.setText(DateFormat.getTimeFormat(this).format(now)+"\n"+new SimpleDateFormat("MMM d",Locale.getDefault()).format(now));}}
     private void handleBack(){
+        if(desktopMenu!=null&&desktopMenu.showing()){desktopMenu.dismiss();return;}
         if(startMenu.getVisibility()==View.VISIBLE){startMenu.hide();return;}
         for(int i=workspace.getChildCount()-1;i>=0;i--){View v=workspace.getChildAt(i);if(v instanceof DesktopWindow&&v.getVisibility()==View.VISIBLE){DesktopWindow tool=(DesktopWindow)v;if(tool.body instanceof VistaShell&&((VistaShell)tool.body).goBack())return;v.setVisibility(View.GONE);((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(v.getWindowToken(),0);renderTaskbar();return;}}
     }
     @Override public void onBackPressed(){handleBack();}
-    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);if(startMenu!=null)startMenu.hide();}
-    @Override protected void onResume(){super.onResume();pausedSession=null;main.removeCallbacks(clockTick);main.post(clockTick);if(store!=null)scanApps();if(sidebar!=null)sidebar.setActive(true);}
-    @Override protected void onPause(){pausedSession=captureSession();super.onPause();main.removeCallbacks(clockTick);if(sidebar!=null)sidebar.setActive(false);cancelLocation();if(startMenu!=null)startMenu.hide();}
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);if(desktopMenu!=null)desktopMenu.dismiss();if(startMenu!=null){startMenu.hide();startMenu.refreshHome();}}
+    @Override protected void onResume(){super.onResume();pausedSession=null;if(startMenu!=null)startMenu.refreshHome();main.removeCallbacks(clockTick);main.post(clockTick);if(store!=null)scanApps();if(sidebar!=null)sidebar.setActive(true);}
+    @Override protected void onPause(){pausedSession=captureSession();if(desktopMenu!=null)desktopMenu.dismiss();super.onPause();main.removeCallbacks(clockTick);if(sidebar!=null)sidebar.setActive(false);cancelLocation();if(startMenu!=null)startMenu.hide();}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putString("folder_window",pendingFolderWindow);state.putString("desktop_session",(pausedSession==null?captureSession():pausedSession).toString());}
     private JSONObject captureSession(){
         JSONObject session=new JSONObject();JSONArray tools=new JSONArray();

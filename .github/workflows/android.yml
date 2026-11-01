@@ -34,8 +34,16 @@ jobs:
       - run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: Nth-Desktop-0.4.0-debug
+          name: Nth-Desktop-0.4.1-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Keep APK verification tool for the handoff
+        run: |
+          mkdir -p build/signing-tool
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/signing-tool/apksigner.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: APK-verification-tool
+          path: build/signing-tool/apksigner.jar
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -47,14 +55,15 @@ jobs:
           api-level: 30
           arch: x86_64
           target: default
+          profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 300
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            timeout 240s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
+            timeout 300s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
             mkdir -p screenshots
-            for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
+            for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
             adb exec-out run-as com.nthexperience.desktop cat files/picker-tree.txt > screenshots/picker-tree.txt 2>/dev/null || true
             grep -q 'PASS:' smoke-test.txt
       - uses: actions/upload-artifact@v4

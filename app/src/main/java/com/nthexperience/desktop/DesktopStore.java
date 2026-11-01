@@ -12,7 +12,11 @@ final class DesktopStore {
     final SharedPreferences prefs;
     DesktopStore(Context context) { prefs = context.getSharedPreferences("desktop", Context.MODE_PRIVATE); }
     List<String> desktop() {
-        return list("shortcuts", Arrays.asList("@computer", "@browser", "@files", "@notes", "@appearance"));
+        return list("shortcuts", Arrays.asList("@computer", "@browser", "@notes", "@appearance"));
+    }
+    void migrateDesktop(){
+        if(prefs.getBoolean("desktop_v41",false))return;
+        List<String> shortcuts=desktop();shortcuts.remove("@files");shortcuts.remove("@filemanagers");desktop(shortcuts);prefs.edit().putBoolean("desktop_v41",true).apply();
     }
     List<String> gadgets(){return list("gadgets",Arrays.asList("clock","calendar","weather"));}
     void gadgets(List<String> ids){save("gadgets",ids);}

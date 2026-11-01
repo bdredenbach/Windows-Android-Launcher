@@ -1,6 +1,10 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.4.0 — Control Panel & Explorer** adds a native Vista-style settings hub, Personalization task pages, Computer/System views, and an Explorer window with a dedicated File Managers folder. It keeps 0.3.0's landscape desktop, movable/resizable gadgets and separate orientation layouts.
+A Vista-style Android home launcher by Nth Experience. **0.4.1 — Desktop cleanup** removes the redundant desktop Files/File Managers icons, hides home-setup prompts after default selection, adds a pointer-anchored Vista context menu and removes horizontal camera-cutout gutters in landscape. File management stays available in Computer and through the taskbar Files shortcut. It keeps the Control Panel/Explorer features and separate portrait/landscape gadget layouts.
+
+Desktop cleanup runs once on upgrade, preserving other shortcut order, file-manager app selections, linked folders, notes and gadget layouts. Restoring original desktop icons uses Computer, Internet, Notepad and Personalize. The default-home prompts follow Android's actual home-role state and refresh when the launcher resumes or a menu opens. Long-press blank desktop space or right-click with a mouse for the context menu.
+
+The taskbar and dock use the full width available beside Android's navigation controls. Landscape camera-cutout insets no longer shrink the entire launcher horizontally; desktop icons keep their own cutout-safe margins, and portrait top/bottom cutout protection and keyboard/navigation insets are retained.
 
 ## Control Panel and Personalization
 
@@ -16,7 +20,7 @@ Wi-Fi, security, sound, storage, Bluetooth, accessibility, accounts, language an
 - **Add a folder…** lets you choose a folder using Android's folder picker. Explorer can then browse its real files and subfolders inside the launcher. Only read access is retained. Open files use Android's installed handlers.
 - Folder search checks names in the current directory. Folders sort before files. Details adds size/type/date metadata; hold an item for its properties. Listings show at most 2,000 items and explicitly label that limit. Organize → Refresh reloads the provider.
 - Link up to 16 folders. Hold a linked folder on the home page to remove its link and release the retained read grant. An unavailable/revoked location shows a recovery action.
-- **File Managers** groups shortcuts to apps you select from your installed programs. It includes the system file picker. Add apps inside the folder; hold an app to remove its shortcut. The 0.4 update adds this folder to the desktop once and preserves existing shortcuts.
+- **File Managers** groups shortcuts to apps you select from your installed programs. It includes the system file picker. Add apps inside the folder; hold an app to remove its shortcut. Open this folder through Computer; the 0.4.1 desktop cleanup keeps it off the default desktop.
 - The browser is read-only: it does not move, rename or delete user files. Android's folder picker restricts some locations, including storage roots and the Downloads root on recent Android versions; selecting individual files remains available.
 - Explorer/Control Panel navigation, search and view mode survive activity recreation and rotation, together with the existing tool-window state.
 
@@ -57,7 +61,7 @@ These are native built-in desktop gadgets. This release does not yet host third-
 
 ## Install and update
 
-Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.4.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
+Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.4.1 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
 
 Notes, selected photo references, linked folder references, file-manager shortcuts, preferences and cached forecasts are stored locally. Photo access uses the document picker's retained grants; no broad photo/storage permission is requested. Approximate location is requested only when you tap **Use my approximate location**. A city can be chosen without granting location access. Forecasts require Internet access; city search depends on the device's Android Geocoder service. Selected weather coordinates are sent to MET Norway. Uninstalling clears local app data.
 
@@ -88,7 +92,7 @@ adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke
 ```
 
-The dependency-free checks exercise boundary fitting, normalized positions, grid snapping and corrupt geometry. The instrumentation runner exercises real touch drag, docking, corner resizing, layout lock, independent orientation layouts, rotation and explicit activity recreation with note/cursor and Start query continuity. An isolated test folder in the disposable emulator’s Documents directory exercises Android’s real folder picker and storage provider, retained read grants, tree-boundary enforcement, file reads, nested navigation/search and rotation restoration. The test cleans up its own fixture folder; fixture data are absent from the production APK. The runner also checks Control Panel search/Classic view, actual settings changes and dispatch to Android Wi-Fi settings. It also checks app discovery, Start search/All Programs, note persistence, window controls, wallpaper settings, gadget selection, sticky notes, clock settings, calendar, weather parsing/unit conversion and configuration. It captures real desktop, menu, window and gadget-gallery screens. It does not require live weather or location permission to pass. GitHub Actions builds and runs these checks on Android 11. Physical-device acceptance testing is separate.
+The dependency-free checks exercise boundary fitting, normalized positions, grid snapping and corrupt geometry. The instrumentation runner exercises real touch drag, docking, corner resizing, layout lock, independent orientation layouts, rotation and explicit activity recreation with note/cursor and Start query continuity. An isolated test folder in the disposable emulator’s Documents directory exercises Android’s real folder picker and storage provider, retained read grants, tree-boundary enforcement, file reads, nested navigation/search and rotation restoration. The test cleans up its own fixture folder; fixture data are absent from the production APK. The runner also checks upgrade cleanup, before/after default-home prompts using the real Android HOME role, the desktop context menu, and taskbar/dock bounds in both landscape rotations with a real emulated cutout and three-button navigation. It also checks Control Panel search/Classic view, actual settings changes and dispatch to Android Wi-Fi settings. It also checks app discovery, Start search/All Programs, note persistence, window controls, wallpaper settings, gadget selection, sticky notes, clock settings, calendar, weather parsing/unit conversion and configuration. It captures real desktop, menu, window and gadget-gallery screens. It does not require live weather or location permission to pass. GitHub Actions builds and runs these checks on Android 11. Physical-device acceptance testing is separate.
 
 ## Origin and credits
 
