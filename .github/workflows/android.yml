@@ -11,6 +11,10 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [30, 36]
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -34,14 +38,17 @@ jobs:
           java -cp build/state-check StartupPolicyCheck
       - run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
       - uses: actions/upload-artifact@v4
+        if: matrix.api == 30
         with:
           name: Nth-Desktop-0.6.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - name: Keep APK verification tool for the handoff
+        if: matrix.api == 30
         run: |
           mkdir -p build/signing-tool
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/signing-tool/apksigner.jar
       - uses: actions/upload-artifact@v4
+        if: matrix.api == 30
         with:
           name: APK-verification-tool
           path: build/signing-tool/apksigner.jar
@@ -53,24 +60,20 @@ jobs:
       - name: Run launcher smoke test
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: ${{ matrix.api }}
           arch: x86_64
-          target: default
-          profile: pixel_2
+          target: ${{ matrix.api == 30 && 'default' || 'google_apis' }}
+          profile: ${{ matrix.api == 30 && 'pixel_2' || 'pixel_7' }}
           disable-animations: true
           emulator-boot-timeout: 300
           script: |
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            timeout 300s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
-            mkdir -p screenshots
-            for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
-            adb exec-out run-as com.nthexperience.desktop cat files/picker-tree.txt > screenshots/picker-tree.txt 2>/dev/null || true
-            grep -q 'PASS:' smoke-test.txt
+            bash checks/run-emulator-checks.sh ${{ matrix.api }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Launcher-emulator-evidence
+          name: Launcher-emulator-evidence-${{ matrix.api }}
           path: |
             smoke-test.txt
+            aero-test.txt
+            reboot-test.txt
             screenshots/
