@@ -16,6 +16,7 @@ final class DesktopWindow extends LinearLayout {
     final View body;
     private final Runnable changed;
     private final TextView maximizeButton;
+    private final TextView titleLabel;
     private boolean maximized;
     private int normalW, normalH;
     private float positionX=.5f,positionY=.33f;
@@ -29,8 +30,8 @@ final class DesktopWindow extends LinearLayout {
         setBackground(new AeroGlass(wallpaper,AeroGlass.WINDOW));
         setPadding(Aero.dp(context,6),Aero.dp(context,2),Aero.dp(context,6),Aero.dp(context,6));
         LinearLayout bar=new LinearLayout(context); bar.setGravity(Gravity.CENTER_VERTICAL);
-        String icon=toolId.equals("@control")?"control":toolId.equals("@appearance")?"appearance":toolId.equals("@files")?"files":toolId.equals("@filemanagers")?"folderapps":toolId.equals("@computer")||toolId.equals("@system")?"computer":toolId.equals("@notes")?"notes":"clock";LinearLayout.LayoutParams iconParams=new LinearLayout.LayoutParams(Aero.dp(context,18),Aero.dp(context,18));iconParams.leftMargin=Aero.dp(context,5);bar.addView(new AeroIcon(context,icon),iconParams);
-        TextView label=Aero.text(context,title,13,0xff111b22);label.setShadowLayer(Aero.dp(context,3),0,0,0xffffffff); label.setPadding(Aero.dp(context,8),0,0,0);
+        String icon=toolId.startsWith("folder:")?"folderapps":toolId.equals("@backup")?"drive":toolId.equals("@organize")||toolId.equals("@quicklaunch")?"folderapps":toolId.equals("@control")?"control":toolId.equals("@appearance")?"appearance":toolId.equals("@files")?"files":toolId.equals("@filemanagers")?"folderapps":toolId.equals("@computer")||toolId.equals("@system")?"computer":toolId.equals("@notes")?"notes":"clock";LinearLayout.LayoutParams iconParams=new LinearLayout.LayoutParams(Aero.dp(context,18),Aero.dp(context,18));iconParams.leftMargin=Aero.dp(context,5);bar.addView(new AeroIcon(context,icon),iconParams);
+        TextView label=Aero.text(context,title,13,0xff111b22);titleLabel=label;label.setShadowLayer(Aero.dp(context,3),0,0,0xffffffff); label.setPadding(Aero.dp(context,8),0,0,0);
         bar.addView(label,new LayoutParams(0,Aero.dp(context,48),1));
         TextView minimize=chrome("—",()->{ hideKeyboard();setVisibility(GONE); changed.run(); });
         maximizeButton=chrome("□",this::toggleMaximize);
@@ -52,6 +53,7 @@ final class DesktopWindow extends LinearLayout {
         });
         label.setContentDescription(title+". Drag to move window.");
     }
+    void caption(String title){titleLabel.setText(title);titleLabel.setContentDescription(title+". Drag to move window.");}
     private TextView chrome(String symbol,Runnable action){
         TextView view=Aero.button(getContext(),symbol,action);
         view.setTextSize(16);view.setMinHeight(0);view.setPadding(0,0,0,0);LayoutParams lp=new LayoutParams(Aero.dp(getContext(),40),Aero.dp(getContext(),30));lp.leftMargin=Aero.dp(getContext(),1);view.setLayoutParams(lp);

@@ -1,7 +1,7 @@
 name: Android build
 on:
   push:
-    branches: [main]
+    branches: [main, feature/desktop-organization-backup]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -34,7 +34,7 @@ jobs:
       - run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: Nth-Desktop-0.4.1-debug
+          name: Nth-Desktop-0.5.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - name: Keep APK verification tool for the handoff
         run: |
@@ -63,7 +63,7 @@ jobs:
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             timeout 300s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
             mkdir -p screenshots
-            for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
+            for image in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure; do adb exec-out run-as com.nthexperience.desktop cat files/$image.png > screenshots/$image.png 2>/dev/null || true; done
             adb exec-out run-as com.nthexperience.desktop cat files/picker-tree.txt > screenshots/picker-tree.txt 2>/dev/null || true
             grep -q 'PASS:' smoke-test.txt
       - uses: actions/upload-artifact@v4

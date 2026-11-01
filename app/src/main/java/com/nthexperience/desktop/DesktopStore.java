@@ -7,8 +7,12 @@ import org.json.JSONException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
+import java.util.Collections;
+import org.json.JSONObject;
 
 final class DesktopStore {
+    static final int MAX_FOLDERS=64, MAX_ITEMS=256, MAX_QUICK=12;
     final SharedPreferences prefs;
     DesktopStore(Context context) { prefs = context.getSharedPreferences("desktop", Context.MODE_PRIVATE); }
     List<String> desktop() {
@@ -25,6 +29,50 @@ final class DesktopStore {
     List<String> photos(){return list("gadget_photos",new ArrayList<>());}
     void photos(List<String> ids){save("gadget_photos",ids);}
     List<String> recents() { return list("recents", new ArrayList<>()); }
+    List<String> quickLaunch(){return list("quick_launch",Arrays.asList("@browser","@files","@notes"));}
+    void quickLaunch(List<String> ids){save("quick_launch",ids.subList(0,Math.min(MAX_QUICK,ids.size())));}
+    JSONObject folders(){return object("app_folders");}
+    JSONObject folder(String id){return folders().optJSONObject(id);}
+    boolean isFolder(String id){return id!=null&&id.startsWith("folder:")&&folder(id)!=null;}
+    List<String> folderItems(String id){JSONObject folder=folder(id);return array(folder==null?null:folder.optJSONArray("items"));}
+    String name(String id,String fallback){JSONObject folder=folder(id);if(folder!=null)return folder.optString("name","Folder");return object("shortcut_names").optString(id,fallback);}
+    void rename(String id,String name){
+        name=cleanName(name);if(name.isEmpty())throw new IllegalArgumentException("Enter a name");
+        JSONObject all=folders(),folder=all.optJSONObject(id);
+        if(folder!=null){GadgetLayout.put(folder,"name",name);prefs.edit().putString("app_folders",all.toString()).apply();}
+        else{JSONObject names=object("shortcut_names");GadgetLayout.put(names,id,name);prefs.edit().putString("shortcut_names",names.toString()).apply();}
+    }
+    void originalName(String id){JSONObject names=object("shortcut_names");names.remove(id);prefs.edit().putString("shortcut_names",names.toString()).apply();}
+    String createFolder(String name,List<String> members){
+        JSONObject all=folders();if(all.length()>=MAX_FOLDERS)throw new IllegalArgumentException("The desktop already has 64 folders");
+        for(String member:members)if(member.startsWith("folder:"))throw new IllegalArgumentException("Folders cannot contain other folders");
+        String title=cleanName(name);if(title.isEmpty())throw new IllegalArgumentException("Enter a folder name");String id="folder:"+UUID.randomUUID();
+        JSONObject folder=new JSONObject();GadgetLayout.put(folder,"name",title);GadgetLayout.put(folder,"items",new JSONArray(leafItems(members)));GadgetLayout.put(all,id,folder);
+        List<String> desktop=desktop();int position=desktop.size();for(String member:members){int at=desktop.indexOf(member);if(at>=0)position=Math.min(position,at);}desktop.removeAll(members);desktop.add(Math.min(position,desktop.size()),id);
+        prefs.edit().putString("app_folders",all.toString()).putString("shortcuts",new JSONArray(desktop).toString()).apply();return id;
+    }
+    void folderItems(String id,List<String> items){JSONObject all=folders(),folder=all.optJSONObject(id);if(folder==null)return;GadgetLayout.put(folder,"items",new JSONArray(leafItems(items)));prefs.edit().putString("app_folders",all.toString()).apply();}
+    String drop(String moving,String target,boolean group){
+        if(moving.equals(target))return null;List<String> ids=desktop();if(!ids.contains(moving)||!ids.contains(target))return null;
+        if(group&&!isFolder(moving)){
+            if(isFolder(target)){List<String> members=folderItems(target);if(!members.contains(moving)){if(members.size()>=MAX_ITEMS)throw new IllegalArgumentException("This folder is full");members.add(moving);}JSONObject all=folders();GadgetLayout.put(all.optJSONObject(target),"items",new JSONArray(members));ids.remove(moving);prefs.edit().putString("app_folders",all.toString()).putString("shortcuts",new JSONArray(ids).toString()).apply();return target;}
+            return createFolder("New folder",Arrays.asList(target,moving));
+        }
+        desktop(LauncherState.move(ids,moving,target));return null;
+    }
+    void dissolve(String id){
+        JSONObject all=folders();if(!all.has(id))return;List<String> members=folderItems(id),ids=desktop();int position=ids.indexOf(id);ids.remove(id);if(position<0)position=ids.size();for(String member:members)if(!ids.contains(member))ids.add(Math.min(position++,ids.size()),member);all.remove(id);
+        List<String> quick=quickLaunch();quick.remove(id);JSONObject names=object("shortcut_names");names.remove(id);
+        prefs.edit().putString("app_folders",all.toString()).putString("shortcuts",new JSONArray(ids).toString()).putString("quick_launch",new JSONArray(quick).toString()).putString("shortcut_names",names.toString()).apply();
+    }
+    void shift(List<String> ids,String id,int direction){int at=ids.indexOf(id),to=at+direction;if(at>=0&&to>=0&&to<ids.size())Collections.swap(ids,at,to);}
+    int iconSize(){int value=prefs.getInt("desktop_icon_size",1);return value==0?38:value==2?58:46;}
+    int tileWidth(){return prefs.getInt("desktop_icon_size",1)==0?70:prefs.getInt("desktop_icon_size",1)==2?96:80;}
+    int tileHeight(){return prefs.getInt("desktop_icon_size",1)==0?82:prefs.getInt("desktop_icon_size",1)==2?112:94;}
+    static String cleanName(String name){String value=name==null?"":name.replaceAll("[\\p{Cntrl}]"," ").trim();return value.substring(0,Math.min(40,value.length()));}
+    static List<String> array(JSONArray values){List<String> result=new ArrayList<>();if(values!=null)for(int i=0;i<values.length();i++){Object item=values.opt(i);if(item instanceof String)result.add((String)item);}return LauncherState.normalize(result);}
+    private List<String> leafItems(List<String> items){List<String> result=new ArrayList<>();for(String id:LauncherState.normalize(items))if(!id.startsWith("folder:")&&result.size()<MAX_ITEMS)result.add(id);return result;}
+    private JSONObject object(String key){try{return new JSONObject(prefs.getString(key,"{}"));}catch(JSONException|ClassCastException ex){return new JSONObject();}}
     private List<String> list(String key, List<String> fallback) {
         try {
             String saved = prefs.getString(key, null);

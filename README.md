@@ -1,6 +1,6 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.4.1 — Desktop cleanup** removes the redundant desktop Files/File Managers icons, hides home-setup prompts after default selection, adds a pointer-anchored Vista context menu and removes horizontal camera-cutout gutters in landscape. File management stays available in Computer and through the taskbar Files shortcut. It keeps the Control Panel/Explorer features and separate portrait/landscape gadget layouts.
+A Vista-style Android home launcher by Nth Experience. **0.5.0 — Desktop cleanup** removes the redundant desktop Files/File Managers icons, hides home-setup prompts after default selection, adds a pointer-anchored Vista context menu and removes horizontal camera-cutout gutters in landscape. File management stays available in Computer and through the taskbar Files shortcut. It keeps the Control Panel/Explorer features and separate portrait/landscape gadget layouts.
 
 Desktop cleanup runs once on upgrade, preserving other shortcut order, file-manager app selections, linked folders, notes and gadget layouts. Restoring original desktop icons uses Computer, Internet, Notepad and Personalize. The default-home prompts follow Android's actual home-role state and refresh when the launcher resumes or a menu opens. Long-press blank desktop space or right-click with a mouse for the context menu.
 
@@ -20,7 +20,7 @@ Wi-Fi, security, sound, storage, Bluetooth, accessibility, accounts, language an
 - **Add a folder…** lets you choose a folder using Android's folder picker. Explorer can then browse its real files and subfolders inside the launcher. Only read access is retained. Open files use Android's installed handlers.
 - Folder search checks names in the current directory. Folders sort before files. Details adds size/type/date metadata; hold an item for its properties. Listings show at most 2,000 items and explicitly label that limit. Organize → Refresh reloads the provider.
 - Link up to 16 folders. Hold a linked folder on the home page to remove its link and release the retained read grant. An unavailable/revoked location shows a recovery action.
-- **File Managers** groups shortcuts to apps you select from your installed programs. It includes the system file picker. Add apps inside the folder; hold an app to remove its shortcut. Open this folder through Computer; the 0.4.1 desktop cleanup keeps it off the default desktop.
+- **File Managers** groups shortcuts to apps you select from your installed programs. It includes the system file picker. Add apps inside the folder; hold an app to remove its shortcut. Open this folder through Computer; the 0.5.0 desktop cleanup keeps it off the default desktop.
 - The browser is read-only: it does not move, rename or delete user files. Android's folder picker restricts some locations, including storage roots and the Downloads root on recent Android versions; selecting individual files remains available.
 - Explorer/Control Panel navigation, search and view mode survive activity recreation and rotation, together with the existing tool-window state.
 
@@ -61,7 +61,7 @@ These are native built-in desktop gadgets. This release does not yet host third-
 
 ## Install and update
 
-Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.4.1 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
+Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.5.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
 
 Notes, selected photo references, linked folder references, file-manager shortcuts, preferences and cached forecasts are stored locally. Photo access uses the document picker's retained grants; no broad photo/storage permission is requested. Approximate location is requested only when you tap **Use my approximate location**. A city can be chosen without granting location access. Forecasts require Internet access; city search depends on the device's Android Geocoder service. Selected weather coordinates are sent to MET Norway. Uninstalling clears local app data.
 
@@ -101,3 +101,9 @@ The original idea was prompted by [jovanovski/windowslauncher](https://github.co
 The openly licensed Selawik font is copyright Microsoft Corporation and is included under SIL OFL 1.1. Weather data are provided by MET Norway under CC BY 4.0. Gradle's wrapper is build tooling under its own license. Full notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Licensing of Nth Experience's application code remains for the owner to decide; no open-source license is selected by this setup.
+
+## Desktop organization and backup
+
+Drag a shortcut onto the center of another to create a folder, or near its edge to swap positions. Use Desktop Organization to rename, reorder, add or remove shortcuts; dissolving a folder returns its contents to the desktop. Quick Launch can hold up to 12 chosen shortcuts, including folders. The desktop context menu includes New folder, icon sizes and sorting.
+
+Control Panel → Backup and Restore exports desktop settings, app folders, names, Quick Launch, notes and both orientation layouts to a user-chosen JSON file. Opening a backup displays a preview; applying it keeps the previous setup for Undo last restore. Backups contain references to linked folders and photos, not their contents or portable access grants. Restore on another device may require relinking those locations. Unknown/newer backup versions, malformed data, nested folders, invalid settings and excessively large files are rejected before changing live settings.
