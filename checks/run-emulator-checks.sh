@@ -17,6 +17,9 @@ trap collect EXIT
 adb install -r fixture/build/outputs/apk/debug/fixture-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb shell am force-stop com.nthexperience.desktop
+timeout -k 3s 260s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.ExplorerSmoke | tee explorer-test.txt
+grep -q 'PASS:' explorer-test.txt
 if [[ "$1" == 30 ]]; then
   timeout -k 3s 300s adb shell am instrument -w -e suite legacy com.nthexperience.desktop.test/com.nthexperience.desktop.ExplorerSmoke | tee smoke-test.txt
   grep -q 'PASS:' smoke-test.txt
@@ -28,9 +31,6 @@ grep -q 'PASS:' aero-test.txt
 adb shell am force-stop com.nthexperience.desktop
 timeout -k 3s 230s adb shell am instrument -w -e suite gadgets com.nthexperience.desktop.test/com.nthexperience.desktop.ExplorerSmoke | tee gadgets-test.txt
 grep -q 'PASS:' gadgets-test.txt
-adb shell am force-stop com.nthexperience.desktop
-timeout -k 3s 260s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.ExplorerSmoke | tee explorer-test.txt
-grep -q 'PASS:' explorer-test.txt
 adb devices -l
 timeout -k 3s 10s adb reboot
 sleep 4
