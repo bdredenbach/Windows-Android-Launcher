@@ -82,12 +82,7 @@ adb shell am start -W -n com.nthexperience.desktop/.MainActivity
 # Boot completion, Activity resume and keyguard dismissal are distinct asynchronous events.
 # Observe the launcher's own committed boot identity before taking the first snapshot.
 boot=$(adb shell settings get global boot_count | tr -d '\r')
-for attempt in $(seq 1 25); do
-  adb exec-out run-as com.nthexperience.desktop cat shared_prefs/startup_session.xml > reboot-first.xml
-  if python3 -c 'import sys,xml.etree.ElementTree as E; n=E.parse("reboot-first.xml").getroot().find("int[@name=\"boot\"]"); sys.exit(0 if n is not None and n.attrib["value"]==sys.argv[1] else 1)' "$boot"; then break; fi
-  adb shell wm dismiss-keyguard
-  sleep 1
-done
+python3 checks/WaitForHomeAfterReboot.py "$boot"
 printf 'CHECK: verifying the first visible launcher after a real reboot\n'
 boot=$(adb shell settings get global boot_count | tr -d '\r')
 adb exec-out run-as com.nthexperience.desktop cat shared_prefs/startup_session.xml > reboot-first.xml
