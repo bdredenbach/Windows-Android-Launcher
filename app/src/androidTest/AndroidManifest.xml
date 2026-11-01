@@ -1,0 +1,3 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <instrumentation android:name="com.nthexperience.desktop.AeroSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
+</manifest>

@@ -1,6 +1,6 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.5.0 — Desktop organization and backup** adds app folders, shortcut names, editable Quick Launch, desktop view/sort commands and reviewed backup restore with undo. It retains the native Control Panel, Explorer, gadgets, default-home detection and full-width landscape taskbar from 0.4.1. File management stays available in Computer and through the taskbar Files shortcut.
+A Vista-style Android home launcher by Nth Experience. **0.6.0 — Aero and startup** adds independent window colors, glass intensity and transparency, active/inactive captions, window transitions, an optional original Nth pearl introduction and a compact Welcome Center. It retains the native Control Panel, Explorer, app folders, Quick Launch, backup/undo, gadgets and both landscape layouts from 0.5.0.
 
 Desktop cleanup runs once on upgrade, preserving other shortcut order, file-manager app selections, linked folders, notes and gadget layouts. Restoring original desktop icons uses Computer, Internet, Notepad and Personalize. The default-home prompts follow Android's actual home-role state and refresh when the launcher resumes or a menu opens. Long-press blank desktop space or right-click with a mouse for the context menu.
 
@@ -45,6 +45,22 @@ Enable Android auto-rotate and rotate your device. Landscape uses a matching wid
 
 Open tool windows, their stacking/minimized state, editor cursors, calendar selection, scroll positions and an open Start search survive Android activity recreation, including rotation. Note contents also persist on the device. Saved arrangements survive app restarts; open tool sessions are restored through Android's saved activity state, rather than reopening after a force-stop or explicit fresh launch. Gadgets fit temporarily smaller viewports, including the keyboard, without overwriting their saved position or requested size.
 
+## Aero appearance and motion
+
+Open **Personalization → Window Color and Appearance**. Choose Frost, Graphite, Seafoam, Sage, Lavender, Gold, Ruby or Clear, then adjust color intensity and glass transparency. These controls affect the launcher’s glass independently of its wallpaper. Opaque mode avoids wallpaper sampling. The softened background is the wallpaper; it is not a capture of another Android app.
+
+Native Nth windows have a soft caption glow and distinct active/inactive frames. Touch a window to activate it. Minimize shrinks toward the taskbar; its taskbar button restores it with the saved window geometry and note contents intact. Buttons, checks, radio choices, scrollbars, popup surfaces and launcher-owned dialogs use matching Vista-era treatments. Android file pickers, permission screens and other system settings keep their native interface.
+
+## Startup and Welcome Center
+
+Open **Personalization → Startup and Sounds**. The default is **First launch only**, with the original chime **off**. Other choices are **Once per phone reboot** and **Off**; **Preview startup** works without changing automatic-playback identity. The introduction lasts about three seconds: a restrained green loading sweep, the original glowing Nth pearl, then Welcome. **Skip** and Android Back dismiss it immediately.
+
+Startup runs inside the home activity when it is visible and unlocked. It does not replace Android’s boot animation. Ordinary Home presses, returning from another app, Activity rotation and process recreation in the same boot do not replay it. Reboot identity uses Android’s boot counter and separate device-local state, which is excluded from desktop backups. If the boot counter is unavailable, automatic playback falls back to the initial introduction. The first introduction is also shown when updating an earlier Nth Desktop release that has never presented it.
+
+The chime is generated from original overlapping tones, with no downloaded Windows audio. It respects silent/vibrate mode, system sound volume and Do Not Disturb, and stays quiet while music is playing. Skip/backgrounding stops it. **Reduce motion** and Android’s animation setting disable window transitions and use a short, silent still welcome. A backgrounded introduction is dismissed, rather than starting over when you return. Android 12+ keeps its standard system splash before app content; there is no separate splash activity.
+
+**Welcome Center** opens after the first introduction and remains available from Start and Control Panel. Its working links lead to Personalization, app folders, gadgets, backup and default-home selection when needed. An optional checkbox opens it at later Nth Desktop starts; it is not a screen-by-screen tour.
+
 ## Launcher behavior
 
 - Native HOME activity and standard optional default-home chooser.
@@ -61,7 +77,7 @@ These are native built-in desktop gadgets. This release does not yet host third-
 
 ## Install and update
 
-Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.5.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
+Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.6.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
 
 Notes, selected photo references, linked folder references, file-manager shortcuts, preferences and cached forecasts are stored locally. Photo access uses the document picker's retained grants; no broad photo/storage permission is requested. Approximate location is requested only when you tap **Use my approximate location**. A city can be chosen without granting location access. Forecasts require Internet access; city search depends on the device's Android Geocoder service. Selected weather coordinates are sent to MET Norway. Uninstalling clears local app data.
 
@@ -79,9 +95,10 @@ Output: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ```sh
 mkdir -p build/state-check
-javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java
+javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java app/src/main/java/com/nthexperience/desktop/StartupPolicy.java checks/StartupPolicyCheck.java
 java -cp build/state-check LauncherStateCheck
 java -cp build/state-check DesktopGeometryCheck
+java -cp build/state-check StartupPolicyCheck
 ```
 
 On a disposable emulator:
@@ -92,7 +109,7 @@ adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke
 ```
 
-The dependency-free checks exercise boundary fitting, normalized positions, grid snapping and corrupt geometry. The instrumentation runner exercises real touch drag, docking, corner resizing, layout lock, independent orientation layouts, rotation and explicit activity recreation with note/cursor and Start query continuity. An isolated test folder in the disposable emulator’s Documents directory exercises Android’s real folder picker and storage provider, retained read grants, tree-boundary enforcement, file reads, nested navigation/search and rotation restoration. The test cleans up its own fixture folder; fixture data are absent from the production APK. The runner also checks upgrade cleanup, before/after default-home prompts using the real Android HOME role, the desktop context menu, and taskbar/dock bounds in both landscape rotations with a real emulated cutout and three-button navigation. It also checks Control Panel search/Classic view, actual settings changes and dispatch to Android Wi-Fi settings. It also checks app discovery, Start search/All Programs, note persistence, window controls, wallpaper settings, gadget selection, sticky notes, clock settings, calendar, weather parsing/unit conversion and configuration. It captures real desktop, menu, window and gadget-gallery screens. It does not require live weather or location permission to pass. The runner also groups shortcuts using real touch input, renames/reorders/dissolves a folder, checks folder continuity through rotation and edits Quick Launch. It saves and opens an actual backup through Android’s document picker, verifies the preview leaves live settings unchanged, restores both orientation layouts and Unicode notes, undoes the restore and rejects malformed imports. GitHub Actions builds and runs these checks on Android 11. Physical-device acceptance testing is separate.
+The dependency-free checks exercise boundary fitting, normalized positions, grid snapping and corrupt geometry. The instrumentation runner exercises real touch drag, docking, corner resizing, layout lock, independent orientation layouts, rotation and explicit activity recreation with note/cursor and Start query continuity. An isolated test folder in the disposable emulator’s Documents directory exercises Android’s real folder picker and storage provider, retained read grants, tree-boundary enforcement, file reads, nested navigation/search and rotation restoration. The test cleans up its own fixture folder; fixture data are absent from the production APK. The runner also checks upgrade cleanup, before/after default-home prompts using the real Android HOME role, the desktop context menu, and taskbar/dock bounds in both landscape rotations with a real emulated cutout and three-button navigation. It also checks Control Panel search/Classic view, actual settings changes and dispatch to Android Wi-Fi settings. It also checks app discovery, Start search/All Programs, note persistence, window controls, wallpaper settings, gadget selection, sticky notes, clock settings, calendar, weather parsing/unit conversion and configuration. It captures real desktop, menu, window and gadget-gallery screens. It does not require live weather or location permission to pass. The runner also groups shortcuts using real touch input, renames/reorders/dissolves a folder, checks folder continuity through rotation and edits Quick Launch. It saves and opens an actual backup through Android’s document picker, verifies the preview leaves live settings unchanged, restores both orientation layouts and Unicode notes, undoes the restore and rejects malformed imports. GitHub Actions runs the full established suite on Android 11. A focused Aero/startup suite also runs on Android 16, with real emulator reboots on both versions. It checks independent color controls, active/inactive windows, live minimize/restore, old backup compatibility, first-run skip/Welcome Center, ordinary Home suppression, preview cancellation during rotation, reduced motion and once-per-reboot identity. It records an actual startup preview. Physical-device acceptance testing is separate.
 
 ## Origin and credits
 

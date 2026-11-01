@@ -20,7 +20,7 @@ final class StartupExperience {
     private final Runnable welcome;
     private Intro intro;
     private boolean resumed,checked,welcomeChecked;
-    StartupExperience(MainActivity a,FrameLayout host,DesktopStore store,Runnable welcome){activity=a;this.host=host;this.store=store;this.welcome=welcome;session=a.getSharedPreferences(SESSION,0);}
+    StartupExperience(MainActivity a,FrameLayout host,DesktopStore store,boolean restored,Runnable welcome){activity=a;this.host=host;this.store=store;this.welcome=welcome;session=a.getSharedPreferences(SESSION,0);welcomeChecked=restored&&session.getBoolean("welcome_seen",false);}
     static int boot(Context c){try{return Settings.Global.getInt(c.getContentResolver(),Settings.Global.BOOT_COUNT,-1);}catch(SecurityException ex){return -1;}}
     void resume(){resumed=true;host.post(this::maybeShow);}
     void pause(){resumed=false;if(intro!=null)intro.finish(false);}
@@ -32,7 +32,7 @@ final class StartupExperience {
         KeyguardManager keyguard=activity.getSystemService(KeyguardManager.class);if(keyguard!=null&&keyguard.isKeyguardLocked())return;
         if(!checked){checked=true;int boot=boot(activity);if(StartupPolicy.shouldPlay(store.prefs.getInt("startup_mode",0),session.getBoolean("seen",false),session.getInt("boot",-1),boot)){
             // Claim playback before showing it, so rotation, Home and process recreation cannot replay it.
-            session.edit().putBoolean("seen",true).putInt("boot",boot).putInt("runs",session.getInt("runs",0)+1).commit();show(false);return;
+            welcomeChecked=false;session.edit().putBoolean("seen",true).putInt("boot",boot).putInt("runs",session.getInt("runs",0)+1).commit();show(false);return;
         }}
         welcome(false);
     }

@@ -77,7 +77,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         if(Build.VERSION.SDK_INT>=33)registerReceiver(packages,packageFilter,Context.RECEIVER_EXPORTED);else registerReceiver(packages,packageFilter);
         IntentFilter timeFilter=new IntentFilter();timeFilter.addAction(Intent.ACTION_TIME_CHANGED);timeFilter.addAction(Intent.ACTION_TIMEZONE_CHANGED);timeFilter.addAction(Intent.ACTION_LOCALE_CHANGED);
         if(Build.VERSION.SDK_INT>=33)registerReceiver(timeChanged,timeFilter,Context.RECEIVER_EXPORTED);else registerReceiver(timeChanged,timeFilter);
-        receiverRegistered=true;scanApps();loadRestorePreview();startup=new StartupExperience(this,root,store,()->open("@welcome"));
+        receiverRegistered=true;scanApps();loadRestorePreview();startup=new StartupExperience(this,root,store,saved!=null,()->open("@welcome"));
     }
     private void buildDesktop(){
         root=new FrameLayout(this);wallpaper=new AeroWallpaper(this,store.prefs.getInt("wallpaper",0));root.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));

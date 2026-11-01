@@ -1,4 +1,4 @@
-# Nth Desktop 0.4.0 artwork
+# Nth Desktop artwork
 
 The wallpaper is bundled at `app/src/main/assets/wallpapers/aero-aurora.webp` (941 × 1672 pixels). It is encoded as **lossless WebP**: a pixel comparison against the generated PNG confirmed identical RGB pixels. Desktop chrome, icons and live gadget faces are drawn natively and remain sharp at the device's screen resolution.
 
@@ -21,3 +21,9 @@ Selawik Regular and Semibold are bundled without modification from Microsoft's o
 ## Control Panel and Explorer icons
 
 The 0.4.0 folder, drive, Control Panel, network, shield, accounts, accessibility, clock and program icons are original Android Canvas drawings with native gradients and highlights. They remain sharp at the screen resolution and add no bitmap downloads or extracted Windows resources. The lossless portrait and landscape wallpapers are unchanged.
+
+## Original startup experience (0.6.0)
+
+The loading sweep, pearl halo and Nth orb are native Canvas drawings, with no frame sequence or extracted Windows graphics. They are rendered at device resolution in portrait and landscape. The existing two lossless WebP wallpapers and two Selawik font files are unchanged.
+
+The optional original chime is synthesized on the device as 22,050 Hz, 16-bit mono PCM. Four overlapping sine tones at 523.251, 659.255, 783.991 and 1046.502 Hz enter 120 ms apart with exponential attack/decay envelopes. It lasts 1.3 seconds; no Microsoft sound recording is included.
