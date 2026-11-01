@@ -45,6 +45,6 @@ final class WeatherLocation {
         status=store.prefs.getBoolean("weather_follow",false)?"Following your approximate area while Nth Desktop is visible.":"Approximate location updated.";changed.run();
     }
     static boolean usable(Location location,long elapsedNanos,long wall,int maxAge){return usable(location,elapsedNanos,wall,(long)maxAge);}
-    static boolean usable(Location location,long elapsedNanos,long wall,long maxAge){if(location==null||!Double.isFinite(location.getLatitude())||!Double.isFinite(location.getLongitude())||Math.abs(location.getLatitude())>90||Math.abs(location.getLongitude())>180||(location.hasAccuracy()&&location.getAccuracy()>30000))return false;long age=location.getElapsedRealtimeNanos()>0?(elapsedNanos-location.getElapsedRealtimeNanos())/1000000:wall-location.getTime();return age>=0&&age<=maxAge;}
+    static boolean usable(Location location,long elapsedNanos,long wall,long maxAge){if(location==null||!Double.isFinite(location.getLatitude())||!Double.isFinite(location.getLongitude())||Math.abs(location.getLatitude())>90||Math.abs(location.getLongitude())>180||location.getElapsedRealtimeNanos()<0||(location.hasAccuracy()&&(!Float.isFinite(location.getAccuracy())||location.getAccuracy()<0||location.getAccuracy()>30000)))return false;long age=location.getElapsedRealtimeNanos()>0?(elapsedNanos-location.getElapsedRealtimeNanos())/1000000:wall-location.getTime();return age>=0&&age<=maxAge;}
     void close(){closed=true;visible=false;cancel();}
 }
