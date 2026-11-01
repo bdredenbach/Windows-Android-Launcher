@@ -1,10 +1,10 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.8.0 — A bigger gadget gallery** expands the native gallery from 6 to 14 working gadget types, corrects gadget window icons, adds optional foreground weather location following and replaces device-dependent city search with bounded Photon/OSM searches. It retains glass opacity, custom profile pictures, Start search and the system tray from 0.7.0. It keeps the Aero controls, window motion, optional original Nth startup and Welcome Center from 0.6.0. It retains the native Control Panel, Explorer, app folders, Quick Launch, backup/undo, gadgets and both landscape layouts from 0.5.0.
+A Vista-style Android home launcher by Nth Experience. **0.9.0 — Individual gadgets and consistent landscape columns** gives every gadget its own original face and expands the gallery from 14 to 17 working types. Network Meter, Compass and Tile Puzzle join the collection. Desktop icons now use fixed columns beside Android navigation and skip actual camera-cutout cells, instead of shifting the entire sheet inward in one landscape direction. Existing weather following, glass opacity, Start search, backups, startup and window controls are retained.
 
 Desktop cleanup runs once on upgrade, preserving other shortcut order, file-manager app selections, linked folders, notes and gadget layouts. Restoring original desktop icons uses Computer, Internet, Notepad and Personalize. The default-home prompts follow Android's actual home-role state and refresh when the launcher resumes or a menu opens. Long-press blank desktop space or right-click with a mouse for the context menu.
 
-The taskbar and dock use the full width available beside Android's navigation controls. Landscape camera-cutout insets no longer shrink the entire launcher horizontally; desktop icons keep their own cutout-safe margins, and portrait top/bottom cutout protection and keyboard/navigation insets are retained.
+The taskbar and dock use the full width available beside Android's navigation controls. Landscape camera-cutout insets no longer shrink the entire launcher horizontally; desktop icons keep a consistent grid origin and avoid actual cutout rectangles, and portrait top/bottom cutout protection and keyboard/navigation insets are retained.
 
 ## Control Panel and Personalization
 
@@ -44,6 +44,13 @@ Open **Start → Gadgets**, or hold blank desktop space and choose **Gadgets**. 
 | Calculator | Parentheses, arithmetic, unary signs, decimals/exponents and postfix percent |
 | Unit Converter | Length, mass, temperature, speed, area, volume, data and time |
 | Storage Meter | Actual available/used/total internal storage and Android storage settings |
+| Network Meter | Measured receive/send byte rates, 32-sample receive graph and interface totals since device boot |
+| Compass | Live magnetic north from Android rotation-vector or accelerometer/magnetometer sensors, with screen-rotation correction and accuracy status |
+| Tile Puzzle | Solvable fifteen-tile puzzle, legal adjacent moves, move count, New puzzle and saved board |
+
+Each type has its own original native Canvas design: analog clock, tear-off calendar, amber weather card, folded sticky note, wooden photo frame, twin gauges, travel clocks, newspaper, clipboard, brass hourglass, metal chronograph, pocket calculator, ruler/conversion plate, exposed hard drive, network instrument, brass compass and colored wooden tiles. The faces remain sharp when resized. Original six gadget designs and saved contents are preserved.
+
+Network rates are sampled only while Nth is visible and the gadget or tool is enabled/visible. They are aggregate interface byte counters, not carrier billing totals or an Internet speed test; counters may include local traffic and reset at reboot. An unavailable counter is shown as unavailable. Compass sensor subscriptions stop when Nth leaves the foreground; sensor availability/accuracy depend on the phone. It shows magnetic north, needs no location permission and is intended to be held flat. Its status provides calibration guidance. Tile Puzzle shuffles only through legal moves, saves automatically, and rejects impossible imported boards. The gallery has a Games category.
 
 The initial Sidebar includes Clock, Calendar and Weather. Weather shows a setup prompt until you choose a location; it never displays a sample forecast as real weather. Gadgets stop ticking while the launcher is in the background. Weather and feed requests honor cache expiry. They run while a corresponding face or its settings/reader window is visible, and stop initiating requests when Nth is in the background. Floating gadgets continue updating while the launcher is visible, even if the Sidebar is hidden.
 
@@ -107,7 +114,7 @@ These are native built-in desktop gadgets. This release does not yet host third-
 
 ## Install and update
 
-Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.8.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
+Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.9.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
 
 Notes, selected photo references, linked folder references, file-manager shortcuts, preferences and cached forecasts are stored locally. Photo access uses the document picker's retained grants; no broad photo/storage permission is requested. Approximate location is requested when you tap **Use my approximate location** or enable **Follow my location**. A city can be chosen without granting location access. Forecasts require Internet access; city search uses Photon/OSM. City search text is sent to that service. Selected weather coordinates are sent to MET Norway. Uninstalling clears local app data.
 

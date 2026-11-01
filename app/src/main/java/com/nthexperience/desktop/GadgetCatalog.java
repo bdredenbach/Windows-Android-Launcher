@@ -4,7 +4,7 @@ import java.util.*;
 
 /** The gallery, faces, window captions and backup validation share one catalog. */
 final class GadgetCatalog {
-    static final String[] IDS={"clock","calendar","weather","notes","photo","meters","worldclock","feeds","checklist","timer","stopwatch","calculator","converter","storage"};
+    static final String[] IDS={"clock","calendar","weather","notes","photo","meters","worldclock","feeds","checklist","timer","stopwatch","calculator","converter","storage","network","compass","puzzle"};
     static final String[][] ITEMS={
         {"clock","Clock","Time","An analog clock with ivory and black glass faces."},
         {"calendar","Calendar","Time","Today’s date and a browsable month calendar."},
@@ -19,7 +19,10 @@ final class GadgetCatalog {
         {"stopwatch","Stopwatch","Time","Elapsed time, pause and saved laps."},
         {"calculator","Calculator","Productivity","A working calculator with parentheses and arithmetic."},
         {"converter","Unit Converter","Productivity","Length, mass, temperature, speed, area, volume, data and time."},
-        {"storage","Storage Meter","Device","Real internal storage and disk usage, available space and system settings."}};
+        {"storage","Storage Meter","Device","Real internal storage and disk usage, available space and system settings."},
+        {"network","Network Meter","Device","Live device receive/send rates, a traffic graph and totals since boot."},
+        {"compass","Compass","Device","A magnetic compass that follows the top of your screen in either orientation."},
+        {"puzzle","Tile Puzzle","Games","A saved, solvable fifteen-tile sliding puzzle with move count."}};
     static boolean valid(String id){return Arrays.asList(IDS).contains(id);}
     static boolean extra(String id){return valid(id)&&Arrays.asList(IDS).indexOf(id)>=6;}
     static String title(String id){for(String[] row:ITEMS)if(row[0].equals(id))return row[1];return "Gadget";}

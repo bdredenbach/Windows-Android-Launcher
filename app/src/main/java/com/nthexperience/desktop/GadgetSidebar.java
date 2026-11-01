@@ -19,6 +19,7 @@ final class GadgetSidebar extends LinearLayout {
     private final Actions actions;
     final WeatherClient weather;
     final FeedClient feeds;
+    final GadgetHardware hardware;
     private final LinearLayout gadgets;
     final FrameLayout floatingHost;
     private final FrameLayout workspace;
@@ -30,7 +31,7 @@ final class GadgetSidebar extends LinearLayout {
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ExecutorService photos=Executors.newSingleThreadExecutor();
     private Bitmap photo;
-    private boolean active,closed,weatherDetails,feedDetails;
+    private boolean active,closed,weatherDetails,feedDetails,networkDetails,compassDetails;
     private String currentPhoto="";
     private long lastPhotoTime,lastMinute=-1;
     private int photoIndex;
@@ -44,7 +45,7 @@ final class GadgetSidebar extends LinearLayout {
     }};
     GadgetSidebar(Context c,DesktopStore store,AeroWallpaper wallpaper,Actions actions,FrameLayout workspace,String layoutKey){
         super(c);this.store=store;this.actions=actions;this.workspace=workspace;layout=new GadgetLayout(store,layoutKey);floatingHost=new FrameLayout(c);floatingHost.setClipChildren(false);floatingHost.setContentDescription("Desktop floating gadgets");workspace.setOnDragListener((v,event)->desktopDrop(event));setOrientation(VERTICAL);setBackground(new AeroGlass(wallpaper,AeroGlass.SIDEBAR));
-        weather=new WeatherClient(store,this::refresh);feeds=new FeedClient(store,this::refresh);setContentDescription("Desktop gadget sidebar");
+        hardware=new GadgetHardware(c,this::refresh);weather=new WeatherClient(store,this::refresh);feeds=new FeedClient(store,this::refresh);setContentDescription("Desktop gadget sidebar");
         LinearLayout header=new LinearLayout(c);header.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
         TextView plus=Aero.text(c,"＋",23,0xffedf6ff);plus.setGravity(Gravity.CENTER);plus.setContentDescription("Add gadgets");plus.setOnClickListener(v->actions.gallery());header.addView(plus,new LayoutParams(Aero.dp(c,48),Aero.dp(c,36)));
         TextView hide=Aero.text(c,"›",25,0xffd5e5ee);hide.setGravity(Gravity.CENTER);hide.setContentDescription("Hide gadget sidebar");hide.setOnClickListener(v->{layout.visible(false);visibilityFromStore();actions.sidebarChanged();});header.addView(hide,new LayoutParams(Aero.dp(c,36),Aero.dp(c,36)));addView(header,new LayoutParams(-1,Aero.dp(c,36)));
@@ -56,7 +57,7 @@ final class GadgetSidebar extends LinearLayout {
         int docked=0;
         for(String id:layout.ordered()){
             if(!Arrays.asList(GadgetView.IDS).contains(id))continue;
-            GadgetView face=new GadgetView(getContext(),id,store,weather);face.photo=photo;
+            GadgetView face=new GadgetView(getContext(),id,store,weather);face.photo=photo;face.hardware=hardware;
             face.setOnClickListener(v->actions.gadgetAction(id));
             face.setOnLongClickListener(v->beginDrag(face,id));
             face.setOnTouchListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_DOWN&&event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)){menu(face,id);return true;}return false;});
@@ -115,8 +116,8 @@ final class GadgetSidebar extends LinearLayout {
     }
     private boolean visible(String id){return faces.containsKey(id)&&(!layout.docked(id)||getVisibility()==VISIBLE);}
     private boolean anyVisible(){for(String id:faces.keySet())if(visible(id))return true;return false;}
-    private void updateActivity(){weather.active(active&&(visible("weather")||weatherDetails));feeds.active(active&&(visible("feeds")||feedDetails));restartTick();}
-    void details(boolean weatherOpen,boolean feedOpen){if(weatherDetails==weatherOpen&&feedDetails==feedOpen)return;weatherDetails=weatherOpen;feedDetails=feedOpen;updateActivity();}
+    private void updateActivity(){hardware.active(active&&(visible("network")||visible("compass")||networkDetails||compassDetails),visible("network")||networkDetails,visible("compass")||compassDetails);weather.active(active&&(visible("weather")||weatherDetails));feeds.active(active&&(visible("feeds")||feedDetails));restartTick();}
+    void details(boolean weatherOpen,boolean feedOpen,boolean networkOpen,boolean compassOpen){if(weatherDetails==weatherOpen&&feedDetails==feedOpen&&networkDetails==networkOpen&&compassDetails==compassOpen)return;weatherDetails=weatherOpen;feedDetails=feedOpen;networkDetails=networkOpen;compassDetails=compassOpen;updateActivity();}
     void refresh(){for(GadgetView v:faces.values())v.invalidate();actions.readingsChanged();}
     void setActive(boolean value){active=value;updateActivity();}
     private void restartTick(){main.removeCallbacks(tick);if(active&&!closed&&anyVisible())main.post(tick);}
@@ -150,5 +151,5 @@ final class GadgetSidebar extends LinearLayout {
             Bitmap result=decoded;main.post(()->{if(closed||!currentPhoto.equals(uri))return;photo=result;GadgetView face=faces.get("photo");if(face!=null){face.photo=result;face.invalidate();}});
         });
     }
-    void close(){closed=true;active=false;main.removeCallbacksAndMessages(null);weather.close();feeds.close();photos.shutdownNow();}
+    void close(){closed=true;active=false;main.removeCallbacksAndMessages(null);hardware.close();weather.close();feeds.close();photos.shutdownNow();}
 }

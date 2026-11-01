@@ -39,7 +39,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private final Map<String,AppCatalog.Entry> entries=new LinkedHashMap<>();
     private final Map<String,DesktopWindow> windows=new LinkedHashMap<>();
     private FrameLayout root,workspace;
-    private GridLayout desktop;
+    private DesktopIconGrid desktop;
     private ScrollView desktopScroll;
     private GadgetSidebar sidebar;
     private DesktopContextMenu desktopMenu;
@@ -91,7 +91,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         workspace=new FrameLayout(this);shell.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
         ScrollView scroll=new ScrollView(this);desktopScroll=scroll;scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.setPadding(dp(7),dp(10),dp(7),dp(12));scroll.setVerticalScrollBarEnabled(false);
         // Keep the icon sheet in one cached layer when side insets move during a 180-degree turn.
-        desktop=new GridLayout(this);desktop.setLayerType(View.LAYER_TYPE_SOFTWARE,null);desktop.setOrientation(GridLayout.VERTICAL);desktop.setAlignmentMode(GridLayout.ALIGN_BOUNDS);scroll.addView(desktop,new ScrollView.LayoutParams(-1,-2));workspace.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
+        desktop=new DesktopIconGrid(this);scroll.addView(desktop,new ScrollView.LayoutParams(-1,-2));workspace.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
         sidebar=new GadgetSidebar(this,store,wallpaper,this,workspace,layoutKey);FrameLayout.LayoutParams sideParams=new FrameLayout.LayoutParams(dp(140),-1,Gravity.END);workspace.addView(sidebar,sideParams);workspace.addView(sidebar.floatingHost,new FrameLayout.LayoutParams(-1,-1));
         GestureDetector gestures=new GestureDetector(this,new GestureDetector.SimpleOnGestureListener(){
             public boolean onDown(MotionEvent e){return true;}
@@ -110,13 +110,12 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     }
     private void layoutWorkspace(){
         if(destroyed||workspace==null||workspace.getWidth()==0)return;int width=workspace.getWidth(),height=workspace.getHeight();if(tray!=null)tray.bounds(desktopCutoutLeft,desktopCutoutRight);
-            int reserved=sidebar.getVisibility()==View.VISIBLE?dp(144):desktopCutoutRight;
+            int reserved=sidebar.getVisibility()==View.VISIBLE?dp(144):0;
             FrameLayout.LayoutParams desktopParams=(FrameLayout.LayoutParams)desktopScroll.getLayoutParams();
-            if(desktopParams.rightMargin!=reserved||desktopParams.leftMargin!=desktopCutoutLeft){desktopParams.rightMargin=reserved;desktopParams.leftMargin=desktopCutoutLeft;desktopScroll.setLayoutParams(desktopParams);}
-            int next=Math.max(1,Math.min(9,(width-reserved-desktopCutoutLeft-dp(12))/dp(store.tileWidth()+2)));
-            int rows=Math.max(1,(height-dp(16))/dp(store.tileHeight()));
-            int count=store.desktop().size(),gridRows=Math.max(rows,(count+next-1)/next),gridColumns=Math.max(1,(count+gridRows-1)/gridRows);columns=next;desktopRows=rows;
-            if(desktop.getRowCount()!=gridRows||desktop.getColumnCount()!=gridColumns){desktop.removeCallbacks(desktopRender);desktop.post(desktopRender);}
+            if(desktopParams.rightMargin!=reserved||desktopParams.leftMargin!=0){desktopParams.rightMargin=reserved;desktopParams.leftMargin=0;desktopScroll.setLayoutParams(desktopParams);}
+            WindowInsets current=root.getRootWindowInsets();java.util.List<android.graphics.Rect> holes=new ArrayList<>();
+            if(current!=null&&Build.VERSION.SDK_INT>=28&&current.getDisplayCutout()!=null)holes.addAll(current.getDisplayCutout().getBoundingRects());
+            desktop.configure(dp(store.tileWidth()),dp(store.tileHeight()),holes);desktop.viewport(Math.max(1,height-desktopScroll.getPaddingTop()-desktopScroll.getPaddingBottom()));
             sidebar.workspaceSize(width,height);
             for(DesktopWindow tool:windows.values())tool.fitToHost();
             if(startMenu!=null){startMenu.availableHeight(height);FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)startMenu.getLayoutParams();int h=Math.min(dp(540),Math.max(1,height-dp(8)));int w=Math.min(dp(420),Math.max(1,width-dp(12)));if(lp.height!=h||lp.width!=w){lp.height=h;lp.width=w;startMenu.setLayoutParams(lp);}}
@@ -140,7 +139,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         });
     }
     private void renderDesktop(){
-        if(desktop==null)return;desktop.removeAllViews();List<String> ids=store.desktop();int cols=Math.max(1,columns);int rows=Math.max(Math.max(1,desktopRows),(ids.size()+cols-1)/cols);desktop.setRowCount(rows);desktop.setColumnCount(Math.max(1,(ids.size()+rows-1)/rows));
+        if(desktop==null)return;desktop.removeAllViews();List<String> ids=store.desktop();desktop.configure(dp(store.tileWidth()),dp(store.tileHeight()),java.util.Collections.emptyList());
         for(int index=0;index<ids.size();index++){
             String id=ids.get(index);LinearLayout tile=Aero.column(this);tile.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);tile.setPadding(dp(2),dp(6),dp(2),dp(3));int iconSize=store.iconSize();View icon=icon(id,iconSize);tile.addView(icon,new LinearLayout.LayoutParams(dp(iconSize),dp(iconSize)));
             TextView label=Aero.text(this,label(id),store.iconSize()>46?12:11,Color.WHITE);label.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);label.setMaxLines(2);label.setEllipsize(TextUtils.TruncateAt.END);label.setShadowLayer(dp(3),0,dp(1),0xff000000);tile.addView(label,new LinearLayout.LayoutParams(-1,-2));
@@ -149,11 +148,12 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
                 case DragEvent.ACTION_DRAG_STARTED:return own;case DragEvent.ACTION_DRAG_ENTERED:if(own)v.setAlpha(.5f);return own;
                 case DragEvent.ACTION_DRAG_EXITED:case DragEvent.ACTION_DRAG_ENDED:v.setAlpha(1);return own;
                 case DragEvent.ACTION_DROP:if(!own||store.prefs.getBoolean("layout_locked",false))return false;String moving=(String)event.getLocalState();boolean group=event.getX()>v.getWidth()*.18f&&event.getX()<v.getWidth()*.82f&&event.getY()>v.getHeight()*.1f&&event.getY()<v.getHeight()*.8f;try{String folder=store.drop(moving,id,group);desktop.post(()->{desktopChanged();if(folder!=null)open(folder);});}catch(IllegalArgumentException error){toast(error.getMessage());}return true;default:return own;}});
-            GridLayout.LayoutParams lp=new GridLayout.LayoutParams(GridLayout.spec(index%rows),GridLayout.spec(index/rows));lp.width=dp(store.tileWidth());lp.height=dp(store.tileHeight());tile.setOnTouchListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_DOWN&&event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)){options(v,id);return true;}return false;});desktop.addView(tile,lp);
+            ViewGroup.LayoutParams lp=new ViewGroup.LayoutParams(dp(store.tileWidth()),dp(store.tileHeight()));tile.setOnTouchListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_DOWN&&event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)){options(v,id);return true;}return false;});desktop.addView(tile,lp);
         }
+        desktop.post(this::layoutWorkspace);
     }
     private void renderTaskbar(){
-        if(taskItems==null)return;DesktopWindow weatherWindow=windows.get("@weather"),feedWindow=windows.get("@gadget:feeds");if(sidebar!=null)sidebar.details(weatherWindow!=null&&weatherWindow.getParent()!=null&&weatherWindow.getVisibility()==View.VISIBLE,feedWindow!=null&&feedWindow.getParent()!=null&&feedWindow.getVisibility()==View.VISIBLE);DesktopWindow front=null;for(int i=workspace.getChildCount()-1;i>=0;i--){View child=workspace.getChildAt(i);if(child instanceof DesktopWindow&&child.getVisibility()==View.VISIBLE&&!((DesktopWindow)child).minimizing()){front=(DesktopWindow)child;break;}}for(DesktopWindow window:windows.values())if(window.getParent()!=null)window.active(window==front);taskItems.removeAllViews();
+        if(taskItems==null)return;DesktopWindow weatherWindow=windows.get("@weather"),feedWindow=windows.get("@gadget:feeds"),networkWindow=windows.get("@gadget:network"),compassWindow=windows.get("@gadget:compass");if(sidebar!=null)sidebar.details(weatherWindow!=null&&weatherWindow.getParent()!=null&&weatherWindow.getVisibility()==View.VISIBLE,feedWindow!=null&&feedWindow.getParent()!=null&&feedWindow.getVisibility()==View.VISIBLE,networkWindow!=null&&networkWindow.getParent()!=null&&networkWindow.getVisibility()==View.VISIBLE,compassWindow!=null&&compassWindow.getParent()!=null&&compassWindow.getVisibility()==View.VISIBLE);DesktopWindow front=null;for(int i=workspace.getChildCount()-1;i>=0;i--){View child=workspace.getChildAt(i);if(child instanceof DesktopWindow&&child.getVisibility()==View.VISIBLE&&!((DesktopWindow)child).minimizing()){front=(DesktopWindow)child;break;}}for(DesktopWindow window:windows.values())if(window.getParent()!=null)window.active(window==front);taskItems.removeAllViews();
         for(String id:store.quickLaunch()){FrameLayout quick=new FrameLayout(this);FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(dp(24),dp(24),Gravity.CENTER);quick.addView(icon(id,24),lp);quick.setContentDescription("Open "+label(id));quick.setOnClickListener(v->open(id));quick.setOnLongClickListener(v->{quickOptions(v,id);return true;});taskItems.addView(quick,new LinearLayout.LayoutParams(dp(36),dp(42)));}
         View divider=new View(this);divider.setBackgroundColor(0x778fa4b0);LinearLayout.LayoutParams rule=new LinearLayout.LayoutParams(dp(1),dp(27));rule.setMargins(dp(4),0,dp(5),0);taskItems.addView(divider,rule);
         for(Map.Entry<String,DesktopWindow> item:windows.entrySet()){
@@ -425,7 +425,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     }
     private boolean restoreTool(String id){DesktopWindow current=windows.get(id);if(current!=null&&current.getParent()!=null){current.restore();return true;}return false;}
     private void gadgetGallery(){startMenu.hide();if(restoreTool("@gadgets"))return;window("@gadgets","Desktop Gadget Gallery",new GadgetGallery(this,store,sidebar.weather,new GadgetGallery.Host(){public void open(String id){MainActivity.this.open(id);}public void action(String id){vistaAction(id);}public void changed(){sidebar.rebuild();}public void reveal(){sidebar.reveal();}}));}
-    private void gadgetPanel(String kind){if(!GadgetCatalog.extra(kind))return;String id="@gadget:"+kind;if(restoreTool(id))return;window(id,GadgetCatalog.title(kind),new GadgetPanel(this,store,kind,sidebar.feeds,new GadgetPanel.Host(){public void open(String id){MainActivity.this.open(id);}public void action(String id){vistaAction(id);}public void changed(){sidebar.refresh();}public void feed(String url){List<String> enabled=store.gadgets();if(!enabled.contains("feeds")){enabled.add("feeds");store.gadgets(enabled);sidebar.rebuild();sidebar.reveal();}sidebar.feeds.configure(url);}public void refreshFeed(){sidebar.feeds.refresh(true);}public void article(String url){Uri uri=Uri.parse(url);if(Arrays.asList("http","https").contains(uri.getScheme()))launchSystem(new Intent(Intent.ACTION_VIEW,uri));}}));}
+    private void gadgetPanel(String kind){if(!GadgetCatalog.extra(kind))return;String id="@gadget:"+kind;if(restoreTool(id))return;window(id,GadgetCatalog.title(kind),new GadgetPanel(this,store,kind,sidebar.feeds,sidebar.hardware,new GadgetPanel.Host(){public void open(String id){MainActivity.this.open(id);}public void action(String id){vistaAction(id);}public void changed(){sidebar.refresh();}public void feed(String url){List<String> enabled=store.gadgets();if(!enabled.contains("feeds")){enabled.add("feeds");store.gadgets(enabled);sidebar.rebuild();sidebar.reveal();}sidebar.feeds.configure(url);}public void refreshFeed(){sidebar.feeds.refresh(true);}public void article(String url){Uri uri=Uri.parse(url);if(Arrays.asList("http","https").contains(uri.getScheme()))launchSystem(new Intent(Intent.ACTION_VIEW,uri));}}));}
     private void clockOptions(){controlPanel("@clock","Clock settings","clock");}
     private void stickyNote(){
         if(restoreTool("@sticky"))return;LinearLayout body=Aero.column(this);EditText editor=new EditText(this);editor.setTypeface(Aero.face(this));editor.setTextSize(16);editor.setTextColor(0xff5c4a1f);editor.setGravity(Gravity.TOP|Gravity.START);editor.setBackgroundColor(0xffffe889);Aero.pad(editor,14);editor.setHint("A little note…");editor.setContentDescription("Sticky note text");editor.setText(store.prefs.getString("gadget_note",""));editor.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int b,int c){}public void onTextChanged(CharSequence s,int a,int b,int c){store.prefs.edit().putString("gadget_note",s.toString()).apply();sidebar.refresh();}public void afterTextChanged(Editable e){}});body.addView(editor,new LinearLayout.LayoutParams(-1,-1));window("@sticky","Notes",body);
