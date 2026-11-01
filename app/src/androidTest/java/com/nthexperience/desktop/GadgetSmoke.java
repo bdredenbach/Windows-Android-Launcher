@@ -15,7 +15,7 @@ import java.util.function.Predicate;
 
 /** Real native UI, persistence, provider callbacks and parser boundaries on disposable emulators. */
 public final class GadgetSmoke extends AeroSmoke {
-    private MainActivity activity;private View root;private boolean ownSuite;
+    private MainActivity activity;private View root;private boolean ownSuite,systemBarsPresent;
     private final BlockingQueue<MainActivity> resumed=new LinkedBlockingQueue<>();
     private final Application.ActivityLifecycleCallbacks lifecycle=new Application.ActivityLifecycleCallbacks(){public void onActivityResumed(Activity a){if(a instanceof MainActivity)resumed.offer((MainActivity)a);}public void onActivityCreated(Activity a,Bundle b){}public void onActivityStarted(Activity a){}public void onActivityStopped(Activity a){}public void onActivityPaused(Activity a){}public void onActivitySaveInstanceState(Activity a,Bundle b){}public void onActivityDestroyed(Activity a){}};
     @Override public void onCreate(Bundle args){ownSuite=args==null||args.getString("suite")==null;super.onCreate(args);}
@@ -54,7 +54,7 @@ public final class GadgetSmoke extends AeroSmoke {
         boolean rejected=false;try{TilePuzzle.validate(new JSONObject().put("board",new JSONArray(new int[]{2,1,3,4,5,6,7,8,9,10,11,12,13,14,15,0})));}catch(JSONException expected){rejected=true;}check(rejected,"An impossible imported puzzle is rejected");
     }
     private void alignment(DesktopStore store)throws Exception{
-        progress("checking both landscape directions, status bars and return from notifications");String overlays=shell("cmd overlay list"),cutout=null;
+        progress("checking both landscape directions, status bars and return from notifications");String overlays=shell("cmd overlay list"),cutout=null;systemBarsPresent=shell("pm path com.android.systemui").contains("package:");if(!systemBarsPresent)progress("SystemUI is absent on this image; real status-bar and shade checks run on the Android 11 image");
         for(String name:new String[]{"tall","corner","double"})if(overlays.contains("com.android.internal.display.cutout.emulation."+name)){cutout="com.android.internal.display.cutout.emulation."+name;break;}
         if(cutout!=null)shell("cmd overlay enable-exclusive --user 0 --category "+cutout);
         try{
@@ -63,11 +63,12 @@ public final class GadgetSmoke extends AeroSmoke {
                 String nav=mode==0?"threebutton":"gestural";if(overlays.contains("com.android.internal.systemui.navbar."+nav))shell("cmd overlay enable-exclusive --user 0 --category com.android.internal.systemui.navbar."+nav);
                 for(int direction=0;direction<2;direction++){
                     int request=direction==0?ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;int rotation=direction==0?Surface.ROTATION_90:Surface.ROTATION_270;
-                    ui(()->activity.setRequestedOrientation(request));long end=SystemClock.uptimeMillis()+12000;while(SystemClock.uptimeMillis()<end){refreshCurrent();if(activity.getWindowManager().getDefaultDisplay().getRotation()==rotation&&root.getWidth()>root.getHeight())break;Thread.sleep(150);}check(activity.getWindowManager().getDefaultDisplay().getRotation()==rotation,"The requested landscape direction is active");
+                    ui(()->activity.setRequestedOrientation(request));long end=SystemClock.uptimeMillis()+12000;while(SystemClock.uptimeMillis()<end){refreshCurrent();if(!activity.isDestroyed()&&root.hasWindowFocus()&&root.isAttachedToWindow()&&activity.getWindowManager().getDefaultDisplay().getRotation()==rotation&&root.getWidth()>root.getHeight())break;Thread.sleep(150);}check(activity.getWindowManager().getDefaultDisplay().getRotation()==rotation,"The requested landscape direction is active");
                     for(boolean shown:new boolean[]{false,true}){
-                        ui(()->{store.prefs.edit().putBoolean("show_status_bar",shown).commit();try{java.lang.reflect.Method method=MainActivity.class.getDeclaredMethod("applySystemChrome");method.setAccessible(true);method.invoke(activity);}catch(Exception ex){throw new AssertionError(ex);}});Thread.sleep(450);refreshCurrent();gridBounds(shown);
+                        Thread.sleep(350);refreshCurrent();progress("alignment: "+nav+", rotation="+rotation+", status="+shown);
+                        ui(()->{store.prefs.edit().putBoolean("show_status_bar",shown).commit();try{java.lang.reflect.Method method=MainActivity.class.getDeclaredMethod("applySystemChrome");method.setAccessible(true);method.invoke(activity);}catch(Exception ex){throw new AssertionError(ex);}});Thread.sleep(450);refreshCurrent();if(systemBarsPresent)awaitPreference(()->root.getRootWindowInsets()!=null&&root.getRootWindowInsets().isVisible(WindowInsets.Type.statusBars())==shown,"SystemUI applies the requested status-bar state after rotation");gridBounds(shown);
                         shot("aligned-"+nav+"-"+direction+"-status-"+(shown?"shown":"hidden")+".png");
-                        if(shown&&Build.VERSION.SDK_INT==30){shell("cmd statusbar expand-notifications");Thread.sleep(250);shell("cmd statusbar collapse");Thread.sleep(400);refreshCurrent();gridBounds(true);}
+                        if(shown&&systemBarsPresent){shell("cmd statusbar expand-notifications");Thread.sleep(250);shell("cmd statusbar collapse");Thread.sleep(400);refreshCurrent();gridBounds(true);}
                     }
                 }
             }
@@ -77,7 +78,7 @@ public final class GadgetSmoke extends AeroSmoke {
     private void gridBounds(boolean shown)throws Exception{
         DesktopIconGrid grid=(DesktopIconGrid)find(v->v instanceof DesktopIconGrid);View taskbar=find(v->"Desktop taskbar".equals(v.getContentDescription())),side=find(v->"Desktop gadget sidebar".equals(v.getContentDescription()));check(grid!=null&&grid.getChildCount()>0&&taskbar!=null&&side!=null,"Desktop grid and both edge surfaces remain present");
         WindowInsets insets=root.getRootWindowInsets();android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());int[] origin=new int[2],g=new int[2],t=new int[2],dock=new int[2];root.getLocationOnScreen(origin);grid.getLocationOnScreen(g);taskbar.getLocationOnScreen(t);side.getLocationOnScreen(dock);
-        check(Math.abs(g[0]-(origin[0]+bars.left+Aero.dp(activity,7)))<=1,"Desktop columns start at a consistent usable-edge inset in either rotation");check(g[1]>=origin[1]+bars.top,"Desktop stays below a visible status bar");check(insets.isVisible(WindowInsets.Type.statusBars())==shown,"Android status-bar visibility matches the setting");
+        check(Math.abs(g[0]-(origin[0]+bars.left+Aero.dp(activity,7)))<=1,"Desktop columns start at a consistent usable-edge inset in either rotation");check(g[1]>=origin[1]+bars.top,"Desktop stays below a visible status bar");if(systemBarsPresent)check(insets.isVisible(WindowInsets.Type.statusBars())==shown,"Android status-bar visibility matches the setting");
         check(Math.abs(t[0]-(origin[0]+bars.left))<=1&&Math.abs(t[0]+taskbar.getWidth()-(origin[0]+root.getWidth()-bars.right))<=1,"Taskbar spans the full usable width");check(Math.abs(dock[0]+side.getWidth()-(origin[0]+root.getWidth()-bars.right))<=1,"Gadgets reach the usable right edge");
         int width=Aero.dp(activity,new DesktopStore(getTargetContext()).tileWidth());for(int i=0;i<grid.getChildCount();i++){View tile=grid.getChildAt(i);check(tile.getLeft()%width==0,"Every shortcut sits on an exact grid column");android.graphics.Rect content=new android.graphics.Rect(g[0]+tile.getLeft()+Aero.dp(activity,7),g[1]+tile.getTop()+Aero.dp(activity,3),g[0]+tile.getRight()-Aero.dp(activity,7),g[1]+tile.getBottom()-Aero.dp(activity,3));if(insets.getDisplayCutout()!=null)for(android.graphics.Rect hole:insets.getDisplayCutout().getBoundingRects())check(!android.graphics.Rect.intersects(content,hole),"No shortcut content overlaps the actual camera cutout");}
     }
