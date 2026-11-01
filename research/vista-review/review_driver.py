@@ -86,41 +86,13 @@ try:
     shell("cp","/data/local/tmp/vista-preferences.xml",pref)
     shell("chown",owner,pref)
     shell("chmod","660",pref)
-    relaunch()
-    dismiss_setup()
-    capture("03-vista-desktop")
-    tap_id("start_button",True)
-    capture("04-vista-start-menu")
-    if tap_id("all_programs"):
-        capture("05-all-programs")
-    relaunch()
-    dismiss_setup()
-    # Open desktop tools by the visible, named icons.
-    for text,name in [("My Computer","computer"),("Computer","computer"),("Notepad","notepad"),("Recycle Bin","recycle-bin"),("Paint","paint")]:
-        if tap_node(lambda n:n.get("text","")==text):
-            capture("06-"+name+"-single-tap")
-            # Desktop is configurable for single/double click; a second tap works for either.
-            if not any(n.get("resource-id","").endswith("/dialog_title_text") for n in tree().iter("node")):
-                tap_node(lambda n:n.get("text","")==text)
-                time.sleep(.6)
-            capture("07-"+name)
-            close_tool()
-    relaunch()
-    dismiss_setup()
-    shell("input","swipe","570","750","570","750","1000")
-    time.sleep(.6)
-    capture("08-desktop-context-menu")
-    if tap_node(lambda n:"properties" in n.get("text","").lower()):
-        capture("09-display-properties")
-    relaunch()
-    dismiss_setup()
-    shell("settings","put","system","accelerometer_rotation","0")
-    shell("settings","put","system","user_rotation","1")
-    time.sleep(2)
-    capture("10-landscape")
-    tap_id("start_button")
-    capture("11-landscape-start")
+    output = adb("shell","am","instrument","-w","com.nthexperience.desktop.test/com.nthexperience.desktop.VistaReview")
+    (OUT/"instrumentation.txt").write_text(output)
+    print(output)
+    for name in adb("shell","run-as","com.nthexperience.desktop","ls","files/vista-review").splitlines():
+        (OUT/name).write_bytes(adb("exec-out","run-as","com.nthexperience.desktop","cat","files/vista-review/"+name,binary=True))
+    if "PASS:" not in output: raise RuntimeError("Research instrumentation failed")
     events.append({"completed":True,"release":"v2.1.6","configured_theme":"Windows Vista"})
 finally:
-    (OUT/"observations.json").write_text(json.dumps(events,indent=2))
+    (OUT/"setup-events.json").write_text(json.dumps(events,indent=2))
     (OUT/"logcat.txt").write_text(adb("logcat","-d","-t","1200"))
