@@ -17,9 +17,10 @@ def tree():
     shell("uiautomator", "dump", "/sdcard/review.xml")
     return ET.fromstring(shell("cat", "/sdcard/review.xml"))
 
-def capture(name):
+def capture(name, include_tree=True):
     (OUT / (name+".png")).write_bytes(adb("exec-out", "screencap", "-p", binary=True))
     try:
+        if not include_tree: return
         t = tree()
         ET.ElementTree(t).write(OUT / (name+".xml"), encoding="utf-8")
         labels = [dict(text=n.get("text"), id=n.get("resource-id"), description=n.get("content-desc")) for n in t.iter("node") if n.get("text") or n.get("content-desc")]
@@ -63,9 +64,7 @@ try:
     record = subprocess.Popen(["adb","shell","screenrecord","--time-limit","12","/sdcard/first-launch.mp4"])
     shell("am","start","-n",COMPONENT)
     time.sleep(4)
-    capture("01-first-launch")
-    dismiss_setup()
-    capture("02-initial-desktop")
+    capture("01-first-launch", include_tree=False)
     record.wait(timeout=20)
     adb("pull","/sdcard/first-launch.mp4",str(OUT/"first-launch.mp4"))
 
@@ -78,6 +77,9 @@ try:
     for node in list(xml):
         if node.get("name")=="selected_theme": xml.remove(node)
     ET.SubElement(xml,"string",{"name":"selected_theme"}).text="Windows Vista"
+    for node in list(xml):
+        if node.get("name")=="rover_visible": xml.remove(node)
+    ET.SubElement(xml,"boolean",{"name":"rover_visible","value":"false"})
     local = OUT/"configured-preferences.xml"
     ET.ElementTree(xml).write(local,encoding="utf-8",xml_declaration=True)
     adb("push",str(local),"/data/local/tmp/vista-preferences.xml")

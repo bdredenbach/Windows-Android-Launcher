@@ -26,13 +26,13 @@ jobs:
           arch: x86_64
           target: default
           profile: pixel_2
-          disable-animations: false
+          disable-animations: true
           emulator-boot-timeout: 300
           script: |
             adb root
             adb wait-for-device
             adb install /tmp/windows-launcher.apk
-            python3 research/vista-review/inspect.py
+            python3 research/vista-review/review_driver.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
