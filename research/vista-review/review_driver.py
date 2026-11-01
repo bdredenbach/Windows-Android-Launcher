@@ -7,8 +7,8 @@ PACKAGE = "rocks.gorjan.gokixp"
 COMPONENT = PACKAGE + "/.MainActivity"
 events = []
 
-def adb(*args, binary=False):
-    return subprocess.check_output(["adb", *args], text=not binary, timeout=30)
+def adb(*args, binary=False, timeout=30):
+    return subprocess.check_output(["adb", *args], text=not binary, timeout=timeout)
 
 def shell(*args):
     return adb("shell", *map(str,args))
@@ -86,7 +86,7 @@ try:
     shell("cp","/data/local/tmp/vista-preferences.xml",pref)
     shell("chown",owner,pref)
     shell("chmod","660",pref)
-    output = adb("shell","am","instrument","-w","com.nthexperience.desktop.test/com.nthexperience.desktop.VistaReview")
+    output = adb("shell","am","instrument","-w","com.nthexperience.desktop.test/com.nthexperience.desktop.VistaReview",timeout=180)
     (OUT/"instrumentation.txt").write_text(output)
     print(output)
     for name in adb("shell","run-as","com.nthexperience.desktop","ls","files/vista-review").splitlines():
