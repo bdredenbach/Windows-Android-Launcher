@@ -3,7 +3,6 @@ package com.nthexperience.desktop;
 import android.database.*;
 import android.os.*;
 import android.provider.*;
-import android.webkit.MimeTypeMap;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
@@ -23,7 +22,7 @@ public final class DeviceDocumentsProvider extends DocumentsProvider {
     private File existing(String id)throws FileNotFoundException{File file=file(id);if(!file.exists())throw missing("Folder or file not found");return file;}
     private boolean protectedRoot(String id){return id.equals("primary:")||id.equals("primary:Android");}
     private int flags(String id,File file){if(!StorageAccess.has(getContext()))return 0;int flags=0;if(file.isDirectory()&&file.canWrite()&&!id.equals("primary:Android"))flags|=DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE;if(file.isFile()&&file.canWrite())flags|=DocumentsContract.Document.FLAG_SUPPORTS_WRITE;if(!protectedRoot(id)&&file.getParentFile()!=null&&file.getParentFile().canWrite())flags|=DocumentsContract.Document.FLAG_SUPPORTS_DELETE|DocumentsContract.Document.FLAG_SUPPORTS_RENAME;return flags;}
-    private String mime(File file){if(file.isDirectory())return DocumentsContract.Document.MIME_TYPE_DIR;String name=file.getName();int dot=name.lastIndexOf('.');String type=dot<0?null:MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substring(dot+1).toLowerCase(Locale.ROOT));return type==null?"application/octet-stream":type;}
+    private String mime(File file){return file.isDirectory()?DocumentsContract.Document.MIME_TYPE_DIR:FileLaunch.mime(file.getName(),null);}
     private void row(MatrixCursor cursor,String id,File file){MatrixCursor.RowBuilder row=cursor.newRow();for(String column:cursor.getColumnNames())switch(column){case "document_id":row.add(id);break;case "_display_name":row.add(id.equals("primary:")?"Internal storage":file.getName());break;case "mime_type":row.add(mime(file));break;case "_size":row.add(file.isDirectory()?null:file.length());break;case "last_modified":row.add(file.lastModified());break;case "flags":row.add(flags(id,file));break;default:row.add(null);}}
     @Override public Cursor queryRoots(String[] projection){return new MatrixCursor(projection==null?new String[]{"root_id","document_id","title","flags","mime_types"}:projection);}
     @Override public Cursor queryDocument(String documentId,String[] projection)throws FileNotFoundException{File file=existing(documentId);MatrixCursor cursor=new MatrixCursor(projection==null?COLUMNS:projection);row(cursor,documentId,file);return cursor;}

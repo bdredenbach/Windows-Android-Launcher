@@ -4,4 +4,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = 'NthDesktop'
-include ':app', ':fixture'
+include ':app', ':fixture', ':installprobe'

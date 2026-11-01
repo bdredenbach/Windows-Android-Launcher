@@ -1,7 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity android:name="com.nthexperience.desktop.FileViewActivity" android:exported="true" android:label="Nth file test viewer" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="image/*" /><data android:mimeType="audio/*" /><data android:mimeType="video/*" />
+                <data android:mimeType="application/pdf" /><data android:mimeType="text/plain" /><data android:mimeType="application/json" /><data android:mimeType="application/zip" />
+            </intent-filter>
+        </activity>
         <activity android:name="com.nthexperience.desktop.TestAwayActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" />
         <activity android:name="com.nthexperience.desktop.PickerCallerActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" />
     </application>
     <instrumentation android:name="com.nthexperience.desktop.StorageSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
+    <instrumentation android:name="com.nthexperience.desktop.FileOpenSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
 </manifest>
