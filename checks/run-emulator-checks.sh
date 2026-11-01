@@ -7,7 +7,7 @@ collect() {
   timeout -k 2s 5s adb exec-out run-as com.nthexperience.desktop cat shared_prefs/desktop.xml > screenshots/test-desktop-prefs.xml 2>/dev/null || true
   timeout -k 2s 5s adb shell dumpsys window > screenshots/test-window-state.txt 2>/dev/null || true
   timeout -k 2s 8s adb logcat -d -t 500 > screenshots/device-log.txt 2>/dev/null || true
-  for name in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure aero-opaque aero-colors aero-windows startup-pearl welcome-center startup-settings aero-failure glass-opacity glass-start-0 glass-start-50 glass-start-100 start-search start-portrait tray-battery tray-network tray-volume tray-calendar; do
+  for name in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure aero-opaque aero-colors aero-windows startup-pearl welcome-center startup-settings aero-failure glass-opacity glass-start-0 glass-start-50 glass-start-100 start-search start-portrait tray-battery tray-network tray-volume tray-calendar gadget-gallery-expanded gadget-pack-desktop gadget-calculator gadget-converter gadget-checklist gadget-stopwatch gadget-countdown gadget-world-clock gadget-headlines weather-follow-settings gadgets-failure; do
     timeout -k 2s 4s adb exec-out run-as com.nthexperience.desktop cat "files/$name.png" > "screenshots/$name.png" 2>/dev/null || true
   done
   timeout -k 2s 4s adb exec-out run-as com.nthexperience.desktop cat files/picker-tree.txt > screenshots/picker-tree.txt 2>/dev/null || true
@@ -17,13 +17,16 @@ trap collect EXIT
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 if [[ "$1" == 30 ]]; then
-  timeout -k 3s 300s adb shell am instrument -w -e suite legacy com.nthexperience.desktop.test/com.nthexperience.desktop.AeroSmoke | tee smoke-test.txt
+  timeout -k 3s 300s adb shell am instrument -w -e suite legacy com.nthexperience.desktop.test/com.nthexperience.desktop.GadgetSmoke | tee smoke-test.txt
   grep -q 'PASS:' smoke-test.txt
 fi
 adb shell pm list instrumentation
 adb shell am force-stop com.nthexperience.desktop
-timeout -k 3s 230s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.AeroSmoke | tee aero-test.txt
+timeout -k 3s 230s adb shell am instrument -w -e suite aero com.nthexperience.desktop.test/com.nthexperience.desktop.GadgetSmoke | tee aero-test.txt
 grep -q 'PASS:' aero-test.txt
+adb shell am force-stop com.nthexperience.desktop
+timeout -k 3s 230s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.GadgetSmoke | tee gadgets-test.txt
+grep -q 'PASS:' gadgets-test.txt
 adb devices -l
 timeout -k 3s 10s adb reboot
 sleep 4

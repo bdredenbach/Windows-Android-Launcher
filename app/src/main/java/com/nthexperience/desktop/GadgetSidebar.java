@@ -30,7 +30,7 @@ final class GadgetSidebar extends LinearLayout {
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ExecutorService photos=Executors.newSingleThreadExecutor();
     private Bitmap photo;
-    private boolean active,closed;
+    private boolean active,closed,weatherDetails,feedDetails;
     private String currentPhoto="";
     private long lastPhotoTime,lastMinute=-1;
     private int photoIndex;
@@ -115,7 +115,8 @@ final class GadgetSidebar extends LinearLayout {
     }
     private boolean visible(String id){return faces.containsKey(id)&&(!layout.docked(id)||getVisibility()==VISIBLE);}
     private boolean anyVisible(){for(String id:faces.keySet())if(visible(id))return true;return false;}
-    private void updateActivity(){weather.active(active&&visible("weather"));feeds.active(active&&visible("feeds"));restartTick();}
+    private void updateActivity(){weather.active(active&&(visible("weather")||weatherDetails));feeds.active(active&&(visible("feeds")||feedDetails));restartTick();}
+    void details(boolean weatherOpen,boolean feedOpen){if(weatherDetails==weatherOpen&&feedDetails==feedOpen)return;weatherDetails=weatherOpen;feedDetails=feedOpen;updateActivity();}
     void refresh(){for(GadgetView v:faces.values())v.invalidate();actions.readingsChanged();}
     void setActive(boolean value){active=value;updateActivity();}
     private void restartTick(){main.removeCallbacks(tick);if(active&&!closed&&anyVisible())main.post(tick);}

@@ -16,7 +16,7 @@ jobs:
       matrix:
         api: [30, 36]
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -32,10 +32,11 @@ jobs:
       - name: Check launcher state and layout geometry
         run: |
           mkdir -p build/state-check
-          javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java app/src/main/java/com/nthexperience/desktop/StartupPolicy.java checks/StartupPolicyCheck.java
+          javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java app/src/main/java/com/nthexperience/desktop/StartupPolicy.java checks/StartupPolicyCheck.java app/src/main/java/com/nthexperience/desktop/GadgetMath.java checks/GadgetMathCheck.java
           java -cp build/state-check LauncherStateCheck
           java -cp build/state-check DesktopGeometryCheck
           java -cp build/state-check StartupPolicyCheck
+          java -cp build/state-check com.nthexperience.desktop.GadgetMathCheck
       - run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
       - uses: actions/upload-artifact@v4
         if: matrix.api == 30
@@ -79,5 +80,6 @@ jobs:
           path: |
             smoke-test.txt
             aero-test.txt
+            gadgets-test.txt
             reboot-test.txt
             screenshots/

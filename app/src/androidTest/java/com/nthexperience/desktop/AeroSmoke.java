@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 import java.util.function.Predicate;
 
 /** Run on disposable emulators. Exercises presentation identity as well as the visible controls. */
-public final class AeroSmoke extends LauncherSmoke {
+public class AeroSmoke extends LauncherSmoke {
     private MainActivity activity;
     private View root;
     private boolean legacy;
