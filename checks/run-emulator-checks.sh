@@ -78,6 +78,11 @@ done
 printf 'CHECK: verifying the first visible launcher after a real reboot\n'
 boot=$(adb shell settings get global boot_count | tr -d '\r')
 adb exec-out run-as com.nthexperience.desktop cat shared_prefs/startup_session.xml > reboot-first.xml
+mkdir -p screenshots
+adb shell dumpsys window > screenshots/reboot-first-window.txt
+adb shell dumpsys activity activities > screenshots/reboot-first-activity.txt
+adb shell cat /proc/uptime > screenshots/reboot-first-uptime.txt
+adb logcat -d -t 1000 > screenshots/reboot-first-log.txt
 adb shell input keyevent KEYCODE_HOME
 adb shell input keyevent KEYCODE_HOME
 adb shell am force-stop com.nthexperience.desktop

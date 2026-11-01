@@ -22,6 +22,8 @@ final class StartupExperience {
     private Intro intro;
     private boolean resumed,checked,welcomeChecked,playedHere;
     private int checkedBoot=Integer.MIN_VALUE;
+    // Start the observation window with this Home session, even after a slow boot.
+    private final long bootWatchDeadline=SystemClock.uptimeMillis()+90000;
     private final Runnable reconsider=this::maybeShow;
     StartupExperience(MainActivity a,FrameLayout host,DesktopStore store,boolean restored,Runnable welcome){activity=a;this.host=host;this.store=store;this.welcome=welcome;welcomeAtStart=store.prefs.getBoolean("welcome_on_start",false);session=a.getSharedPreferences(SESSION,0);welcomeChecked=restored&&session.getBoolean("welcome_seen",false);}
     static int boot(Context c){try{return Settings.Global.getInt(c.getContentResolver(),Settings.Global.BOOT_COUNT,-1);}catch(SecurityException ex){return -1;}}
@@ -48,7 +50,7 @@ final class StartupExperience {
         }}
         watchEarlyBoot();welcome(false);
     }
-    private void watchEarlyBoot(){if(resumed&&store.prefs.getInt("startup_mode",0)==1&&SystemClock.elapsedRealtime()<90000)host.postDelayed(reconsider,1000);}
+    private void watchEarlyBoot(){if(resumed&&store.prefs.getInt("startup_mode",0)==1&&SystemClock.uptimeMillis()<bootWatchDeadline)host.postDelayed(reconsider,1000);}
     private void welcome(boolean afterIntro){if(!resumed)return;activity.storageReady();if(welcomeChecked)return;welcomeChecked=true;if(!session.getBoolean("welcome_seen",false)||welcomeAtStart){
         session.edit().putBoolean("welcome_seen",true).apply();welcome.run();
     }}
