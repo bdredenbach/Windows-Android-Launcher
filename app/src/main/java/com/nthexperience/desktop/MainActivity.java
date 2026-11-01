@@ -85,7 +85,8 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         });
         workspace=new FrameLayout(this);shell.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
         ScrollView scroll=new ScrollView(this);desktopScroll=scroll;scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.setPadding(dp(7),dp(10),dp(7),dp(12));scroll.setVerticalScrollBarEnabled(false);
-        desktop=new GridLayout(this);desktop.setOrientation(GridLayout.VERTICAL);desktop.setAlignmentMode(GridLayout.ALIGN_BOUNDS);scroll.addView(desktop,new ScrollView.LayoutParams(-1,-2));workspace.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
+        // Keep the icon sheet in one cached layer when side insets move during a 180-degree turn.
+        desktop=new GridLayout(this);desktop.setLayerType(View.LAYER_TYPE_SOFTWARE,null);desktop.setOrientation(GridLayout.VERTICAL);desktop.setAlignmentMode(GridLayout.ALIGN_BOUNDS);scroll.addView(desktop,new ScrollView.LayoutParams(-1,-2));workspace.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
         sidebar=new GadgetSidebar(this,store,wallpaper,this,workspace,layoutKey);FrameLayout.LayoutParams sideParams=new FrameLayout.LayoutParams(dp(140),-1,Gravity.END);workspace.addView(sidebar,sideParams);workspace.addView(sidebar.floatingHost,new FrameLayout.LayoutParams(-1,-1));
         GestureDetector gestures=new GestureDetector(this,new GestureDetector.SimpleOnGestureListener(){
             public boolean onDown(MotionEvent e){return true;}
