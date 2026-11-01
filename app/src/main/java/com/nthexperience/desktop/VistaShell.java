@@ -43,6 +43,8 @@ abstract class VistaShell extends LinearLayout {
     final boolean compact(){return compact;}
     final void navigate(String page){if(page.equals(page())&&query().isEmpty())return;while(history.size()>historyIndex+1)history.remove(history.size()-1);history.add(page);if(history.size()>16)history.remove(0);historyIndex=history.size()-1;resetSearch();pendingPosition=-1;render();updateNavigation();}
     final boolean goBack(){if(historyIndex<=0)return false;historyIndex--;resetSearch();render();updateNavigation();return true;}
+    final java.util.List<String> historyPages(){return new java.util.ArrayList<>(history);}
+    final void visitHistory(int index){if(index<0||index>=history.size())return;historyIndex=index;resetSearch();render();updateNavigation();}
     private void goForward(){if(historyIndex+1>=history.size())return;historyIndex++;resetSearch();render();updateNavigation();}
     private void resetSearch(){restoring=true;search.setText("");search.clearFocus();requestFocus();restoring=false;}
     final void updateNavigation(){back.setEnabled(historyIndex>0);back.setAlpha(historyIndex>0?1:.35f);forward.setEnabled(historyIndex+1<history.size());forward.setAlpha(historyIndex+1<history.size()?1:.35f);}

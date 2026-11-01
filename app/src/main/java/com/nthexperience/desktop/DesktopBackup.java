@@ -18,7 +18,7 @@ final class DesktopBackup {
     static final String PENDING="desktop-restore-preview.json", UNDO="desktop-before-restore.json", EXPORT="desktop-export.json";
     private static final Set<String> BOOLEANS=new HashSet<>(Arrays.asList("weather_follow","aero_transparency","startup_sound","reduce_motion","welcome_on_start","clock_seconds","layout_locked","show_status_bar","snap_gadgets","weather_f","control_panel_classic","explorer_details","sidebar_visible","desktop_v41"));
     private static final Set<String> INTS=new HashSet<>(Arrays.asList("wallpaper","clock_style","desktop_icon_size","aero_color","aero_intensity","aero_opacity","startup_mode"));
-    private static final Set<String> STRINGS=new HashSet<>(Arrays.asList("shortcuts","quick_launch","app_folders","shortcut_names","gadgets","file_manager_apps","gadget_photos","recents","linked_folders","gadget_layout_portrait","gadget_layout_landscape","note","gadget_note","profile_portrait","linked_files","desktop_name","weather_city","weather_lat","weather_lon","gadget_data","feed_url"));
+    private static final Set<String> STRINGS=new HashSet<>(Arrays.asList("shortcuts","quick_launch","app_folders","shortcut_names","gadgets","file_manager_apps","gadget_photos","recents","linked_folders","gadget_layout_portrait","gadget_layout_landscape","note","gadget_note","profile_portrait","linked_files","desktop_name","weather_city","weather_lat","weather_lon","gadget_data","feed_url","explorer_favorites"));
     private static final Set<String> BUILTINS=new HashSet<>(Arrays.asList("@computer","@browser","@files","@notes","@appearance","@control","@system","@filemanagers","@gadgets","@sticky","@calendar","@clock","@weather","@pictures","@music","@organize","@quicklaunch","@backup","@welcome"));
     static final class Plan {
         final Map<String,Object> values;
@@ -39,7 +39,7 @@ final class DesktopBackup {
             String key=entry.getKey(),kind=kind(key);if(kind==null)continue;Object value=entry.getValue();if(value==null)continue;
             JSONObject field=new JSONObject().put("type",kind).put("value",value);settings.put(key,field);
         }
-        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.9.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
+        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.10.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
     }
     static Plan parse(String text)throws JSONException {
         if(text.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)throw new JSONException("Backup is larger than 8 MB");
@@ -71,6 +71,7 @@ final class DesktopBackup {
         for(String gadget:ids(array((String)values.get("gadgets")),GadgetCatalog.IDS.length))if(!Arrays.asList(GadgetView.IDS).contains(gadget))throw new JSONException("Unknown gadget");
         for(String photo:ids(array((String)values.get("gadget_photos")),100))if(!"content".equals(Uri.parse(photo).getScheme()))throw new JSONException("Invalid photo reference");
         JSONArray links=array((String)values.get("linked_folders"));if(links.length()>16)throw new JSONException("Too many linked folders");for(int i=0;i<links.length();i++){JSONObject link=links.getJSONObject(i);Object uri=link.get("uri"),name=link.get("name");if(!(uri instanceof String)||((String)uri).length()>8192||!"content".equals(Uri.parse((String)uri).getScheme())||!DocumentsContract.isTreeUri(Uri.parse((String)uri))||!(name instanceof String)||((String)name).length()>512)throw new JSONException("Invalid linked folder");}
+        if(values.containsKey("explorer_favorites")){JSONObject aliases=object((String)values.get("explorer_favorites"));if(aliases.length()>5)throw new JSONException("Too many favorite folders");Iterator<String> keys=aliases.keys();while(keys.hasNext()){String key=keys.next();if(!Arrays.asList("documents","pictures","music","videos","downloads").contains(key)||!(aliases.get(key) instanceof String)||!android.provider.DocumentsContract.isTreeUri(Uri.parse(aliases.getString(key))))throw new JSONException("Invalid favorite folder");}}
         if(values.containsKey("gadget_data"))GadgetData.validate(object((String)values.get("gadget_data")));
         if(values.containsKey("feed_url")&&!((String)values.get("feed_url")).isEmpty()&&!FeedClient.validUrl((String)values.get("feed_url")))throw new JSONException("Invalid feed URL");
         if(values.containsKey("profile_portrait")&&!ProfilePortrait.valid((String)values.get("profile_portrait")))throw new JSONException("Invalid profile picture");

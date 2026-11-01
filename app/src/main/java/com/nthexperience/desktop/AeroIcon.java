@@ -64,6 +64,14 @@ final class AeroIcon extends View {
             p.setColor(0xffcb9e66);canvas.drawCircle(43,21,9,p);rounded(canvas,31,31,59,54,8,0xff9acbe7,0xff3d719d);p.setShader(new RadialGradient(23,18,12,new int[]{0xffffe7b8,0xffbb8959},null,Shader.TileMode.CLAMP));canvas.drawCircle(23,22,12,p);p.setShader(null);rounded(canvas,5,36,40,60,10,0xffb6df8c,0xff4a873e);p.setColor(0x55ffffff);canvas.drawOval(10,37,34,44,p);
         } else if(kind.equals("programs")) {
             rounded(canvas,8,9,44,54,3,0xffecf6fc,0xff6597ba);rounded(canvas,12,14,40,35,1,0xff63bae2,0xff216995);p.setColor(0xffc9d7df);canvas.drawCircle(44,43,17,p);p.setShader(new LinearGradient(30,30,59,57,new int[]{0xfff7f7e8,0xffadcad6,0xffd8c0e4,0xfff3f5f5},null,Shader.TileMode.CLAMP));canvas.drawCircle(44,43,15,p);p.setShader(null);p.setColor(0xff648597);canvas.drawCircle(44,43,4,p);p.setColor(0xffe8f3fa);canvas.drawCircle(44,43,2,p);
+        } else if(kind.equals("copy")) {
+            rounded(canvas,8,6,43,49,2,0xfff5fbfe,0xff80a4bd);rounded(canvas,22,18,57,60,2,0xfffefefe,0xffbfd5e4);p.setColor(0xff648da7);p.setStrokeWidth(2);for(int y=30;y<52;y+=7)canvas.drawLine(29,y,49,y,p);
+        } else if(kind.equals("paste")) {
+            rounded(canvas,10,9,53,59,3,0xffd3b67e,0xff9c753b);rounded(canvas,20,5,43,16,3,0xffdfe8ed,0xff8599a7);rounded(canvas,22,22,59,60,2,0xfffffefa,0xffdae5e8);p.setColor(0xff7394a5);p.setStrokeWidth(2);for(int y=32;y<53;y+=7)canvas.drawLine(29,y,51,y,p);
+        } else if(kind.equals("cut")) {
+            p.setColor(0xffadbcc6);p.setStrokeWidth(5);canvas.drawLine(17,45,48,7,p);canvas.drawLine(44,45,17,7,p);p.setColor(0xff315f8b);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(5);canvas.drawOval(6,38,27,59,p);canvas.drawOval(35,38,56,59,p);p.setStyle(Paint.Style.FILL);p.setColor(0xffe6edf1);canvas.drawCircle(31,29,3,p);
+        } else if(kind.equals("delete")) {
+            p.setColor(0xffb63d2c);p.setStrokeWidth(11);p.setStrokeCap(Paint.Cap.ROUND);canvas.drawLine(15,15,49,49,p);canvas.drawLine(49,15,15,49,p);p.setColor(0xffed9e88);p.setStrokeWidth(3);canvas.drawLine(15,13,49,47,p);p.setStrokeCap(Paint.Cap.BUTT);
         } else if(kind.equals("calendar")) {
             rounded(canvas,8,9,56,58,4,0xfffefdf7,0xffd8e0e4);rounded(canvas,8,9,56,25,4,0xff8ac5e8,0xff306a9c);p.setColor(0xffd6e7f1);canvas.drawRect(8,21,56,25,p);p.setColor(0xff244b68);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(27);canvas.drawText("31",16,50,p);p.setColor(0xff6d7e89);canvas.drawRoundRect(17,5,22,16,2,2,p);canvas.drawRoundRect(42,5,47,16,2,2,p);
         } else if(kind.equals("sticky")) {

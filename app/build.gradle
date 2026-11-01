@@ -6,9 +6,9 @@ android {
         applicationId 'com.nthexperience.desktop'
         minSdk 26
         targetSdk 36
-        versionCode 10
-        versionName '0.9.0'
-        testInstrumentationRunner 'com.nthexperience.desktop.GadgetSmoke'
+        versionCode 11
+        versionName '0.10.0'
+        testInstrumentationRunner 'com.nthexperience.desktop.ExplorerSmoke'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

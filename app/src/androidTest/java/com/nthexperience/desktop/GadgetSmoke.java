@@ -14,7 +14,7 @@ import java.util.concurrent.*;
 import java.util.function.Predicate;
 
 /** Real native UI, persistence, provider callbacks and parser boundaries on disposable emulators. */
-public final class GadgetSmoke extends AeroSmoke {
+public class GadgetSmoke extends AeroSmoke {
     private MainActivity activity;private View root;private boolean ownSuite,systemBarsPresent;
     private final BlockingQueue<MainActivity> resumed=new LinkedBlockingQueue<>();
     private final Application.ActivityLifecycleCallbacks lifecycle=new Application.ActivityLifecycleCallbacks(){public void onActivityResumed(Activity a){if(a instanceof MainActivity)resumed.offer((MainActivity)a);}public void onActivityCreated(Activity a,Bundle b){}public void onActivityStarted(Activity a){}public void onActivityStopped(Activity a){}public void onActivityPaused(Activity a){}public void onActivitySaveInstanceState(Activity a,Bundle b){}public void onActivityDestroyed(Activity a){}};
