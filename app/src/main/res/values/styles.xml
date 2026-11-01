@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="BaseAppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">#258ac4</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:windowBackground">#0A253A</item>
+        <item name="android:windowBackground">#02070D</item>
+        <item name="android:popupMenuStyle">@style/AeroPopupMenu</item>
+        <item name="android:scrollbarThumbVertical">@drawable/aero_scroll_thumb</item>
+        <item name="android:scrollbarTrackVertical">@drawable/aero_scroll_track</item>
+        <item name="android:scrollbarSize">9dp</item>
+    </style>
+    <style name="AppTheme" parent="BaseAppTheme" />
+    <style name="AeroPopupMenu" parent="android:style/Widget.Material.Light.PopupMenu">
+        <item name="android:popupBackground">@drawable/aero_popup</item>
     </style>
 </resources>

@@ -22,7 +22,8 @@ final class AeroWallpaper extends View {
     private final int[] ownLocation=new int[2],targetLocation=new int[2];
     AeroWallpaper(Context context, int theme) { super(context); this.theme = theme;
         if(artwork==null){try{artwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora.webp"));}catch(java.io.IOException ignored){}} if(wideArtwork==null){try{wideArtwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora-landscape.webp"));}catch(java.io.IOException ignored){}} setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); }
-    void theme(int value) { theme = value; softened=null; invalidate();for(java.util.Iterator<java.lang.ref.WeakReference<AeroGlass>> i=surfaces.iterator();i.hasNext();){AeroGlass glass=i.next().get();if(glass==null)i.remove();else glass.invalidateSelf();} }
+    void theme(int value) { theme = value; softened=null; appearanceChanged(); }
+    void appearanceChanged(){invalidate();for(java.util.Iterator<java.lang.ref.WeakReference<AeroGlass>> i=surfaces.iterator();i.hasNext();){AeroGlass glass=i.next().get();if(glass==null)i.remove();else glass.invalidateSelf();}}
     void register(AeroGlass glass){surfaces.add(new java.lang.ref.WeakReference<>(glass));}
     @Override protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight();

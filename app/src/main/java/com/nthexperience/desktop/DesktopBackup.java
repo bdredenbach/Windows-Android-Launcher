@@ -16,10 +16,10 @@ final class DesktopBackup {
     static final int MAX_BYTES=8*1024*1024;
     static final String FORMAT="nth-desktop-backup";
     static final String PENDING="desktop-restore-preview.json", UNDO="desktop-before-restore.json", EXPORT="desktop-export.json";
-    private static final Set<String> BOOLEANS=new HashSet<>(Arrays.asList("clock_seconds","layout_locked","show_status_bar","snap_gadgets","weather_f","control_panel_classic","explorer_details","sidebar_visible","desktop_v41"));
-    private static final Set<String> INTS=new HashSet<>(Arrays.asList("wallpaper","clock_style","desktop_icon_size"));
+    private static final Set<String> BOOLEANS=new HashSet<>(Arrays.asList("aero_transparency","startup_sound","reduce_motion","welcome_on_start","clock_seconds","layout_locked","show_status_bar","snap_gadgets","weather_f","control_panel_classic","explorer_details","sidebar_visible","desktop_v41"));
+    private static final Set<String> INTS=new HashSet<>(Arrays.asList("wallpaper","clock_style","desktop_icon_size","aero_color","aero_intensity","startup_mode"));
     private static final Set<String> STRINGS=new HashSet<>(Arrays.asList("shortcuts","quick_launch","app_folders","shortcut_names","gadgets","file_manager_apps","gadget_photos","recents","linked_folders","gadget_layout_portrait","gadget_layout_landscape","note","gadget_note","desktop_name","weather_city","weather_lat","weather_lon"));
-    private static final Set<String> BUILTINS=new HashSet<>(Arrays.asList("@computer","@browser","@files","@notes","@appearance","@control","@system","@filemanagers","@gadgets","@sticky","@calendar","@clock","@weather","@pictures","@music","@organize","@quicklaunch","@backup"));
+    private static final Set<String> BUILTINS=new HashSet<>(Arrays.asList("@computer","@browser","@files","@notes","@appearance","@control","@system","@filemanagers","@gadgets","@sticky","@calendar","@clock","@weather","@pictures","@music","@organize","@quicklaunch","@backup","@welcome"));
     static final class Plan {
         final Map<String,Object> values;
         final String text,created;
@@ -39,7 +39,7 @@ final class DesktopBackup {
             String key=entry.getKey(),kind=kind(key);if(kind==null)continue;Object value=entry.getValue();if(value==null)continue;
             JSONObject field=new JSONObject().put("type",kind).put("value",value);settings.put(key,field);
         }
-        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.5.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
+        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.6.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
     }
     static Plan parse(String text)throws JSONException {
         if(text.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)throw new JSONException("Backup is larger than 8 MB");
@@ -49,7 +49,7 @@ final class DesktopBackup {
         Iterator<String> keys=settings.keys();while(keys.hasNext()){
             String key=keys.next(),expected=kind(key);if(expected==null){skipped++;continue;}JSONObject field=settings.getJSONObject(key);if(!expected.equals(field.opt("type")))throw new JSONException("Wrong setting type: "+key);Object value=field.get("value");
             if(expected.equals("boolean")){if(!(value instanceof Boolean))throw new JSONException("Invalid switch: "+key);}
-            else if(expected.equals("int")){if(!integer(value))throw new JSONException("Invalid number: "+key);int n=((Number)value).intValue();if(n<0||n>(key.equals("clock_style")?1:2))throw new JSONException("Setting out of range: "+key);value=n;}
+            else if(expected.equals("int")){if(!integer(value))throw new JSONException("Invalid number: "+key);int n=((Number)value).intValue();if(n<0||n>(key.equals("aero_color")?7:key.equals("aero_intensity")?100:key.equals("clock_style")?1:2))throw new JSONException("Setting out of range: "+key);value=n;}
             else{if(!(value instanceof String))throw new JSONException("Invalid text: "+key);int limit=key.equals("note")||key.equals("gadget_note")?2*1024*1024:512*1024;if(((String)value).length()>limit)throw new JSONException("Setting too large: "+key);}
             values.put(key,value);
         }

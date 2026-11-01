@@ -33,6 +33,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private String backupMessage="";
     private boolean backupBusy,restoringBackup;
     private FrameLayout restoreCover;
+    private StartupExperience startup;
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final Handler main=new Handler(Looper.getMainLooper());
     private final Map<String,AppCatalog.Entry> entries=new LinkedHashMap<>();
@@ -76,7 +77,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         if(Build.VERSION.SDK_INT>=33)registerReceiver(packages,packageFilter,Context.RECEIVER_EXPORTED);else registerReceiver(packages,packageFilter);
         IntentFilter timeFilter=new IntentFilter();timeFilter.addAction(Intent.ACTION_TIME_CHANGED);timeFilter.addAction(Intent.ACTION_TIMEZONE_CHANGED);timeFilter.addAction(Intent.ACTION_LOCALE_CHANGED);
         if(Build.VERSION.SDK_INT>=33)registerReceiver(timeChanged,timeFilter,Context.RECEIVER_EXPORTED);else registerReceiver(timeChanged,timeFilter);
-        receiverRegistered=true;scanApps();loadRestorePreview();
+        receiverRegistered=true;scanApps();loadRestorePreview();startup=new StartupExperience(this,root,store,()->open("@welcome"));
     }
     private void buildDesktop(){
         root=new FrameLayout(this);wallpaper=new AeroWallpaper(this,store.prefs.getInt("wallpaper",0));root.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));
@@ -151,27 +152,28 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         }
     }
     private void renderTaskbar(){
-        if(taskItems==null)return;taskItems.removeAllViews();
+        if(taskItems==null)return;DesktopWindow front=null;for(int i=workspace.getChildCount()-1;i>=0;i--){View child=workspace.getChildAt(i);if(child instanceof DesktopWindow&&child.getVisibility()==View.VISIBLE&&!((DesktopWindow)child).minimizing()){front=(DesktopWindow)child;break;}}for(DesktopWindow window:windows.values())if(window.getParent()!=null)window.active(window==front);taskItems.removeAllViews();
         for(String id:store.quickLaunch()){FrameLayout quick=new FrameLayout(this);FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(dp(24),dp(24),Gravity.CENTER);quick.addView(icon(id,24),lp);quick.setContentDescription("Open "+label(id));quick.setOnClickListener(v->open(id));quick.setOnLongClickListener(v->{quickOptions(v,id);return true;});taskItems.addView(quick,new LinearLayout.LayoutParams(dp(36),dp(42)));}
         View divider=new View(this);divider.setBackgroundColor(0x778fa4b0);LinearLayout.LayoutParams rule=new LinearLayout.LayoutParams(dp(1),dp(27));rule.setMargins(dp(4),0,dp(5),0);taskItems.addView(divider,rule);
         for(Map.Entry<String,DesktopWindow> item:windows.entrySet()){
-            if(item.getValue().getParent()==null)continue;TextView b=Aero.text(this,label(item.getKey()),11,Color.WHITE);b.setGravity(Gravity.CENTER);b.setSingleLine(true);b.setEllipsize(TextUtils.TruncateAt.END);b.setPadding(dp(10),0,dp(10),0);b.setBackground(Aero.gloss(this,new int[]{0xbb7a98aa,0x997b9bb1,0x88445e74,0x99657d8f},3,0x99b4cad7));b.setContentDescription("Restore "+label(item.getKey()));b.setOnClickListener(v->{startMenu.hide();item.getValue().restore();});LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(100),dp(35));lp.rightMargin=dp(3);taskItems.addView(b,lp);
+            if(item.getValue().getParent()==null)continue;TextView b=Aero.text(this,label(item.getKey()),11,Color.WHITE);b.setGravity(Gravity.CENTER);b.setSingleLine(true);b.setEllipsize(TextUtils.TruncateAt.END);b.setPadding(dp(10),0,dp(10),0);b.setBackground(Aero.gloss(this,item.getValue().active()?new int[]{0xddbed9e8,0xcc76a3bf,0xcc446c88,0xcc80a3bb}:new int[]{0x887b93a3,0x77536e82,0x77405b6f,0x77597589},3,0x99b4cad7));b.setContentDescription("Restore "+label(item.getKey()));b.setOnClickListener(v->{startMenu.hide();item.getValue().restore();});LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(100),dp(35));lp.rightMargin=dp(3);taskItems.addView(b,lp);
         }
         for(String id:store.recents()){if(!entries.containsKey(id))continue;FrameLayout slot=new FrameLayout(this);slot.addView(icon(id,25),new FrameLayout.LayoutParams(dp(25),dp(25),Gravity.CENTER));slot.setContentDescription("Recently launched: "+label(id));slot.setOnClickListener(v->open(id));taskItems.addView(slot,new LinearLayout.LayoutParams(dp(36),dp(42)));}
     }
     private View icon(String id,int size){
         AppCatalog.Entry entry=entries.get(id);
         if(entry!=null){ImageView image=new ImageView(this);image.setImageDrawable(entry.icon);image.setScaleType(ImageView.ScaleType.FIT_CENTER);image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);return image;}
-        return new AeroIcon(this,store.isFolder(id)||id.equals("@filemanagers")||id.equals("@organize")?"folderapps":id.equals("@backup")?"drive":id.equals("@quicklaunch")?"programs":id.startsWith("@")?id.substring(1):"apps");
+        return new AeroIcon(this,store.isFolder(id)||id.equals("@filemanagers")||id.equals("@organize")?"folderapps":id.equals("@welcome")?"orb":id.equals("@backup")?"drive":id.equals("@quicklaunch")?"programs":id.startsWith("@")?id.substring(1):"apps");
     }
     private String label(String id){return store.name(id,defaultLabel(id));}
     private String defaultLabel(String id){
-        switch(id){case "@organize":return "Desktop Organization";case "@quicklaunch":return "Quick Launch";case "@backup":return "Backup and Restore";case "@control":return "Control Panel";case "@system":return "System";case "@filemanagers":return "File Managers";case "@weather":return "Weather";case "@clock":return "Clock";case "@gadgets":return "Gadget Gallery";case "@sticky":return "Notes";case "@calendar":return "Calendar";case "@computer":return "Computer";case "@browser":return "Internet";case "@files":return "Files";case "@notes":return "Notepad";case "@appearance":return "Personalize";default:AppCatalog.Entry app=entries.get(id);return app==null?"Unavailable app":app.label;}
+        switch(id){case "@welcome":return "Welcome Center";case "@organize":return "Desktop Organization";case "@quicklaunch":return "Quick Launch";case "@backup":return "Backup and Restore";case "@control":return "Control Panel";case "@system":return "System";case "@filemanagers":return "File Managers";case "@weather":return "Weather";case "@clock":return "Clock";case "@gadgets":return "Gadget Gallery";case "@sticky":return "Notes";case "@calendar":return "Calendar";case "@computer":return "Computer";case "@browser":return "Internet";case "@files":return "Files";case "@notes":return "Notepad";case "@appearance":return "Personalize";default:AppCatalog.Entry app=entries.get(id);return app==null?"Unavailable app":app.label;}
     }
     @Override public void open(String id){
         startMenu.hide();
         if(store.isFolder(id)){organizer(id,"contents:"+id);return;}
         switch(id){
+            case "@welcome":if(!restoreTool(id))window(id,"Welcome Center",new WelcomeCenter(this,store,vistaActions));return;
             case "@organize":organizer("@organize","desktop");return;
             case "@quicklaunch":organizer("@quicklaunch","quick");return;
             case "@backup":backupPanel(false);return;
@@ -197,7 +199,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             Intent launch=Intent.makeMainActivity(component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             startActivity(launch);store.launched(id);renderTaskbar();
         }catch(ActivityNotFoundException|SecurityException e){
-            new AlertDialog.Builder(this).setTitle("App unavailable").setMessage("This app may have been removed or disabled.").setPositiveButton("Remove shortcut",(d,w)->{List<String> ids=store.desktop();ids.remove(id);store.desktop(ids);renderDesktop();}).setNegativeButton("Keep",null).show();scanApps();
+            Aero.dialog(this).setTitle("App unavailable").setMessage("This app may have been removed or disabled.").setPositiveButton("Remove shortcut",(d,w)->{List<String> ids=store.desktop();ids.remove(id);store.desktop(ids);renderDesktop();}).setNegativeButton("Keep",null).show();scanApps();
         }
     }
     @Override public void options(View anchor,String id){
@@ -226,7 +228,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private void desktopViewMenu(float x,float y){desktopMenu=new DesktopContextMenu(this);String[] names={"Small icons","Medium icons","Large icons"};for(int i=0;i<names.length;i++){final int value=i;desktopMenu.item((store.prefs.getInt("desktop_icon_size",1)==i?"✓  ":"")+names[i],"computer",()->{store.prefs.edit().putInt("desktop_icon_size",value).apply();desktopChanged();});}desktopMenu.show(root,x,y,shell.getPaddingLeft(),shell.getPaddingTop(),shell.getPaddingRight(),shell.getPaddingBottom());}
     private void desktopSortMenu(float x,float y){desktopMenu=new DesktopContextMenu(this);for(String mode:Arrays.asList("Name","Type"))desktopMenu.item(mode,"programs",()->{List<String> ids=store.desktop();java.text.Collator collator=java.text.Collator.getInstance();ids.sort((a,b)->{if(mode.equals("Type")&&store.isFolder(a)!=store.isFolder(b))return store.isFolder(a)?-1:1;return collator.compare(label(a),label(b));});store.desktop(ids);desktopChanged();});desktopMenu.show(root,x,y,shell.getPaddingLeft(),shell.getPaddingTop(),shell.getPaddingRight(),shell.getPaddingBottom());}
     private void showStart(boolean search){startMenu.show(search);}
-    private void showDesktop(){((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(workspace.getWindowToken(),0);startMenu.hide();for(DesktopWindow window:windows.values())window.setVisibility(View.GONE);renderTaskbar();}
+    private void showDesktop(){((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(workspace.getWindowToken(),0);startMenu.hide();for(DesktopWindow window:windows.values()){window.settle();window.setVisibility(View.GONE);}renderTaskbar();}
     private void window(String id,String title,View body){
         DesktopWindow current=windows.get(id);if(current!=null&&current.getParent()!=null){if(body instanceof VistaShell)((VistaShell)body).close();current.restore();return;}
         DesktopWindow next=new DesktopWindow(this,workspace,title,body,wallpaper,this::renderTaskbar,store,id,layoutKey);windows.put(id,next);
@@ -291,9 +293,10 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     }
     private void vistaAction(String id){
         switch(id){
+            case "glass":wallpaper.appearanceChanged();return;case "startup-preview":if(startup!=null)startup.preview();return;
             case "chrome":applySystemChrome();return;case "desktop":renderDesktop();return;case "gadgets":sidebar.setActive(true);sidebar.refresh();return;case "wallpaper":wallpaper.theme(store.prefs.getInt("wallpaper",0));return;
             case "profile":startMenu.refreshName();return;case "home":home();return;case "shortcuts":manageShortcuts();return;case "new-folder":organizer("@organize","new");return;
-            case "reset-icons":new AlertDialog.Builder(this).setTitle("Restore desktop icons?").setMessage("Restore the original desktop icons and their order? Your notes and apps are kept.").setPositiveButton("Restore",(d,w)->{store.prefs.edit().remove("shortcuts").apply();renderDesktop();}).setNegativeButton("Cancel",null).show();return;
+            case "reset-icons":Aero.dialog(this).setTitle("Restore desktop icons?").setMessage("Restore the original desktop icons and their order? Your notes and apps are kept.").setPositiveButton("Restore",(d,w)->{store.prefs.edit().remove("shortcuts").apply();renderDesktop();}).setNegativeButton("Cancel",null).show();return;
         }
         String action;
         switch(id){
@@ -354,14 +357,16 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private void updateClock(){if(clock!=null){Date now=new Date();clock.setText(DateFormat.getTimeFormat(this).format(now)+"\n"+new SimpleDateFormat("MMM d",Locale.getDefault()).format(now));}}
     private void handleBack(){
         if(restoringBackup)return;
+        if(startup!=null&&startup.skip())return;
         if(desktopMenu!=null&&desktopMenu.showing()){desktopMenu.dismiss();return;}
         if(startMenu.getVisibility()==View.VISIBLE){startMenu.hide();return;}
-        for(int i=workspace.getChildCount()-1;i>=0;i--){View v=workspace.getChildAt(i);if(v instanceof DesktopWindow&&v.getVisibility()==View.VISIBLE){DesktopWindow tool=(DesktopWindow)v;if(tool.body instanceof VistaShell&&((VistaShell)tool.body).goBack())return;v.setVisibility(View.GONE);((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(v.getWindowToken(),0);renderTaskbar();return;}}
+        for(int i=workspace.getChildCount()-1;i>=0;i--){View v=workspace.getChildAt(i);if(v instanceof DesktopWindow&&v.getVisibility()==View.VISIBLE){DesktopWindow tool=(DesktopWindow)v;if(tool.body instanceof VistaShell&&((VistaShell)tool.body).goBack())return;tool.minimize();((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(v.getWindowToken(),0);renderTaskbar();return;}}
     }
     @Override public void onBackPressed(){handleBack();}
+    @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused&&startup!=null)root.post(startup::maybeShow);}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);if(desktopMenu!=null)desktopMenu.dismiss();if(startMenu!=null){startMenu.hide();startMenu.refreshHome();}}
-    @Override protected void onResume(){super.onResume();if(restoringBackup)return;pausedSession=null;if(startMenu!=null)startMenu.refreshHome();main.removeCallbacks(clockTick);main.post(clockTick);if(store!=null)scanApps();if(sidebar!=null)sidebar.setActive(true);}
-    @Override protected void onPause(){pausedSession=restoringBackup?null:captureSession();if(desktopMenu!=null)desktopMenu.dismiss();super.onPause();main.removeCallbacks(clockTick);if(sidebar!=null)sidebar.setActive(false);cancelLocation();if(startMenu!=null)startMenu.hide();}
+    @Override protected void onResume(){super.onResume();if(restoringBackup)return;pausedSession=null;if(startMenu!=null)startMenu.refreshHome();main.removeCallbacks(clockTick);main.post(clockTick);if(store!=null)scanApps();if(sidebar!=null)sidebar.setActive(true);if(startup!=null)startup.resume();}
+    @Override protected void onPause(){if(startup!=null)startup.pause();pausedSession=restoringBackup?null:captureSession();if(desktopMenu!=null)desktopMenu.dismiss();super.onPause();main.removeCallbacks(clockTick);if(sidebar!=null)sidebar.setActive(false);cancelLocation();if(startMenu!=null)startMenu.hide();}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putString("folder_window",pendingFolderWindow);if(!restoringBackup)state.putString("desktop_session",(pausedSession==null?captureSession():pausedSession).toString());}
     private JSONObject captureSession(){
         JSONObject session=new JSONObject();JSONArray tools=new JSONArray();
@@ -377,13 +382,13 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             JSONObject session=new JSONObject(saved);JSONArray tools=session.optJSONArray("tools");
             if(tools!=null)for(int i=0;i<tools.length();i++){
                 JSONObject item=tools.optJSONObject(i);if(item==null)continue;String id=item.optString("id");
-                if(!Arrays.asList("@notes","@sticky","@calendar","@gadgets","@clock","@weather","@appearance","@computer","@control","@system","@files","@filemanagers","@organize","@quicklaunch","@backup").contains(id)&&!store.isFolder(id))continue;
+                if(!Arrays.asList("@notes","@sticky","@calendar","@gadgets","@clock","@weather","@appearance","@computer","@control","@system","@files","@filemanagers","@organize","@quicklaunch","@backup","@welcome").contains(id)&&!store.isFolder(id))continue;
                 open(id);DesktopWindow tool=windows.get(id);if(tool==null)continue;tool.readGeometry(item.optJSONObject("geometry"));tool.setVisibility(item.optBoolean("visible",true)?View.VISIBLE:View.GONE);ToolViewState.restore(tool,item.optJSONObject("ui"));
             }
             desktopScroll.post(()->desktopScroll.scrollTo(0,session.optInt("desktopScroll")));startMenu.restore(session.optJSONObject("start"));renderTaskbar();
         }catch(JSONException ignored){}
     }
-    @Override protected void onDestroy(){destroyed=true;main.removeCallbacksAndMessages(null);worker.shutdownNow();for(DesktopWindow tool:windows.values())if(tool.body instanceof VistaShell)((VistaShell)tool.body).close();if(sidebar!=null)sidebar.close();cancelLocation();if(receiverRegistered){unregisterReceiver(packages);unregisterReceiver(timeChanged);}if(Build.VERSION.SDK_INT>=33&&backCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);super.onDestroy();}
+    @Override protected void onDestroy(){destroyed=true;if(startup!=null)startup.close();main.removeCallbacksAndMessages(null);worker.shutdownNow();for(DesktopWindow tool:windows.values())if(tool.body instanceof VistaShell)((VistaShell)tool.body).close();if(sidebar!=null)sidebar.close();cancelLocation();if(receiverRegistered){unregisterReceiver(packages);unregisterReceiver(timeChanged);}if(Build.VERSION.SDK_INT>=33&&backCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);super.onDestroy();}
     private TextView weatherSummary;
     private void applySystemChrome(){
         boolean show=store.prefs.getBoolean("show_status_bar",false);
@@ -399,7 +404,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         switch(id){
             case "clock":clockOptions();break;case "calendar":calendar();break;case "weather":weatherSettings();break;
             case "notes":stickyNote();break;case "photo":choosePhotos();break;
-            case "meters":new AlertDialog.Builder(this).setTitle("System Meter").setMessage("The left dial shows the device's battery level. The right dial shows the percentage of physical memory currently in use. These are live Android readings.").setPositiveButton("OK",null).show();break;
+            case "meters":Aero.dialog(this).setTitle("System Meter").setMessage("The left dial shows the device's battery level. The right dial shows the percentage of physical memory currently in use. These are live Android readings.").setPositiveButton("OK",null).show();break;
         }
     }
     private boolean restoreTool(String id){DesktopWindow current=windows.get(id);if(current!=null&&current.getParent()!=null){current.restore();return true;}return false;}
@@ -456,7 +461,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         if(checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)!=android.content.pm.PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION},42);return;}
         cancelLocation();android.location.LocationManager manager=(android.location.LocationManager)getSystemService(LOCATION_SERVICE);
         try{
-            if(manager==null||!manager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)){new AlertDialog.Builder(this).setTitle("Location is unavailable").setMessage("Enable device location, or search for a city instead.").setPositiveButton("Location settings",(d,w)->launchSystem(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))).setNegativeButton("Cancel",null).show();return;}
+            if(manager==null||!manager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)){Aero.dialog(this).setTitle("Location is unavailable").setMessage("Enable device location, or search for a city instead.").setPositiveButton("Location settings",(d,w)->launchSystem(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))).setNegativeButton("Cancel",null).show();return;}
             toast("Finding your approximate area…");
             if(Build.VERSION.SDK_INT>=30){android.os.CancellationSignal signal=new android.os.CancellationSignal();locationCancellation=signal;manager.getCurrentLocation(android.location.LocationManager.NETWORK_PROVIDER,signal,getMainExecutor(),location->{if(locationCancellation!=signal||destroyed)return;locationCancellation=null;if(location==null){toast("Couldn't get a location. Try city search.");return;}sidebar.weather.location("My area",location.getLatitude(),location.getLongitude());});main.postDelayed(()->{if(locationCancellation==signal){signal.cancel();locationCancellation=null;toast("Location timed out. Try city search.");}},15000);}
             else {locationListener=new android.location.LocationListener(){public void onLocationChanged(android.location.Location location){cancelLocation();sidebar.weather.location("My area",location.getLatitude(),location.getLongitude());}public void onProviderEnabled(String p){}public void onProviderDisabled(String p){}public void onStatusChanged(String p,int s,Bundle b){}};manager.requestSingleUpdate(android.location.LocationManager.NETWORK_PROVIDER,locationListener,Looper.getMainLooper());main.postDelayed(()->{if(locationListener!=null){cancelLocation();toast("Location timed out. Try city search.");}},15000);}

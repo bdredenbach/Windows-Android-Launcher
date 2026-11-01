@@ -1,7 +1,7 @@
 name: Android build
 on:
   push:
-    branches: [main, feature/desktop-organization-backup]
+    branches: [main, feature/aero-startup]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -28,13 +28,14 @@ jobs:
       - name: Check launcher state and layout geometry
         run: |
           mkdir -p build/state-check
-          javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java
+          javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java app/src/main/java/com/nthexperience/desktop/StartupPolicy.java checks/StartupPolicyCheck.java
           java -cp build/state-check LauncherStateCheck
           java -cp build/state-check DesktopGeometryCheck
+          java -cp build/state-check StartupPolicyCheck
       - run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: Nth-Desktop-0.5.0-debug
+          name: Nth-Desktop-0.6.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - name: Keep APK verification tool for the handoff
         run: |

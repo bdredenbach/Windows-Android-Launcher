@@ -12,17 +12,25 @@ final class AeroGlass extends Drawable {
     private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
     private final RectF rect=new RectF();
     private final Path clip=new Path();
-    AeroGlass(AeroWallpaper wallpaper,int style){this.wallpaper=wallpaper;this.style=style;wallpaper.register(this);}
+    private boolean active=true;
+    private final android.content.SharedPreferences prefs;
+    static final String[] COLOR_NAMES={"Frost","Graphite","Seafoam","Sage","Lavender","Gold","Ruby","Clear"};
+    static final int[] TINTS={0xff599cbd,0xff58636e,0xff3e9ca0,0xff6d986c,0xff8b78b0,0xffb69a5c,0xffa56872,0xffb4cad7};
+    AeroGlass(AeroWallpaper wallpaper,int style){this.wallpaper=wallpaper;this.style=style;prefs=wallpaper.getContext().getSharedPreferences("desktop",0);wallpaper.register(this);}
+    void active(boolean value){if(active!=value){active=value;invalidateSelf();}}
     @Override public void draw(Canvas c){
         rect.set(getBounds());float d=getCallback() instanceof View?((View)getCallback()).getResources().getDisplayMetrics().density:1;
         float radius=(style==TASKBAR||style==SIDEBAR)?0:6*d;
         clip.reset();clip.addRoundRect(rect,radius,radius,Path.Direction.CW);int save=c.save();c.clipPath(clip);
-        if(getCallback() instanceof View)wallpaper.drawGlass(c,(View)getCallback());
+        boolean transparent=prefs.getBoolean("aero_transparency",true);
+        if(transparent&&getCallback() instanceof View)wallpaper.drawGlass(c,(View)getCallback());
         int[] colors;
         if(style==WINDOW)colors=new int[]{0xb2bedbe8,0x88b2d3e4,0x9b7f9db1,0xccc0d9e7};
         else if(style==START)colors=new int[]{0xe147555e,0xdc263b49,0xe0162936,0xe82a414e};
         else if(style==TASKBAR)colors=new int[]{0xf343535b,0xe72b3e4a,0xf012222c,0xee0c1922};
         else colors=new int[]{0x33212b33,0x4423313e,0x55202a34,0x55202a34};
+        int tint=TINTS[Math.max(0,Math.min(TINTS.length-1,prefs.getInt("aero_color",0)))];float intensity=Math.max(0,Math.min(100,prefs.getInt("aero_intensity",45)))/100f;
+        for(int i=0;i<colors.length;i++){int alpha=transparent?Color.alpha(colors[i]):255;int target=style==WINDOW?mix(0xffe2edf3,tint,.6f):style==SIDEBAR?mix(0xff0b2435,tint,.35f):mix(0xff0d1e2b,tint,.45f);colors[i]=(mix(colors[i],target,intensity*.82f)&0x00ffffff)|(alpha<<24);if(style==WINDOW&&!active)colors[i]=mix(colors[i],0xffc6d0d5,.38f)|(alpha<<24);}
         p.setShader(new LinearGradient(0,rect.top,0,rect.bottom,colors,null,Shader.TileMode.CLAMP));p.setAlpha(255);c.drawRect(rect,p);p.setShader(null);
         if(style!=SIDEBAR){
             p.setShader(new LinearGradient(0,0,rect.width(),rect.height(),new int[]{0x00ffffff,0x20ffffff,0x00ffffff,0x10ffffff},new float[]{0,.23f,.45f,1},Shader.TileMode.CLAMP));
@@ -31,6 +39,7 @@ final class AeroGlass extends Drawable {
         c.restoreToCount(save);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(d);p.setColor(style==WINDOW?0xc5f3fbff:0x90b8ced9);c.drawRoundRect(rect.left+d*.5f,rect.top+d*.5f,rect.right-d*.5f,rect.bottom-d*.5f,radius,radius,p);
         p.setColor(0x55000000);c.drawLine(rect.left,rect.bottom-d,rect.right,rect.bottom-d,p);p.setStyle(Paint.Style.FILL);
     }
+    private static int mix(int a,int b,float t){return Color.argb(Color.alpha(a),Math.round(Color.red(a)*(1-t)+Color.red(b)*t),Math.round(Color.green(a)*(1-t)+Color.green(b)*t),Math.round(Color.blue(a)*(1-t)+Color.blue(b)*t));}
     @Override public void setAlpha(int alpha){p.setAlpha(alpha);}
     @Override public void setColorFilter(ColorFilter filter){p.setColorFilter(filter);}
     @Override public int getOpacity(){return PixelFormat.TRANSLUCENT;}
