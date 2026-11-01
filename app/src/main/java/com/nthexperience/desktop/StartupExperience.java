@@ -20,7 +20,8 @@ final class StartupExperience {
     private final Runnable welcome;
     private final boolean welcomeAtStart;
     private Intro intro;
-    private boolean resumed,checked,welcomeChecked;
+    private boolean resumed,checked,welcomeChecked,playedHere;
+    private int checkedBoot=Integer.MIN_VALUE;
     private final Runnable reconsider=this::maybeShow;
     StartupExperience(MainActivity a,FrameLayout host,DesktopStore store,boolean restored,Runnable welcome){activity=a;this.host=host;this.store=store;this.welcome=welcome;welcomeAtStart=store.prefs.getBoolean("welcome_on_start",false);session=a.getSharedPreferences(SESSION,0);welcomeChecked=restored&&session.getBoolean("welcome_seen",false);}
     static int boot(Context c){try{return Settings.Global.getInt(c.getContentResolver(),Settings.Global.BOOT_COUNT,-1);}catch(SecurityException ex){return -1;}}
@@ -31,17 +32,23 @@ final class StartupExperience {
     void preview(){if(intro==null&&resumed&&activity.hasWindowFocus())show(true);}
     void maybeShow(){
         host.removeCallbacks(reconsider);
-        if(!resumed||!activity.hasWindowFocus()||intro!=null)return;
+        if(!resumed||!activity.hasWindowFocus())return;
+        int currentBoot=boot(activity);
+        // Some devices publish BOOT_COUNT after the first visible Home activity.
+        // Reconcile that late identity while this early-boot session stays visible.
+        if(playedHere&&currentBoot>=0&&currentBoot!=checkedBoot){checkedBoot=currentBoot;session.edit().putInt("boot",currentBoot).apply();}
+        if(intro!=null){watchEarlyBoot();return;}
         if(host.getWidth()==0){host.postDelayed(reconsider,100);return;}
         // Unlock can finish after the focused Home activity resumes. Wait only while visible;
         // pause/close cancel this single pending check, and playback still requires an unlocked phone.
         KeyguardManager keyguard=activity.getSystemService(KeyguardManager.class);if(keyguard!=null&&keyguard.isKeyguardLocked()){host.postDelayed(reconsider,250);return;}
-        if(!checked){checked=true;int boot=boot(activity);if(StartupPolicy.shouldPlay(store.prefs.getInt("startup_mode",0),session.getBoolean("seen",false),session.getInt("boot",-1),boot)){
+        if(!checked||currentBoot!=checkedBoot){checked=true;checkedBoot=currentBoot;int boot=currentBoot;if(!playedHere&&StartupPolicy.shouldPlay(store.prefs.getInt("startup_mode",0),session.getBoolean("seen",false),session.getInt("boot",-1),boot)){
             // Claim playback before showing it, so rotation, Home and process recreation cannot replay it.
-            welcomeChecked=false;session.edit().putBoolean("seen",true).putInt("boot",boot).putInt("runs",session.getInt("runs",0)+1).commit();show(false);return;
+            playedHere=true;welcomeChecked=false;session.edit().putBoolean("seen",true).putInt("boot",boot).putInt("runs",session.getInt("runs",0)+1).commit();show(false);watchEarlyBoot();return;
         }}
-        welcome(false);
+        watchEarlyBoot();welcome(false);
     }
+    private void watchEarlyBoot(){if(resumed&&store.prefs.getInt("startup_mode",0)==1&&SystemClock.elapsedRealtime()<90000)host.postDelayed(reconsider,1000);}
     private void welcome(boolean afterIntro){if(!resumed||welcomeChecked)return;welcomeChecked=true;if(!session.getBoolean("welcome_seen",false)||welcomeAtStart){
         session.edit().putBoolean("welcome_seen",true).apply();welcome.run();
     }}
