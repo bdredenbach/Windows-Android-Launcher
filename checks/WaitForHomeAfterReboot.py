@@ -29,7 +29,13 @@ for attempt in range(45):
         wait = next((n for n in ET.fromstring(xml).iter("node")
                      if n.get("package") == "android" and
                      (n.get("resource-id") == "android:id/aerr_wait" or n.get("text", "").lower() == "wait")), None)
-        assert wait is not None, "Android's system ANR must offer Wait"
+        if wait is None:
+            # The system modal can disappear while uiautomator waits for idle.
+            current = adb("shell", "dumpsys", "window")
+            current_focus = next((line for line in current.splitlines() if "mCurrentFocus=" in line), "")
+            assert "Application Not Responding: system}" not in current_focus, "Android's system ANR must offer Wait"
+            print("CHECK: Android's system modal cleared while collecting its evidence", flush=True)
+            continue
         bounds = list(map(int, re.findall(r"\d+", wait.get("bounds", ""))))
         assert len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
         adb("shell", "input", "tap", str((bounds[0]+bounds[2])//2), str((bounds[1]+bounds[3])//2))
