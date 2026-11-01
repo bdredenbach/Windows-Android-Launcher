@@ -8,7 +8,7 @@ import java.util.*;
 
 /** Live, resolution-independent gadget faces; none of the displayed readings are decorative. */
 final class GadgetView extends View {
-    static final String[] IDS={"clock","calendar","weather","notes","photo","meters"};
+    static final String[] IDS=GadgetCatalog.IDS;
     final String kind;
     final DesktopStore store;
     final WeatherClient weather;
@@ -18,12 +18,24 @@ final class GadgetView extends View {
     Bitmap photo;
     int battery=-1,memory=-1;
     GadgetView(Context c,String kind,DesktopStore store,WeatherClient weather){super(c);this.kind=kind;this.store=store;this.weather=weather;setLayerType(View.LAYER_TYPE_SOFTWARE,null);setContentDescription(title(kind)+" gadget");setFocusable(true);}
-    static String title(String id){switch(id){case "clock":return "Clock";case "calendar":return "Calendar";case "weather":return "Weather";case "notes":return "Notes";case "photo":return "Photo Frame";default:return "System Meter";}}
-    static int height(String id){switch(id){case "clock":return 128;case "calendar":return 142;case "weather":return 116;case "notes":return 138;case "photo":return 112;default:return 100;}}
+    static String title(String id){return GadgetCatalog.title(id);}
+    static int height(String id){switch(id){case "clock":return 128;case "calendar":return 142;case "weather":return 116;case "notes":return 138;case "photo":return 112;case "worldclock":return 132;case "feeds":return 150;case "checklist":return 144;default:return 112;}}
     @Override protected void onDraw(Canvas c){
         float scale=Math.min(getWidth()/132f,getHeight()/(float)height(kind));c.save();c.translate((getWidth()-132*scale)/2,0);c.scale(scale,scale);p.setTypeface(Aero.face(getContext()));p.setStyle(Paint.Style.FILL);p.setShader(null);p.clearShadowLayer();p.setAlpha(255);
-        switch(kind){case "clock":clock(c);break;case "calendar":calendar(c);break;case "weather":weather(c);break;case "notes":notes(c);break;case "photo":photo(c);break;default:meters(c);}
+        switch(kind){case "clock":clock(c);break;case "calendar":calendar(c);break;case "weather":weather(c);break;case "notes":notes(c);break;case "photo":photo(c);break;case "meters":meters(c);break;default:extra(c);}
         c.restore();
+    }
+    private void extra(Canvas c){
+        String id=kind;int top=id.equals("feeds")?0xffe9b779:id.equals("checklist")?0xffc6d993:id.equals("timer")?0xffa9c9d8:id.equals("stopwatch")?0xffb6c0dc:0xffaacbdc;int bottom=id.equals("feeds")?0xff8e542d:id.equals("checklist")?0xff526e35:id.equals("timer")?0xff315a74:id.equals("stopwatch")?0xff3f4c74:0xff294962;
+        round(c,4,4,128,height(id)-4,6,new int[]{top,bottom},0x99000000);text(c,title(id),66,24,13,Color.WHITE,true);p.setColor(0x55ffffff);p.setStrokeWidth(1);c.drawLine(13,32,119,32,p);
+        org.json.JSONObject data=GadgetData.get(store,id);
+        if(id.equals("worldclock")){for(int i=0;i<2;i++){String zone=data.optString("zone"+(i+1),i==0?"Europe/London":"Asia/Tokyo");java.text.SimpleDateFormat format=new java.text.SimpleDateFormat(android.text.format.DateFormat.is24HourFormat(getContext())?"HH:mm":"h:mm a",Locale.getDefault());format.setTimeZone(TimeZone.getTimeZone(zone));String name=zone.substring(zone.lastIndexOf('/')+1).replace('_',' ');text(c,shorten(name,17),66,47+i*42,10,0xffd8e8f2,false);text(c,format.format(new Date()),66,66+i*42,19,Color.WHITE,true);}}
+        else if(id.equals("timer")||id.equals("stopwatch")){long value=GadgetData.value(store,id);text(c,GadgetData.duration(value,false),66,66,25,Color.WHITE,true);text(c,id.equals("timer")&&data.optBoolean("started")&&value==0?"Time’s up":data.optBoolean("running")?"Running":"Tap to open",66,91,10,0xffe2edf4,false);}
+        else if(id.equals("checklist")){org.json.JSONArray tasks=data.optJSONArray("tasks");int count=tasks==null?0:tasks.length(),done=0;for(int i=0;i<count;i++)if(tasks.optJSONObject(i)!=null&&tasks.optJSONObject(i).optBoolean("done"))done++;for(int i=0;i<Math.min(3,count);i++){org.json.JSONObject task=tasks.optJSONObject(i);if(task!=null)text(c,(task.optBoolean("done")?"✓ ":"□ ")+shorten(task.optString("text"),16),66,51+i*23,11,Color.WHITE,false);}text(c,count==0?"Tap to add tasks":done+" / "+count+" completed",66,count==0?70:128,10,0xffeef6dd,false);}
+        else if(id.equals("feeds")){org.json.JSONArray headlines=FeedClient.items(store);for(int i=0;i<Math.min(3,headlines.length());i++){org.json.JSONObject item=headlines.optJSONObject(i);if(item!=null)text(c,shorten(item.optString("title"),19),66,51+i*29,10,Color.WHITE,false);}if(headlines.length()==0){text(c,"Choose a feed",66,70,13,Color.WHITE,true);text(c,"RSS / Atom headlines",66,92,10,0xffffe6d1,false);}}
+        else if(id.equals("calculator")){text(c,shorten(data.optString("result","0"),13),66,68,23,Color.WHITE,true);text(c,"Tap to calculate",66,92,10,0xffe2edf4,false);}
+        else if(id.equals("converter")){String result="Choose units";try{int category=data.optInt("category",0),from=data.optInt("from",0),to=data.optInt("to",1);result=GadgetMath.number(GadgetMath.convert(Double.parseDouble(data.optString("input","1")),category,from,to))+" "+GadgetMath.UNITS[category][to];}catch(RuntimeException ignored){}text(c,shorten(result,15),66,66,18,Color.WHITE,true);text(c,"Tap to convert",66,91,10,0xffe2edf4,false);}
+        else if(id.equals("storage")){try{android.os.StatFs disk=new android.os.StatFs(android.os.Environment.getDataDirectory().getPath());long total=disk.getTotalBytes(),free=disk.getAvailableBytes();text(c,Math.round((total-free)*100f/Math.max(1,total))+"% used",66,61,21,Color.WHITE,true);text(c,android.text.format.Formatter.formatFileSize(getContext(),free)+" free",66,89,11,0xffe2edf4,false);}catch(RuntimeException ex){text(c,"Unavailable",66,68,13,Color.WHITE,false);}}
     }
     private void clock(Canvas c){
         int style=store.prefs.getInt("clock_style",0);boolean dark=style==1;

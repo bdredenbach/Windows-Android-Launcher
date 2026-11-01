@@ -44,8 +44,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private GadgetSidebar sidebar;
     private DesktopContextMenu desktopMenu;
     private int desktopRows,desktopCutoutLeft,desktopCutoutRight;
-    private android.location.LocationListener locationListener;
-    private android.os.CancellationSignal locationCancellation;
+    private WeatherLocation weatherLocation;
     private LinearLayout shell,taskItems;
     private StartMenu startMenu;
     private SystemTray tray;
@@ -67,7 +66,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         if(Build.VERSION.SDK_INT>=28){WindowManager.LayoutParams attributes=getWindow().getAttributes();attributes.layoutInDisplayCutoutMode=Build.VERSION.SDK_INT>=30?WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS:WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;getWindow().setAttributes(attributes);}
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         else getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-        buildDesktop();applySystemChrome();String backupStatus=getIntent().getStringExtra("backup_status");if(backupStatus!=null){getIntent().removeExtra("backup_status");main.post(()->toast(backupStatus));}
+        buildDesktop();weatherLocation=new WeatherLocation(this,store,sidebar.weather,()->store.gadgets().contains("weather"),this::updateWeatherSummary);applySystemChrome();String backupStatus=getIntent().getStringExtra("backup_status");if(backupStatus!=null){getIntent().removeExtra("backup_status");main.post(()->toast(backupStatus));}
         if(saved!=null&&saved.containsKey("desktop_session")){
             String session=saved.getString("desktop_session");
             workspace.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener(){public void onGlobalLayout(){if(workspace.getWidth()<1||workspace.getHeight()<1)return;workspace.getViewTreeObserver().removeOnGlobalLayoutListener(this);restoreSession(session);}});
@@ -169,6 +168,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     }
     private String label(String id){return store.name(id,defaultLabel(id));}
     private String defaultLabel(String id){
+        if(id.startsWith("@gadget:")&&GadgetCatalog.extra(id.substring(8)))return GadgetCatalog.title(id.substring(8));
         switch(id){case "@welcome":return "Welcome Center";case "@organize":return "Desktop Organization";case "@quicklaunch":return "Quick Launch";case "@backup":return "Backup and Restore";case "@control":return "Control Panel";case "@system":return "System";case "@filemanagers":return "File Managers";case "@weather":return "Weather";case "@clock":return "Clock";case "@gadgets":return "Gadget Gallery";case "@sticky":return "Notes";case "@calendar":return "Calendar";case "@computer":return "Computer";case "@browser":return "Internet";case "@files":return "Files";case "@notes":return "Notepad";case "@appearance":return "Personalize";default:AppCatalog.Entry app=entries.get(id);return app==null?"Unavailable app":app.label;}
     }
     @Override public void open(String id){
@@ -197,6 +197,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             case "@browser":launchSystem(new Intent(Intent.ACTION_VIEW,Uri.parse("https://www.google.com")));return;
             case "@files":explorer("@files","home");return;
         }
+        if(id.startsWith("@gadget:")&&GadgetCatalog.extra(id.substring(8))){gadgetPanel(id.substring(8));return;}
         ComponentName component=ComponentName.unflattenFromString(id);
         if(component==null){toast("This shortcut is unavailable. Hold its Start menu entry to remove it.");return;}
         try{
@@ -281,7 +282,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         }catch(Exception error){if(request==20)DesktopBackup.discard(this,DesktopBackup.EXPORT);main.post(()->{if(destroyed)return;backupBusy=false;backupStatus((request==20?"Backup could not be saved: ":"Backup was not opened: ")+error.getMessage());backupPanel(false);});}});
     }
     private void restoreBackup(boolean undo){
-        if(backupBusy||(!undo&&restorePlan==null))return;backupBusy=true;restoringBackup=true;scanGeneration++;cancelLocation();if(sidebar!=null)sidebar.close();
+        if(backupBusy||(!undo&&restorePlan==null))return;backupBusy=true;restoringBackup=true;scanGeneration++;if(weatherLocation!=null)weatherLocation.pause();if(sidebar!=null)sidebar.close();
         restoreCover=new FrameLayout(this);restoreCover.setBackgroundColor(0xee0a263b);restoreCover.setClickable(true);restoreCover.setElevation(dp(100));TextView waiting=Aero.text(this,"Restoring your desktop…",18,Color.WHITE);waiting.setGravity(Gravity.CENTER);restoreCover.addView(waiting,new FrameLayout.LayoutParams(-1,-1));root.addView(restoreCover,new FrameLayout.LayoutParams(-1,-1));DesktopBackup.Plan selected=restorePlan;
         worker.execute(()->{String result;try{DesktopBackup.Plan plan=undo?DesktopBackup.staged(this,DesktopBackup.UNDO):selected;DesktopBackup.apply(this,store,plan,undo);result=undo?"Your previous desktop was recovered.":"Desktop restored. Undo last restore is available in Backup and Restore.";}catch(Exception error){result="Restore did not finish: "+error.getMessage();}String message=result;main.post(()->{if(destroyed)return;getIntent().putExtra("backup_status",message);recreate();});});
     }
@@ -296,6 +297,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         window(id,id.equals("@computer")?"Computer":id.equals("@filemanagers")?"File Managers":"Files",new VistaExplorer(this,store,vistaActions,files,()->new ArrayList<>(entries.values()),page));
     }
     private void vistaAction(String id){
+        if(id.startsWith("gadget:")&&GadgetCatalog.valid(id.substring(7))){gadgetAction(id.substring(7));return;}
         switch(id){
             case "glass":wallpaper.appearanceChanged();return;case "startup-preview":if(startup!=null)startup.preview();return;
             case "chrome":applySystemChrome();return;case "desktop":renderDesktop();return;case "gadgets":sidebar.setActive(true);sidebar.refresh();return;case "wallpaper":wallpaper.theme(store.prefs.getInt("wallpaper",0));return;
@@ -378,8 +380,8 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     @Override public void onBackPressed(){handleBack();}
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused&&startup!=null)root.post(startup::maybeShow);}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);if(desktopMenu!=null)desktopMenu.dismiss();if(tray!=null)tray.dismiss();if(startMenu!=null){startMenu.hide();startMenu.refreshHome();}}
-    @Override protected void onResume(){super.onResume();if(restoringBackup)return;pausedSession=null;if(startMenu!=null)startMenu.refreshHome();main.removeCallbacks(clockTick);main.post(clockTick);if(store!=null)scanApps();if(sidebar!=null)sidebar.setActive(true);if(startup!=null)startup.resume();if(tray!=null)tray.start();}
-    @Override protected void onPause(){if(tray!=null)tray.stop();if(startup!=null)startup.pause();pausedSession=restoringBackup?null:captureSession();if(desktopMenu!=null)desktopMenu.dismiss();super.onPause();main.removeCallbacks(clockTick);if(sidebar!=null)sidebar.setActive(false);cancelLocation();if(startMenu!=null)startMenu.hide();}
+    @Override protected void onResume(){super.onResume();if(restoringBackup)return;pausedSession=null;if(startMenu!=null)startMenu.refreshHome();main.removeCallbacks(clockTick);main.post(clockTick);if(store!=null)scanApps();if(sidebar!=null)sidebar.setActive(true);if(startup!=null)startup.resume();if(tray!=null)tray.start();if(weatherLocation!=null)weatherLocation.resume();for(DesktopWindow tool:windows.values())if(tool.body instanceof GadgetPanel)((GadgetPanel)tool.body).active(true);}
+    @Override protected void onPause(){for(DesktopWindow tool:windows.values())if(tool.body instanceof GadgetPanel)((GadgetPanel)tool.body).active(false);if(tray!=null)tray.stop();if(startup!=null)startup.pause();pausedSession=restoringBackup?null:captureSession();if(desktopMenu!=null)desktopMenu.dismiss();super.onPause();main.removeCallbacks(clockTick);if(sidebar!=null)sidebar.setActive(false);if(weatherLocation!=null)weatherLocation.pause();if(startMenu!=null)startMenu.hide();}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putString("folder_window",pendingFolderWindow);if(!restoringBackup)state.putString("desktop_session",(pausedSession==null?captureSession():pausedSession).toString());}
     private JSONObject captureSession(){
         JSONObject session=new JSONObject();JSONArray tools=new JSONArray();
@@ -395,14 +397,14 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             JSONObject session=new JSONObject(saved);JSONArray tools=session.optJSONArray("tools");
             if(tools!=null)for(int i=0;i<tools.length();i++){
                 JSONObject item=tools.optJSONObject(i);if(item==null)continue;String id=item.optString("id");
-                if(!Arrays.asList("@notes","@sticky","@calendar","@gadgets","@clock","@weather","@appearance","@computer","@control","@system","@files","@filemanagers","@organize","@quicklaunch","@backup","@welcome").contains(id)&&!store.isFolder(id))continue;
+                if(!(id.startsWith("@gadget:")&&GadgetCatalog.extra(id.substring(8)))&&!Arrays.asList("@notes","@sticky","@calendar","@gadgets","@clock","@weather","@appearance","@computer","@control","@system","@files","@filemanagers","@organize","@quicklaunch","@backup","@welcome").contains(id)&&!store.isFolder(id))continue;
                 open(id);DesktopWindow tool=windows.get(id);if(tool==null)continue;tool.readGeometry(item.optJSONObject("geometry"));tool.setVisibility(item.optBoolean("visible",true)?View.VISIBLE:View.GONE);ToolViewState.restore(tool,item.optJSONObject("ui"));
             }
             desktopScroll.post(()->desktopScroll.scrollTo(0,session.optInt("desktopScroll")));startMenu.restore(session.optJSONObject("start"));renderTaskbar();
         }catch(JSONException ignored){}
     }
-    @Override protected void onDestroy(){destroyed=true;if(tray!=null)tray.stop();if(startup!=null)startup.close();main.removeCallbacksAndMessages(null);worker.shutdownNow();for(DesktopWindow tool:windows.values())if(tool.body instanceof VistaShell)((VistaShell)tool.body).close();if(sidebar!=null)sidebar.close();cancelLocation();if(receiverRegistered){unregisterReceiver(packages);unregisterReceiver(timeChanged);}if(Build.VERSION.SDK_INT>=33&&backCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);super.onDestroy();}
-    private TextView weatherSummary;
+    @Override protected void onDestroy(){destroyed=true;if(weatherLocation!=null)weatherLocation.close();if(tray!=null)tray.stop();if(startup!=null)startup.close();main.removeCallbacksAndMessages(null);worker.shutdownNow();for(DesktopWindow tool:windows.values()){if(tool.body instanceof VistaShell)((VistaShell)tool.body).close();if(tool.body instanceof WeatherPanel)((WeatherPanel)tool.body).close();}if(sidebar!=null)sidebar.close();if(weatherLocation!=null)weatherLocation.pause();if(receiverRegistered){unregisterReceiver(packages);unregisterReceiver(timeChanged);}if(Build.VERSION.SDK_INT>=33&&backCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);super.onDestroy();}
+
     private void applySystemChrome(){
         boolean show=store.prefs.getBoolean("show_status_bar",false);
         if(Build.VERSION.SDK_INT>=30){WindowInsetsController controller=getWindow().getInsetsController();if(controller!=null){controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);if(show)controller.show(WindowInsets.Type.statusBars());else controller.hide(WindowInsets.Type.statusBars());}}
@@ -411,34 +413,19 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     }
     @Override public void sidebarChanged(){workspace.requestLayout();}
     @Override public void gallery(){gadgetGallery();}
-    @Override public void readingsChanged(){updateWeatherSummary();}
+    @Override public void readingsChanged(){updateWeatherSummary();for(DesktopWindow tool:windows.values())if(tool.body instanceof GadgetPanel&&tool.getParent()!=null)((GadgetPanel)tool.body).readings();}
     @Override public void gadgetAction(String id){
         startMenu.hide();
         switch(id){
             case "clock":clockOptions();break;case "calendar":calendar();break;case "weather":weatherSettings();break;
+            default:if(GadgetCatalog.extra(id))gadgetPanel(id);break;
             case "notes":stickyNote();break;case "photo":choosePhotos();break;
             case "meters":Aero.dialog(this).setTitle("System Meter").setMessage("The left dial shows the device's battery level. The right dial shows the percentage of physical memory currently in use. These are live Android readings.").setPositiveButton("OK",null).show();break;
         }
     }
     private boolean restoreTool(String id){DesktopWindow current=windows.get(id);if(current!=null&&current.getParent()!=null){current.restore();return true;}return false;}
-    private void gadgetGallery(){
-        startMenu.hide();if(restoreTool("@gadgets"))return;
-        LinearLayout content=Aero.column(this);Aero.pad(content,14);TextView heading=Aero.text(this,"Add gadgets to your desktop",18,0xff173a65);content.addView(heading);
-        TextView hint=Aero.text(this,"Hold a gadget and drag it onto the desktop or Sidebar. Use ⋮ for sizes and docking; drag ◢ to resize.",12,0xff5c6c77);hint.setTypeface(android.graphics.Typeface.create(Aero.face(this),android.graphics.Typeface.ITALIC));hint.setPadding(0,dp(8),0,dp(10));content.addView(hint);
-        GridLayout grid=new GridLayout(this);grid.setColumnCount(2);content.addView(grid);
-        for(String id:GadgetView.IDS){
-            LinearLayout cell=Aero.column(this);cell.setGravity(Gravity.CENTER);Aero.pad(cell,5);
-            FrameLayout preview=new FrameLayout(this);preview.setBackground(Aero.panel(this,0xffd9e6ed,0xffb9cdd8,4,0xffa4b5c0));GadgetView face=new GadgetView(this,id,store,sidebar.weather);preview.addView(face,new FrameLayout.LayoutParams(dp(108),dp(108),Gravity.CENTER));preview.setOnClickListener(v->gadgetAction(id));cell.addView(preview,new LinearLayout.LayoutParams(-1,dp(118)));
-            TextView title=Aero.text(this,GadgetView.title(id),13,Aero.INK);title.setGravity(Gravity.CENTER);cell.addView(title,new LinearLayout.LayoutParams(-1,dp(28)));
-            TextView toggle=Aero.button(this,store.gadgets().contains(id)?"Remove":"Add",()->{});toggle.setContentDescription((store.gadgets().contains(id)?"Remove ":"Add ")+GadgetView.title(id)+" gadget");toggle.setOnClickListener(v->{List<String> ids=store.gadgets();if(ids.contains(id))ids.remove(id);else ids.add(id);store.gadgets(ids);sidebar.rebuild();sidebar.reveal();boolean added=ids.contains(id);toggle.setText(added?"Remove":"Add");toggle.setContentDescription((added?"Remove ":"Add ")+GadgetView.title(id)+" gadget");});cell.addView(toggle,new LinearLayout.LayoutParams(-1,dp(40)));
-            GridLayout.LayoutParams lp=new GridLayout.LayoutParams();lp.columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f);lp.width=0;lp.bottomMargin=dp(10);grid.addView(cell,lp);
-        }
-        addAction(content,"Show Sidebar",()->{sidebar.reveal();toast("Sidebar shown");});
-        Switch lock=new Switch(this);lock.setTypeface(Aero.face(this));lock.setText("Lock desktop layout");lock.setContentDescription("Lock desktop layout");lock.setChecked(store.prefs.getBoolean("layout_locked",false));Aero.pad(lock,10);lock.setOnCheckedChangeListener((v,checked)->store.prefs.edit().putBoolean("layout_locked",checked).apply());content.addView(lock);
-        Switch snap=new Switch(this);snap.setTypeface(Aero.face(this));snap.setText("Snap gadgets to grid");snap.setChecked(store.prefs.getBoolean("snap_gadgets",true));Aero.pad(snap,10);snap.setOnCheckedChangeListener((v,checked)->store.prefs.edit().putBoolean("snap_gadgets",checked).apply());content.addView(snap);
-        paragraph(content,"Portrait and landscape save separate positions and sizes. Gadget content is shared between them.");
-        ScrollView scroll=new ScrollView(this);scroll.addView(content);window("@gadgets","Desktop Gadget Gallery",scroll);
-    }
+    private void gadgetGallery(){startMenu.hide();if(restoreTool("@gadgets"))return;window("@gadgets","Desktop Gadget Gallery",new GadgetGallery(this,store,sidebar.weather,new GadgetGallery.Host(){public void open(String id){MainActivity.this.open(id);}public void action(String id){vistaAction(id);}public void changed(){sidebar.rebuild();}public void reveal(){sidebar.reveal();}}));}
+    private void gadgetPanel(String kind){if(!GadgetCatalog.extra(kind))return;String id="@gadget:"+kind;if(restoreTool(id))return;window(id,GadgetCatalog.title(kind),new GadgetPanel(this,store,kind,sidebar.feeds,new GadgetPanel.Host(){public void open(String id){MainActivity.this.open(id);}public void action(String id){vistaAction(id);}public void changed(){sidebar.refresh();}public void feed(String url){List<String> enabled=store.gadgets();if(!enabled.contains("feeds")){enabled.add("feeds");store.gadgets(enabled);sidebar.rebuild();sidebar.reveal();}sidebar.feeds.configure(url);}public void refreshFeed(){sidebar.feeds.refresh(true);}public void article(String url){Uri uri=Uri.parse(url);if(Arrays.asList("http","https").contains(uri.getScheme()))launchSystem(new Intent(Intent.ACTION_VIEW,uri));}}));}
     private void clockOptions(){controlPanel("@clock","Clock settings","clock");}
     private void stickyNote(){
         if(restoreTool("@sticky"))return;LinearLayout body=Aero.column(this);EditText editor=new EditText(this);editor.setTypeface(Aero.face(this));editor.setTextSize(16);editor.setTextColor(0xff5c4a1f);editor.setGravity(Gravity.TOP|Gravity.START);editor.setBackgroundColor(0xffffe889);Aero.pad(editor,14);editor.setHint("A little note…");editor.setContentDescription("Sticky note text");editor.setText(store.prefs.getString("gadget_note",""));editor.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int b,int c){}public void onTextChanged(CharSequence s,int a,int b,int c){store.prefs.edit().putString("gadget_note",s.toString()).apply();sidebar.refresh();}public void afterTextChanged(Editable e){}});body.addView(editor,new LinearLayout.LayoutParams(-1,-1));window("@sticky","Notes",body);
@@ -449,39 +436,10 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private void rememberPhoto(Uri uri,List<String> selected){try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);if(!selected.contains(uri.toString()))selected.add(uri.toString());}catch(SecurityException ignored){}}
     private void weatherSettings(){
         List<String> widgets=store.gadgets();if(!widgets.contains("weather")){widgets.add("weather");store.gadgets(widgets);sidebar.rebuild();sidebar.reveal();}
-        if(restoreTool("@weather"))return;LinearLayout content=Aero.column(this);Aero.pad(content,16);TextView heading=Aero.text(this,"Weather",22,0xff173a65);content.addView(heading);
-        weatherSummary=Aero.text(this,"",14,Aero.INK);weatherSummary.setPadding(0,dp(10),0,dp(10));content.addView(weatherSummary);updateWeatherSummary();
-        EditText city=new EditText(this);city.setSingleLine(true);city.setTypeface(Aero.face(this));city.setTextSize(14);city.setHint("City and state, or city and country");city.setContentDescription("Weather city search");content.addView(city,new LinearLayout.LayoutParams(-1,dp(48)));
-        TextView status=Aero.text(this,"",12,0xff596e7a);content.addView(status);LinearLayout results=Aero.column(this);
-        TextView search=Aero.button(this,"Search for a city",()->{});search.setOnClickListener(v->{String query=city.getText().toString().trim();if(query.isEmpty()){city.setError("Enter a city");return;}search.setEnabled(false);status.setText("Searching…");results.removeAllViews();worker.execute(()->{
-            List<android.location.Address> addresses=null;try{if(android.location.Geocoder.isPresent())addresses=new android.location.Geocoder(this,Locale.getDefault()).getFromLocationName(query,5);}catch(java.io.IOException|RuntimeException ignored){}List<android.location.Address> found=addresses;
-            main.post(()->{if(destroyed||restoringBackup)return;search.setEnabled(true);if(found==null||found.isEmpty()){status.setText("City search is unavailable or found no match. Try a nearby town, or use your approximate location.");return;}status.setText("Choose your location:");for(android.location.Address address:found){String label=addressLabel(address,query);TextView result=Aero.button(this,label,()->{sidebar.weather.location(label,address.getLatitude(),address.getLongitude());results.removeAllViews();status.setText("Location saved.");});results.addView(result,new LinearLayout.LayoutParams(-1,-2));}});
-        });});content.addView(search);content.addView(results);
-        addAction(content,"Use my approximate location",this::locateWeather);
-        Switch fahrenheit=new Switch(this);fahrenheit.setTypeface(Aero.face(this));fahrenheit.setText("Fahrenheit (°F)");fahrenheit.setChecked(store.prefs.getBoolean("weather_f",Locale.getDefault().getCountry().equals("US")));Aero.pad(fahrenheit,10);fahrenheit.setOnCheckedChangeListener((v,checked)->{store.prefs.edit().putBoolean("weather_f",checked).apply();sidebar.refresh();});content.addView(fahrenheit);
-        addAction(content,"Refresh forecast",()->{sidebar.weather.refresh(true);updateWeatherSummary();});
-        paragraph(content,"Forecasts are cached for offline viewing. Refresh follows the provider's update schedule.");
-        TextView credit=Aero.text(this,"Weather: MET Norway · CC BY 4.0",12,0xff235e92);credit.setPadding(0,dp(8),0,dp(12));credit.setOnClickListener(v->launchSystem(new Intent(Intent.ACTION_VIEW,Uri.parse("https://www.met.no/en/free-meteorological-data/Licensing-and-crediting"))));content.addView(credit);
-        ScrollView scroll=new ScrollView(this);scroll.addView(content);window("@weather","Weather settings",scroll);
+        if(restoreTool("@weather"))return;
+        WeatherPanel panel=new WeatherPanel(this,store,sidebar.weather,weatherLocation,new WeatherPanel.Host(){public void locate(){locateWeather();}public void follow(boolean enabled){store.prefs.edit().putBoolean("weather_follow",enabled).apply();if(enabled)locateWeather();else weatherLocation.stopFollowing();updateWeatherSummary();}public void refresh(){sidebar.weather.refresh(true);sidebar.refresh();updateWeatherSummary();}});window("@weather","Weather settings",panel);
     }
-    private void updateWeatherSummary(){
-        if(weatherSummary==null||sidebar==null)return;WeatherClient client=sidebar.weather;WeatherClient.Snapshot forecast=client.snapshot();String text=client.city();
-        if(forecast!=null){boolean f=store.prefs.getBoolean("weather_f",Locale.getDefault().getCountry().equals("US"));text+="\n"+forecast.temperature(f)+(f?"°F":"°C")+" · "+forecast.condition()+"\n"+(client.stale()?"Cached forecast · ":"Updated · ")+DateFormat.getTimeFormat(this).format(new Date(client.updated()));}
-        else text+=client.loading()?"\nLoading forecast…":client.configured()?"\nForecast unavailable. Try again when online.":"\nChoose a location to show your forecast.";weatherSummary.setText(text);
-    }
-    private String addressLabel(android.location.Address address,String fallback){String place=address.getLocality();if(place==null)place=address.getFeatureName();if(place==null)place=fallback;String region=address.getAdminArea(),country=address.getCountryName();if(region!=null&&!place.contains(region))place+=", "+region;if(country!=null&&!place.contains(country))place+=", "+country;return place;}
-    private void locateWeather(){
-        if(checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)!=android.content.pm.PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION},42);return;}
-        cancelLocation();android.location.LocationManager manager=(android.location.LocationManager)getSystemService(LOCATION_SERVICE);
-        try{
-            if(manager==null||!manager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)){Aero.dialog(this).setTitle("Location is unavailable").setMessage("Enable device location, or search for a city instead.").setPositiveButton("Location settings",(d,w)->launchSystem(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))).setNegativeButton("Cancel",null).show();return;}
-            toast("Finding your approximate area…");
-            if(Build.VERSION.SDK_INT>=30){android.os.CancellationSignal signal=new android.os.CancellationSignal();locationCancellation=signal;manager.getCurrentLocation(android.location.LocationManager.NETWORK_PROVIDER,signal,getMainExecutor(),location->{if(locationCancellation!=signal||destroyed)return;locationCancellation=null;if(location==null){toast("Couldn't get a location. Try city search.");return;}sidebar.weather.location("My area",location.getLatitude(),location.getLongitude());});main.postDelayed(()->{if(locationCancellation==signal){signal.cancel();locationCancellation=null;toast("Location timed out. Try city search.");}},15000);}
-            else {locationListener=new android.location.LocationListener(){public void onLocationChanged(android.location.Location location){cancelLocation();sidebar.weather.location("My area",location.getLatitude(),location.getLongitude());}public void onProviderEnabled(String p){}public void onProviderDisabled(String p){}public void onStatusChanged(String p,int s,Bundle b){}};manager.requestSingleUpdate(android.location.LocationManager.NETWORK_PROVIDER,locationListener,Looper.getMainLooper());main.postDelayed(()->{if(locationListener!=null){cancelLocation();toast("Location timed out. Try city search.");}},15000);}
-        }catch(SecurityException|IllegalArgumentException e){toast("Location is unavailable. Try city search.");}
-    }
-    private void cancelLocation(){if(locationCancellation!=null){locationCancellation.cancel();locationCancellation=null;}if(locationListener!=null){android.location.LocationManager manager=(android.location.LocationManager)getSystemService(LOCATION_SERVICE);try{if(manager!=null)manager.removeUpdates(locationListener);}catch(SecurityException ignored){}locationListener=null;}}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==42){if(grants.length>0&&grants[0]==android.content.pm.PackageManager.PERMISSION_GRANTED)locateWeather();else toast("You can choose a city without granting location access.");}}
-
-
+    private void updateWeatherSummary(){DesktopWindow current=windows.get("@weather");if(current!=null&&current.body instanceof WeatherPanel)((WeatherPanel)current.body).refresh();}
+    private void locateWeather(){if(weatherLocation==null)return;if(!weatherLocation.permitted()){requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION},42);return;}weatherLocation.locate();}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==42){if(grants.length>0&&grants[0]==android.content.pm.PackageManager.PERMISSION_GRANTED)weatherLocation.locate();else weatherLocation.denied();}}
 }

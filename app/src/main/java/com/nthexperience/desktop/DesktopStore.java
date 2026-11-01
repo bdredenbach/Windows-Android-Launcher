@@ -14,7 +14,8 @@ import org.json.JSONObject;
 final class DesktopStore {
     static final int MAX_FOLDERS=64, MAX_ITEMS=256, MAX_QUICK=12;
     final SharedPreferences prefs;
-    DesktopStore(Context context) { prefs = context.getSharedPreferences("desktop", Context.MODE_PRIVATE); }
+    final Context context;
+    DesktopStore(Context context) { this.context=context.getApplicationContext();prefs = context.getSharedPreferences("desktop", Context.MODE_PRIVATE); }
     List<String> desktop() {
         return list("shortcuts", Arrays.asList("@computer", "@browser", "@notes", "@appearance"));
     }

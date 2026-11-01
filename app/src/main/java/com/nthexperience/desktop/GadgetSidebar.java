@@ -18,6 +18,7 @@ final class GadgetSidebar extends LinearLayout {
     private final DesktopStore store;
     private final Actions actions;
     final WeatherClient weather;
+    final FeedClient feeds;
     private final LinearLayout gadgets;
     final FrameLayout floatingHost;
     private final FrameLayout workspace;
@@ -36,13 +37,14 @@ final class GadgetSidebar extends LinearLayout {
     private final Runnable tick=new Runnable(){@Override public void run(){
         if(!active||closed||!anyVisible())return;
         long now=System.currentTimeMillis();GadgetView clock=faces.get("clock");if(clock!=null&&visible("clock"))clock.invalidate();
-        long minute=now/60000;if(minute!=lastMinute){lastMinute=minute;refreshReadings();weather.refresh(false);for(GadgetView v:faces.values())if(!v.kind.equals("clock"))v.invalidate();}
+        for(String kind:new String[]{"worldclock","timer","stopwatch"}){GadgetView face=faces.get(kind);if(face!=null&&visible(kind))face.invalidate();}
+        long minute=now/60000;if(minute!=lastMinute){lastMinute=minute;refreshReadings();weather.refresh(false);feeds.refresh(false);for(GadgetView v:faces.values())if(!v.kind.equals("clock"))v.invalidate();}
         if(visible("photo")&&now-lastPhotoTime>20000){lastPhotoTime=now;loadNextPhoto();}
-        boolean seconds=visible("clock")&&store.prefs.getBoolean("clock_seconds",true);main.postDelayed(this,seconds?1000-now%1000:60000-now%60000);
+        boolean seconds=(visible("clock")&&store.prefs.getBoolean("clock_seconds",true))||visible("worldclock")||visible("timer")||visible("stopwatch");main.postDelayed(this,seconds?1000-now%1000:60000-now%60000);
     }};
     GadgetSidebar(Context c,DesktopStore store,AeroWallpaper wallpaper,Actions actions,FrameLayout workspace,String layoutKey){
         super(c);this.store=store;this.actions=actions;this.workspace=workspace;layout=new GadgetLayout(store,layoutKey);floatingHost=new FrameLayout(c);floatingHost.setClipChildren(false);floatingHost.setContentDescription("Desktop floating gadgets");workspace.setOnDragListener((v,event)->desktopDrop(event));setOrientation(VERTICAL);setBackground(new AeroGlass(wallpaper,AeroGlass.SIDEBAR));
-        weather=new WeatherClient(store,this::refresh);setContentDescription("Desktop gadget sidebar");
+        weather=new WeatherClient(store,this::refresh);feeds=new FeedClient(store,this::refresh);setContentDescription("Desktop gadget sidebar");
         LinearLayout header=new LinearLayout(c);header.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
         TextView plus=Aero.text(c,"＋",23,0xffedf6ff);plus.setGravity(Gravity.CENTER);plus.setContentDescription("Add gadgets");plus.setOnClickListener(v->actions.gallery());header.addView(plus,new LayoutParams(Aero.dp(c,48),Aero.dp(c,36)));
         TextView hide=Aero.text(c,"›",25,0xffd5e5ee);hide.setGravity(Gravity.CENTER);hide.setContentDescription("Hide gadget sidebar");hide.setOnClickListener(v->{layout.visible(false);visibilityFromStore();actions.sidebarChanged();});header.addView(hide,new LayoutParams(Aero.dp(c,36),Aero.dp(c,36)));addView(header,new LayoutParams(-1,Aero.dp(c,36)));
@@ -113,7 +115,7 @@ final class GadgetSidebar extends LinearLayout {
     }
     private boolean visible(String id){return faces.containsKey(id)&&(!layout.docked(id)||getVisibility()==VISIBLE);}
     private boolean anyVisible(){for(String id:faces.keySet())if(visible(id))return true;return false;}
-    private void updateActivity(){weather.active(active&&visible("weather"));restartTick();}
+    private void updateActivity(){weather.active(active&&visible("weather"));feeds.active(active&&visible("feeds"));restartTick();}
     void refresh(){for(GadgetView v:faces.values())v.invalidate();actions.readingsChanged();}
     void setActive(boolean value){active=value;updateActivity();}
     private void restartTick(){main.removeCallbacks(tick);if(active&&!closed&&anyVisible())main.post(tick);}
@@ -147,5 +149,5 @@ final class GadgetSidebar extends LinearLayout {
             Bitmap result=decoded;main.post(()->{if(closed||!currentPhoto.equals(uri))return;photo=result;GadgetView face=faces.get("photo");if(face!=null){face.photo=result;face.invalidate();}});
         });
     }
-    void close(){closed=true;active=false;main.removeCallbacksAndMessages(null);weather.close();photos.shutdownNow();}
+    void close(){closed=true;active=false;main.removeCallbacksAndMessages(null);weather.close();feeds.close();photos.shutdownNow();}
 }

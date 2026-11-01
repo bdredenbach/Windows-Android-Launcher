@@ -34,12 +34,12 @@ final class DesktopWindow extends LinearLayout {
         glass=new AeroGlass(wallpaper,AeroGlass.WINDOW);setBackground(glass);
         setPadding(Aero.dp(context,6),Aero.dp(context,2),Aero.dp(context,6),Aero.dp(context,6));
         LinearLayout bar=new LinearLayout(context); bar.setGravity(Gravity.CENTER_VERTICAL);
-        String icon=toolId.equals("@welcome")?"orb":toolId.startsWith("folder:")?"folderapps":toolId.equals("@backup")?"drive":toolId.equals("@organize")||toolId.equals("@quicklaunch")?"folderapps":toolId.equals("@control")?"control":toolId.equals("@appearance")?"appearance":toolId.equals("@files")?"files":toolId.equals("@filemanagers")?"folderapps":toolId.equals("@computer")||toolId.equals("@system")?"computer":toolId.equals("@notes")?"notes":"clock";LinearLayout.LayoutParams iconParams=new LinearLayout.LayoutParams(Aero.dp(context,18),Aero.dp(context,18));iconParams.leftMargin=Aero.dp(context,5);bar.addView(new AeroIcon(context,icon),iconParams);
+        String icon=toolId.equals("@welcome")?"orb":toolId.startsWith("folder:")?"folderapps":toolId.equals("@backup")?"drive":toolId.equals("@organize")||toolId.equals("@quicklaunch")?"folderapps":toolId.equals("@control")?"control":toolId.equals("@appearance")?"appearance":toolId.equals("@files")?"files":toolId.equals("@filemanagers")?"folderapps":toolId.equals("@computer")||toolId.equals("@system")?"computer":toolId.equals("@notes")?"notes":GadgetCatalog.toolIcon(toolId);LinearLayout.LayoutParams iconParams=new LinearLayout.LayoutParams(Aero.dp(context,18),Aero.dp(context,18));iconParams.leftMargin=Aero.dp(context,5);bar.addView(new AeroIcon(context,icon),iconParams);
         TextView label=Aero.text(context,title,13,0xff111b22);titleLabel=label;label.setLayerType(View.LAYER_TYPE_SOFTWARE,null);label.setShadowLayer(Aero.dp(context,6),0,0,0xffffffff); label.setPadding(Aero.dp(context,8),0,0,0);
         bar.addView(label,new LayoutParams(0,Aero.dp(context,48),1));
         TextView minimize=chrome("—",this::minimize);minimizeButton=minimize;
         maximizeButton=chrome("□",this::toggleMaximize);
-        TextView close=chrome("×",()->{ settle();hideKeyboard();if(body instanceof VistaShell)((VistaShell)body).close();host.removeView(this); changed.run(); });closeButton=close;
+        TextView close=chrome("×",()->{ settle();hideKeyboard();if(body instanceof VistaShell)((VistaShell)body).close();if(body instanceof WeatherPanel)((WeatherPanel)body).close();host.removeView(this); changed.run(); });closeButton=close;
         close.setTextColor(Color.WHITE);
         close.setBackground(Aero.gloss(context,new int[]{0xffefb2a3,0xffcf6550,0xffa92d18,0xffc14f33},3,0xff64362f));
         bar.addView(minimize); bar.addView(maximizeButton); bar.addView(close);

@@ -1,0 +1,25 @@
+package com.nthexperience.desktop;
+
+import android.content.*;
+import android.net.Uri;
+import android.view.*;
+import android.widget.*;
+import java.util.*;
+
+final class WeatherPanel extends ScrollView {
+    interface Host {void locate();void follow(boolean enabled);void refresh();}
+    private final DesktopStore store;private final WeatherClient weather;private final WeatherLocation location;private final Host host;
+    private final CitySearch cities=new CitySearch();private final TextView summary,status,locationStatus,searchButton;private final LinearLayout results;private final CheckBox follow;
+    WeatherPanel(Context c,DesktopStore store,WeatherClient weather,WeatherLocation location,Host host){
+        super(c);this.store=store;this.weather=weather;this.location=location;this.host=host;LinearLayout column=Aero.column(c);Aero.pad(column,16);addView(column);
+        column.addView(Aero.text(c,"Weather",22,0xff173a65));summary=Aero.text(c,"",14,Aero.INK);summary.setPadding(0,Aero.dp(c,10),0,Aero.dp(c,12));summary.setContentDescription("Weather summary");column.addView(summary);
+        follow=Aero.check(c,"Follow my location",store.prefs.getBoolean("weather_follow",false));follow.setContentDescription("Follow my location");column.addView(follow);follow.setOnCheckedChangeListener((v,checked)->host.follow(checked));TextView detail=Aero.text(c,"Updates your approximate area while Nth Desktop is visible, and when you return home.",12,0xff586976);detail.setTypeface(android.graphics.Typeface.create(Aero.face(c),android.graphics.Typeface.ITALIC));column.addView(detail);locationStatus=Aero.text(c,"",12,0xff3d657d);locationStatus.setPadding(0,Aero.dp(c,8),0,Aero.dp(c,10));locationStatus.setContentDescription("Weather location status");column.addView(locationStatus);button(column,"Use my approximate location",host::locate);
+        EditText input=new EditText(c);input.setSingleLine(true);input.setTextSize(14);input.setTypeface(Aero.face(c));input.setHint("City and state, or city and country");input.setContentDescription("Weather city search");column.addView(input,new LinearLayout.LayoutParams(-1,Aero.dp(c,48)));status=Aero.text(c,"",12,0xff596e7a);status.setContentDescription("Weather city search status");column.addView(status);results=Aero.column(c);
+        searchButton=button(column,"Search for a city",()->{});searchButton.setOnClickListener(v->{String query=input.getText().toString().trim();if(query.length()<2){input.setError("Enter a city");return;}if(query.length()>160){input.setError("Use a shorter city name");return;}searchButton.setEnabled(false);status.setText("Searching…");results.removeAllViews();cities.search(query,(places,error)->{searchButton.setEnabled(true);status.setText(error.isEmpty()?"Choose your location:":error);for(CitySearch.Place place:places)button(results,place.label,()->{location.fixed();weather.location(place.label,place.latitude,place.longitude);results.removeAllViews();status.setText("Location saved.");refresh();});});});column.addView(results);
+        CheckBox units=Aero.check(c,"Fahrenheit (°F)",store.prefs.getBoolean("weather_f",Locale.getDefault().getCountry().equals("US")));units.setContentDescription("Fahrenheit (°F)");units.setOnCheckedChangeListener((v,value)->{store.prefs.edit().putBoolean("weather_f",value).apply();host.refresh();refresh();});column.addView(units);button(column,"Refresh forecast",host::refresh);
+        TextView hint=Aero.text(c,"Saved forecasts are available offline for their selected area. A new area needs an internet connection.",12,0xff586976);hint.setPadding(0,Aero.dp(c,12),0,Aero.dp(c,10));column.addView(hint);TextView attribution=Aero.text(c,"Weather: MET Norway · CC BY 4.0\nCity search: Photon / OpenStreetMap",11,0xff235e92);column.addView(attribution);refresh();
+    }
+    private TextView button(LinearLayout column,String name,Runnable action){TextView button=Aero.button(getContext(),name,action);button.setContentDescription(name);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=Aero.dp(getContext(),6);button.setMinHeight(Aero.dp(getContext(),42));column.addView(button,p);return button;}
+    void refresh(){WeatherClient.Snapshot snapshot=weather.snapshot();String text=weather.city();if(snapshot!=null){boolean f=store.prefs.getBoolean("weather_f",Locale.getDefault().getCountry().equals("US"));text+="\n"+snapshot.temperature(f)+(f?"°F":"°C")+" · "+snapshot.condition()+"\n"+(weather.stale()?"Cached forecast · ":"Updated · ")+android.text.format.DateFormat.getTimeFormat(getContext()).format(new Date(weather.updated()));}else text+=weather.loading()?"\nLoading forecast…":weather.configured()?"\nForecast unavailable. Your selected area is kept.":"\nChoose a city or use your approximate location.";summary.setText(text);locationStatus.setText(location.status());boolean enabled=store.prefs.getBoolean("weather_follow",false);if(follow.isChecked()!=enabled){follow.setOnCheckedChangeListener(null);follow.setChecked(enabled);follow.setOnCheckedChangeListener((v,value)->host.follow(value));}}
+    void close(){cities.close();}
+}
