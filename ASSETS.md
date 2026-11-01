@@ -33,3 +33,5 @@ The 0.7.0 battery, network and media icons are original Canvas paths. Profile pi
 0.8.0 adds original Canvas symbols for Calendar, sticky notes, Weather, the Gadget Gallery and the eight new native gadget faces. No `.gadget` files, third-party artwork, code or Microsoft gadget binaries are bundled. World-clock data comes from Android time zones. City search uses Photon/OSM; forecast attribution remains MET Norway. User-selected RSS/Atom feeds provide their own headline metadata and article links.
 
 The 0.9.0 individual gadget faces and Compass/Tile Puzzle caption icons are original Android Canvas artwork. The added Network Meter and game category were inspired by gadget categories in the reference galleries, without importing their artwork or code. Compass uses Android SensorManager; network readings use TrafficStats. No new bitmap assets or permissions are required.
+
+The Explorer Cut, Copy, Paste and Delete menu icons are original native Canvas artwork in `AeroIcon.java`; no Windows icon files were imported.

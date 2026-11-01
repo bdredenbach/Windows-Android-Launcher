@@ -4,10 +4,11 @@ import java.util.*;
 
 /** Launcher-local clipboard. It never leaks file grants into Android's public clipboard. */
 final class ExplorerClipboard {
-    static List<DocumentOps.Ref> files=Collections.emptyList();static List<String> shortcuts=Collections.emptyList();static String shortcutSource="";static boolean cut;
-    static void files(List<DocumentOps.Ref> values,boolean moving){files=new ArrayList<>(values);shortcuts=Collections.emptyList();shortcutSource="";cut=moving;}
-    static void shortcuts(List<String> values,String source,boolean moving){shortcuts=new ArrayList<>(values);shortcutSource=source;files=Collections.emptyList();cut=moving;}
-    static void clear(){files=Collections.emptyList();shortcuts=Collections.emptyList();shortcutSource="";cut=false;}
+    static volatile List<DocumentOps.Ref> files=Collections.emptyList();static volatile List<String> shortcuts=Collections.emptyList();static volatile String shortcutSource="";static volatile boolean cut;
+    static synchronized void files(List<DocumentOps.Ref> values,boolean moving){files=new ArrayList<>(values);shortcuts=Collections.emptyList();shortcutSource="";cut=moving;}
+    static synchronized void shortcuts(List<String> values,String source,boolean moving){shortcuts=new ArrayList<>(values);shortcutSource=source;files=Collections.emptyList();cut=moving;}
+    static synchronized void clear(){files=Collections.emptyList();shortcuts=Collections.emptyList();shortcutSource="";cut=false;}
+    static synchronized void completedCut(List<DocumentOps.Ref> original){if(files==original)clear();}
     static List<String> members(DesktopStore store,String target){return target.equals("desktop")?store.desktop():target.equals("quick")?store.quickLaunch():target.equals("managers")?store.fileManagers():target.startsWith("contents:")?store.folderItems(target.substring(9)):new ArrayList<>();}
     static void members(DesktopStore store,String target,List<String> ids){if(target.equals("desktop"))store.desktop(ids);else if(target.equals("quick"))store.quickLaunch(ids);else if(target.equals("managers"))store.fileManagers(ids);else if(target.startsWith("contents:"))store.folderItems(target.substring(9),ids);}
     static void paste(DesktopStore store,String target){
