@@ -10,6 +10,7 @@ def number(root, name):
     return int(root.find(f"int[@name='{name}']").attrib["value"])
 
 
+print(f"CHECK: boot={boot}; first boot={number(first, 'boot')}, runs={number(first, 'runs')}; cold restart boot={number(again, 'boot')}, runs={number(again, 'runs')}")
 assert boot >= 0 and number(first, "before_reboot") != boot, "Android must actually reboot"
 assert number(first, "boot") == boot, "Nth must claim the new Android boot"
 assert number(first, "runs") == number(first, "before_runs") + 1, "Exactly one presentation per reboot"

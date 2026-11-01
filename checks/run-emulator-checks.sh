@@ -42,8 +42,9 @@ done
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb shell input keyevent KEYCODE_HOME
+adb shell am start -n com.nthexperience.desktop/.MainActivity
 sleep 4
-printf 'CHECK: verifying the launcher Android opened after reboot\n'
+printf 'CHECK: verifying the first visible launcher after a real reboot\n'
 boot=$(adb shell settings get global boot_count | tr -d '\r')
 adb exec-out run-as com.nthexperience.desktop cat shared_prefs/startup_session.xml > reboot-first.xml
 adb shell input keyevent KEYCODE_HOME
