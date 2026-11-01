@@ -27,7 +27,7 @@ final class DocumentOps {
         synchronized void cancel(){signal.cancel();for(ParcelFileDescriptor descriptor:opened)try{descriptor.close();}catch(IOException ignored){}opened.clear();}
     }
     private static final class Node {final Ref source;final List<Node> children=new ArrayList<>();Node(Ref source){this.source=source;}}
-    static boolean writable(Context context,Uri uri,int flag,DocumentFolders.Item item){return item!=null&&(item.flags&flag)!=0&&context.checkUriPermission(uri,android.os.Process.myPid(),android.os.Process.myUid(),Intent.FLAG_GRANT_WRITE_URI_PERMISSION)==PackageManager.PERMISSION_GRANTED;}
+    static boolean writable(Context context,Uri uri,int flag,DocumentFolders.Item item){return item!=null&&(item.flags&flag)!=0&&(StorageAccess.ours(uri)?StorageAccess.has(context):context.checkUriPermission(uri,android.os.Process.myPid(),android.os.Process.myUid(),Intent.FLAG_GRANT_WRITE_URI_PERMISSION)==PackageManager.PERMISSION_GRANTED);}
     static String name(String value){String name=value==null?"":value.trim();if(name.isEmpty()||name.equals(".")||name.equals("..")||name.length()>240||name.indexOf('/')>=0||name.indexOf('\\')>=0||name.chars().anyMatch(x->x<32||x==127))throw new IllegalArgumentException("Use a name of 1–240 characters without slashes or control characters.");return name;}
     static Uri current(String page)throws org.json.JSONException {org.json.JSONObject path=DocumentFolders.path(page);org.json.JSONArray crumbs=path.getJSONArray("crumbs");return DocumentsContract.buildDocumentUriUsingTree(Uri.parse(path.getString("tree")),crumbs.getJSONObject(crumbs.length()-1).getString("id"));}
     static DocumentFolders.Item stat(Context context,Uri uri,Cancel cancel)throws IOException {

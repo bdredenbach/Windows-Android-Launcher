@@ -49,7 +49,7 @@ final class StartupExperience {
         watchEarlyBoot();welcome(false);
     }
     private void watchEarlyBoot(){if(resumed&&store.prefs.getInt("startup_mode",0)==1&&SystemClock.elapsedRealtime()<90000)host.postDelayed(reconsider,1000);}
-    private void welcome(boolean afterIntro){if(!resumed||welcomeChecked)return;welcomeChecked=true;if(!session.getBoolean("welcome_seen",false)||welcomeAtStart){
+    private void welcome(boolean afterIntro){if(!resumed)return;activity.storageReady();if(welcomeChecked)return;welcomeChecked=true;if(!session.getBoolean("welcome_seen",false)||welcomeAtStart){
         session.edit().putBoolean("welcome_seen",true).apply();welcome.run();
     }}
     private void show(boolean preview){

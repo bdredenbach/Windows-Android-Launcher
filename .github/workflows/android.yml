@@ -1,7 +1,7 @@
 name: Android build
 on:
   push:
-    branches: [main, feature/explorer-file-management]
+    branches: [main, feature/device-storage]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: matrix.api == 30
         with:
-          name: Nth-Desktop-0.10.0-debug
+          name: Nth-Desktop-0.11.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - name: Keep APK verification tool for the handoff
         if: matrix.api == 30
@@ -86,5 +86,6 @@ jobs:
             aero-test.txt
             gadgets-test.txt
             explorer-test.txt
+            storage-test.txt
             reboot-test.txt
             screenshots/

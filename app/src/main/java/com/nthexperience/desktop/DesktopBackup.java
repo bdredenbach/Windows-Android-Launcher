@@ -39,7 +39,7 @@ final class DesktopBackup {
             String key=entry.getKey(),kind=kind(key);if(kind==null)continue;Object value=entry.getValue();if(value==null)continue;
             JSONObject field=new JSONObject().put("type",kind).put("value",value);settings.put(key,field);
         }
-        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.10.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
+        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.11.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
     }
     static Plan parse(String text)throws JSONException {
         if(text.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)throw new JSONException("Backup is larger than 8 MB");
