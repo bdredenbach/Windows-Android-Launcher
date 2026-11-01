@@ -8,7 +8,7 @@ android {
         targetSdk 36
         versionCode 7
         versionName '0.6.0'
-        testInstrumentationRunner 'com.nthexperience.desktop.LauncherSmoke'
+        testInstrumentationRunner 'com.nthexperience.desktop.AeroSmoke'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

@@ -12,9 +12,10 @@ trap collect EXIT
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 if [[ "$1" == 30 ]]; then
-  timeout 300s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.LauncherSmoke | tee smoke-test.txt
+  timeout 300s adb shell am instrument -w -e suite legacy com.nthexperience.desktop.test/com.nthexperience.desktop.AeroSmoke | tee smoke-test.txt
   grep -q 'PASS:' smoke-test.txt
 fi
+adb shell pm list instrumentation
 adb shell am force-stop com.nthexperience.desktop
 timeout 150s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.AeroSmoke | tee aero-test.txt
 grep -q 'PASS:' aero-test.txt

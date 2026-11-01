@@ -21,7 +21,7 @@ import android.widget.TextView;
 import java.util.function.Predicate;
 
 /** Dependency-free on-device smoke test. Run on a disposable emulator. */
-public final class LauncherSmoke extends Instrumentation {
+public class LauncherSmoke extends Instrumentation {
     private MainActivity activity;
     private View root;
     private final BlockingQueue<MainActivity> resumed=new LinkedBlockingQueue<>();

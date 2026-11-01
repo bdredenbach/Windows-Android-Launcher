@@ -12,14 +12,14 @@ import java.util.concurrent.*;
 import java.util.function.Predicate;
 
 /** Run on disposable emulators. Exercises presentation identity as well as the visible controls. */
-public final class AeroSmoke extends Instrumentation {
+public final class AeroSmoke extends LauncherSmoke {
     private MainActivity activity;
     private View root;
-    private boolean verifyBoot;
+    private boolean verifyBoot,legacy;
     private final BlockingQueue<MainActivity> resumed=new LinkedBlockingQueue<>();
     private final Application.ActivityLifecycleCallbacks lifecycle=new Application.ActivityLifecycleCallbacks(){public void onActivityResumed(Activity a){if(a instanceof MainActivity)resumed.offer((MainActivity)a);}public void onActivityCreated(Activity a,Bundle b){}public void onActivityStarted(Activity a){}public void onActivityPaused(Activity a){}public void onActivityStopped(Activity a){}public void onActivitySaveInstanceState(Activity a,Bundle b){}public void onActivityDestroyed(Activity a){}};
-    @Override public void onCreate(Bundle args){super.onCreate(args);verifyBoot=args!=null&&"true".equals(args.getString("verify_boot"));start();}
-    @Override public void onStart(){Bundle result=new Bundle();Application app=(Application)getTargetContext().getApplicationContext();app.registerActivityLifecycleCallbacks(lifecycle);try{
+    @Override public void onCreate(Bundle args){verifyBoot=args!=null&&"true".equals(args.getString("verify_boot"));legacy=args!=null&&"legacy".equals(args.getString("suite"));super.onCreate(args);}
+    @Override public void onStart(){if(legacy){super.onStart();return;}Bundle result=new Bundle();Application app=(Application)getTargetContext().getApplicationContext();app.registerActivityLifecycleCallbacks(lifecycle);try{
         DesktopStore store=new DesktopStore(getTargetContext());android.content.SharedPreferences session=getTargetContext().getSharedPreferences(StartupExperience.SESSION,0);
         if(!verifyBoot){store.prefs.edit().putInt("startup_mode",0).putBoolean("startup_sound",false).putBoolean("welcome_on_start",false).putBoolean("reduce_motion",false).commit();session.edit().putBoolean("seen",true).putBoolean("welcome_seen",true).putInt("boot",StartupExperience.boot(getTargetContext())).commit();}
         shell("cmd role add-role-holder --user 0 android.app.role.HOME com.nthexperience.desktop");
