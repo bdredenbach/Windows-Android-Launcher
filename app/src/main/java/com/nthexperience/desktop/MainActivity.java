@@ -109,7 +109,8 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             if(desktopParams.rightMargin!=reserved||desktopParams.leftMargin!=desktopCutoutLeft){desktopParams.rightMargin=reserved;desktopParams.leftMargin=desktopCutoutLeft;desktopScroll.setLayoutParams(desktopParams);}
             int next=Math.max(1,Math.min(9,(width-reserved-desktopCutoutLeft-dp(12))/dp(82)));
             int rows=Math.max(1,(height-dp(16))/dp(94));
-            if(next!=columns||rows!=desktopRows){columns=next;desktopRows=rows;desktop.removeCallbacks(desktopRender);desktop.post(desktopRender);}
+            int count=store.desktop().size(),gridRows=Math.max(rows,(count+next-1)/next),gridColumns=Math.max(1,(count+gridRows-1)/gridRows);columns=next;desktopRows=rows;
+            if(desktop.getRowCount()!=gridRows||desktop.getColumnCount()!=gridColumns){desktop.removeCallbacks(desktopRender);desktop.post(desktopRender);}
             sidebar.workspaceSize(width,height);
             for(DesktopWindow tool:windows.values())tool.fitToHost();
             if(startMenu!=null){startMenu.availableHeight(height);FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)startMenu.getLayoutParams();int h=Math.min(dp(540),Math.max(1,height-dp(8)));int w=Math.min(dp(420),Math.max(1,width-dp(12)));if(lp.height!=h||lp.width!=w){lp.height=h;lp.width=w;startMenu.setLayoutParams(lp);}}
@@ -132,7 +133,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         });
     }
     private void renderDesktop(){
-        if(desktop==null)return;desktop.removeAllViews();List<String> ids=store.desktop();int cols=Math.max(1,columns);int rows=Math.max(Math.max(1,desktopRows),(ids.size()+cols-1)/cols);desktop.setRowCount(rows);desktop.setColumnCount(cols);
+        if(desktop==null)return;desktop.removeAllViews();List<String> ids=store.desktop();int cols=Math.max(1,columns);int rows=Math.max(Math.max(1,desktopRows),(ids.size()+cols-1)/cols);desktop.setRowCount(rows);desktop.setColumnCount(Math.max(1,(ids.size()+rows-1)/rows));
         for(int index=0;index<ids.size();index++){
             String id=ids.get(index);LinearLayout tile=Aero.column(this);tile.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);tile.setPadding(dp(2),dp(6),dp(2),dp(3));View icon=icon(id,46);tile.addView(icon,new LinearLayout.LayoutParams(dp(46),dp(46)));
             TextView label=Aero.text(this,label(id),11,Color.WHITE);label.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);label.setMaxLines(2);label.setEllipsize(TextUtils.TruncateAt.END);label.setShadowLayer(dp(3),0,dp(1),0xff000000);tile.addView(label,new LinearLayout.LayoutParams(-1,-2));
