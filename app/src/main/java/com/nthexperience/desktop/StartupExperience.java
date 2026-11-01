@@ -18,10 +18,11 @@ final class StartupExperience {
     private final DesktopStore store;
     private final SharedPreferences session;
     private final Runnable welcome;
+    private final boolean welcomeAtStart;
     private Intro intro;
     private boolean resumed,checked,welcomeChecked;
     private final Runnable reconsider=this::maybeShow;
-    StartupExperience(MainActivity a,FrameLayout host,DesktopStore store,boolean restored,Runnable welcome){activity=a;this.host=host;this.store=store;this.welcome=welcome;session=a.getSharedPreferences(SESSION,0);welcomeChecked=restored&&session.getBoolean("welcome_seen",false);}
+    StartupExperience(MainActivity a,FrameLayout host,DesktopStore store,boolean restored,Runnable welcome){activity=a;this.host=host;this.store=store;this.welcome=welcome;welcomeAtStart=store.prefs.getBoolean("welcome_on_start",false);session=a.getSharedPreferences(SESSION,0);welcomeChecked=restored&&session.getBoolean("welcome_seen",false);}
     static int boot(Context c){try{return Settings.Global.getInt(c.getContentResolver(),Settings.Global.BOOT_COUNT,-1);}catch(SecurityException ex){return -1;}}
     void resume(){resumed=true;host.removeCallbacks(reconsider);host.post(reconsider);}
     void pause(){resumed=false;host.removeCallbacks(reconsider);if(intro!=null)intro.finish(false);}
@@ -41,7 +42,7 @@ final class StartupExperience {
         }}
         welcome(false);
     }
-    private void welcome(boolean afterIntro){if(!resumed||welcomeChecked)return;welcomeChecked=true;if(!session.getBoolean("welcome_seen",false)||store.prefs.getBoolean("welcome_on_start",false)){
+    private void welcome(boolean afterIntro){if(!resumed||welcomeChecked)return;welcomeChecked=true;if(!session.getBoolean("welcome_seen",false)||welcomeAtStart){
         session.edit().putBoolean("welcome_seen",true).apply();welcome.run();
     }}
     private void show(boolean preview){
