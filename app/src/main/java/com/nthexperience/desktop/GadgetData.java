@@ -6,6 +6,7 @@ import java.util.*;
 
 final class GadgetData {
     static JSONObject all(DesktopStore store){try{return new JSONObject(store.prefs.getString("gadget_data","{}"));}catch(JSONException ex){return new JSONObject();}}
+    static JSONObject portable(DesktopStore store){JSONObject data=all(store);for(String kind:new String[]{"timer","stopwatch"}){JSONObject value=data.optJSONObject(kind);if(value!=null){GadgetLayout.put(value,"boot",-1);GadgetLayout.put(value,"start_elapsed",0);}}return data;}
     static JSONObject get(DesktopStore store,String kind){JSONObject data=all(store).optJSONObject(kind);return data==null?new JSONObject():data;}
     static void save(DesktopStore store,String kind,JSONObject data){JSONObject all=all(store);GadgetLayout.put(all,kind,data);store.prefs.edit().putString("gadget_data",all.toString()).apply();}
     static long delta(JSONObject data,String wall,String elapsed,long nowWall,long nowElapsed,int boot){return Math.max(0,data.optInt("boot",-2)==boot&&boot>=0?nowElapsed-data.optLong(elapsed,nowElapsed):nowWall-data.optLong(wall,nowWall));}

@@ -29,3 +29,5 @@ The loading sweep, pearl halo and Nth orb are native Canvas drawings, with no fr
 The optional original chime is synthesized on the device as 22,050 Hz, 16-bit mono PCM. Four overlapping sine tones at 523.251, 659.255, 783.991 and 1046.502 Hz enter 120 ms apart with exponential attack/decay envelopes. It lasts 1.3 seconds; no Microsoft sound recording is included.
 
 The 0.7.0 battery, network and media icons are original Canvas paths. Profile pictures are user-selected images copied into a small private WebP portrait; no default portrait photograph is bundled.
+
+0.8.0 adds original Canvas symbols for Calendar, sticky notes, Weather, the Gadget Gallery and the eight new native gadget faces. No `.gadget` files, third-party artwork, code or Microsoft gadget binaries are bundled. World-clock data comes from Android time zones. City search uses Photon/OSM; forecast attribution remains MET Norway. User-selected RSS/Atom feeds provide their own headline metadata and article links.

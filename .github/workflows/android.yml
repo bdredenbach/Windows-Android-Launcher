@@ -53,6 +53,9 @@ jobs:
         with:
           name: APK-verification-tool
           path: build/signing-tool/apksigner.jar
+      - name: Check public gadget services
+        if: matrix.api == 30
+        run: python3 checks/CheckPublicGadgetServices.py
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -78,6 +81,7 @@ jobs:
         with:
           name: Launcher-emulator-evidence-${{ matrix.api }}
           path: |
+            public-service-checks.json
             smoke-test.txt
             aero-test.txt
             gadgets-test.txt

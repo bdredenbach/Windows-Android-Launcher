@@ -14,12 +14,12 @@ final class GadgetCatalog {
         {"meters","System Meter","Device","Real battery and physical memory readings."},
         {"worldclock","World Clock","Time","Two independently chosen time zones with local dates."},
         {"feeds","Feed Headlines","Information","Headlines from an RSS or Atom feed you choose."},
-        {"checklist","Checklist","Productivity","A saved to-do list with checkboxes and progress."},
-        {"timer","Countdown","Time","A persistent countdown with pause, resume and reset."},
+        {"checklist","Checklist","Productivity","A saved to-do checklist of tasks, with checkboxes and progress."},
+        {"timer","Countdown","Time","A persistent countdown timer with pause, resume and reset."},
         {"stopwatch","Stopwatch","Time","Elapsed time, pause and saved laps."},
         {"calculator","Calculator","Productivity","A working calculator with parentheses and arithmetic."},
         {"converter","Unit Converter","Productivity","Length, mass, temperature, speed, area, volume, data and time."},
-        {"storage","Storage Meter","Device","Real internal storage usage, available space and system settings."}};
+        {"storage","Storage Meter","Device","Real internal storage and disk usage, available space and system settings."}};
     static boolean valid(String id){return Arrays.asList(IDS).contains(id);}
     static boolean extra(String id){return valid(id)&&Arrays.asList(IDS).indexOf(id)>=6;}
     static String title(String id){for(String[] row:ITEMS)if(row[0].equals(id))return row[1];return "Gadget";}
