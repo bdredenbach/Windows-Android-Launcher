@@ -12,7 +12,7 @@ final class AeroIcon extends View {
     @Override protected void onDraw(Canvas canvas) {
         float s = Math.min(getWidth(),getHeight())/64f;
         canvas.save(); canvas.translate((getWidth()-64*s)/2,(getHeight()-64*s)/2); canvas.scale(s,s);
-        p.setShader(null); p.setStyle(Paint.Style.FILL);
+        p.setShader(null); p.setStyle(Paint.Style.FILL); p.setAlpha(255);
         if (kind.equals("orb")) {
             p.setShader(new RadialGradient(24,16,45,new int[]{0xffb9f5df,0xff237fbd,0xff071d44},null,Shader.TileMode.CLAMP));
             canvas.drawCircle(32,32,29,p); p.setShader(null);p.setColor(0xff061a32);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2);canvas.drawCircle(32,32,29,p);p.setStyle(Paint.Style.FILL);
@@ -80,6 +80,6 @@ final class AeroIcon extends View {
         canvas.restore();
     }
     private void rounded(Canvas c,float l,float t,float r,float b,int radius,int top,int bottom) {
-        p.setShader(new LinearGradient(0,t,0,b,top,bottom,Shader.TileMode.CLAMP)); c.drawRoundRect(l,t,r,b,radius,radius,p); p.setShader(null);
+        p.setAlpha(255); p.setShader(new LinearGradient(0,t,0,b,top,bottom,Shader.TileMode.CLAMP)); c.drawRoundRect(l,t,r,b,radius,radius,p); p.setShader(null);
     }
 }
