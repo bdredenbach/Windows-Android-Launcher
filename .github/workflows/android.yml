@@ -61,6 +61,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api }}
+          emulator-build: 15917651
           arch: x86_64
           target: ${{ matrix.api == 30 && 'default' || 'google_apis' }}
           profile: ${{ matrix.api == 30 && 'pixel_2' || 'pixel_7' }}
