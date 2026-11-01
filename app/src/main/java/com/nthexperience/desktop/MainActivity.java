@@ -162,7 +162,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private View icon(String id,int size){
         AppCatalog.Entry entry=entries.get(id);
         if(entry!=null){ImageView image=new ImageView(this);image.setImageDrawable(entry.icon);image.setScaleType(ImageView.ScaleType.FIT_CENTER);image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);return image;}
-        return new AeroIcon(this,store.isFolder(id)?"folderapps":id.equals("@filemanagers")?"folderapps":id.startsWith("@")?id.substring(1):"apps");
+        return new AeroIcon(this,store.isFolder(id)||id.equals("@filemanagers")||id.equals("@organize")?"folderapps":id.equals("@backup")?"drive":id.equals("@quicklaunch")?"programs":id.startsWith("@")?id.substring(1):"apps");
     }
     private String label(String id){return store.name(id,defaultLabel(id));}
     private String defaultLabel(String id){
