@@ -4,8 +4,10 @@ collect() {
   mkdir -p screenshots
   free -m > screenshots/host-memory.txt
   if ! timeout -k 2s 4s adb shell true; then return; fi
+  timeout -k 2s 5s adb exec-out run-as com.nthexperience.desktop cat shared_prefs/desktop.xml > screenshots/test-desktop-prefs.xml 2>/dev/null || true
+  timeout -k 2s 5s adb shell dumpsys window > screenshots/test-window-state.txt 2>/dev/null || true
   timeout -k 2s 8s adb logcat -d -t 500 > screenshots/device-log.txt 2>/dev/null || true
-  for name in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure aero-opaque aero-colors aero-windows startup-pearl welcome-center startup-settings aero-failure glass-opacity start-search start-portrait tray-battery tray-network tray-volume tray-calendar; do
+  for name in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure aero-opaque aero-colors aero-windows startup-pearl welcome-center startup-settings aero-failure glass-opacity glass-start-0 glass-start-50 glass-start-100 start-search start-portrait tray-battery tray-network tray-volume tray-calendar; do
     timeout -k 2s 4s adb exec-out run-as com.nthexperience.desktop cat "files/$name.png" > "screenshots/$name.png" 2>/dev/null || true
   done
   timeout -k 2s 4s adb exec-out run-as com.nthexperience.desktop cat files/picker-tree.txt > screenshots/picker-tree.txt 2>/dev/null || true
@@ -42,15 +44,23 @@ done
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb shell input keyevent KEYCODE_HOME
-adb shell am start -n com.nthexperience.desktop/.MainActivity
-sleep 4
+adb shell am start -W -n com.nthexperience.desktop/.MainActivity
+# Boot completion, Activity resume and keyguard dismissal are distinct asynchronous events.
+# Observe the launcher's own committed boot identity before taking the first snapshot.
+boot=$(adb shell settings get global boot_count | tr -d '\r')
+for attempt in $(seq 1 25); do
+  adb exec-out run-as com.nthexperience.desktop cat shared_prefs/startup_session.xml > reboot-first.xml
+  if python3 -c 'import sys,xml.etree.ElementTree as E; n=E.parse("reboot-first.xml").getroot().find("int[@name=\"boot\"]"); sys.exit(0 if n is not None and n.attrib["value"]==sys.argv[1] else 1)' "$boot"; then break; fi
+  adb shell wm dismiss-keyguard
+  sleep 1
+done
 printf 'CHECK: verifying the first visible launcher after a real reboot\n'
 boot=$(adb shell settings get global boot_count | tr -d '\r')
 adb exec-out run-as com.nthexperience.desktop cat shared_prefs/startup_session.xml > reboot-first.xml
 adb shell input keyevent KEYCODE_HOME
 adb shell input keyevent KEYCODE_HOME
 adb shell am force-stop com.nthexperience.desktop
-adb shell am start -n com.nthexperience.desktop/.MainActivity
+adb shell am start -W -n com.nthexperience.desktop/.MainActivity
 sleep 2
 adb exec-out run-as com.nthexperience.desktop cat shared_prefs/startup_session.xml > reboot-again.xml
 python3 checks/VerifyReboot.py "$boot" reboot-first.xml reboot-again.xml | tee reboot-test.txt

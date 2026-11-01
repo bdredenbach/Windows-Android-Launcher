@@ -20,16 +20,21 @@ final class StartupExperience {
     private final Runnable welcome;
     private Intro intro;
     private boolean resumed,checked,welcomeChecked;
+    private final Runnable reconsider=this::maybeShow;
     StartupExperience(MainActivity a,FrameLayout host,DesktopStore store,boolean restored,Runnable welcome){activity=a;this.host=host;this.store=store;this.welcome=welcome;session=a.getSharedPreferences(SESSION,0);welcomeChecked=restored&&session.getBoolean("welcome_seen",false);}
     static int boot(Context c){try{return Settings.Global.getInt(c.getContentResolver(),Settings.Global.BOOT_COUNT,-1);}catch(SecurityException ex){return -1;}}
-    void resume(){resumed=true;host.post(this::maybeShow);}
-    void pause(){resumed=false;if(intro!=null)intro.finish(false);}
-    void close(){resumed=false;if(intro!=null)intro.finish(false);}
+    void resume(){resumed=true;host.removeCallbacks(reconsider);host.post(reconsider);}
+    void pause(){resumed=false;host.removeCallbacks(reconsider);if(intro!=null)intro.finish(false);}
+    void close(){resumed=false;host.removeCallbacks(reconsider);if(intro!=null)intro.finish(false);}
     boolean skip(){if(intro==null)return false;intro.finish(true);return true;}
     void preview(){if(intro==null&&resumed&&activity.hasWindowFocus())show(true);}
     void maybeShow(){
-        if(!resumed||!activity.hasWindowFocus()||intro!=null||host.getWidth()==0)return;
-        KeyguardManager keyguard=activity.getSystemService(KeyguardManager.class);if(keyguard!=null&&keyguard.isKeyguardLocked())return;
+        host.removeCallbacks(reconsider);
+        if(!resumed||!activity.hasWindowFocus()||intro!=null)return;
+        if(host.getWidth()==0){host.postDelayed(reconsider,100);return;}
+        // Unlock can finish after the focused Home activity resumes. Wait only while visible;
+        // pause/close cancel this single pending check, and playback still requires an unlocked phone.
+        KeyguardManager keyguard=activity.getSystemService(KeyguardManager.class);if(keyguard!=null&&keyguard.isKeyguardLocked()){host.postDelayed(reconsider,250);return;}
         if(!checked){checked=true;int boot=boot(activity);if(StartupPolicy.shouldPlay(store.prefs.getInt("startup_mode",0),session.getBoolean("seen",false),session.getInt("boot",-1),boot)){
             // Claim playback before showing it, so rotation, Home and process recreation cannot replay it.
             welcomeChecked=false;session.edit().putBoolean("seen",true).putInt("boot",boot).putInt("runs",session.getInt("runs",0)+1).commit();show(false);return;
