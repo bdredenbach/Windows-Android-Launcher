@@ -27,3 +27,5 @@ The 0.4.0 folder, drive, Control Panel, network, shield, accounts, accessibility
 The loading sweep, pearl halo and Nth orb are native Canvas drawings, with no frame sequence or extracted Windows graphics. They are rendered at device resolution in portrait and landscape. The existing two lossless WebP wallpapers and two Selawik font files are unchanged.
 
 The optional original chime is synthesized on the device as 22,050 Hz, 16-bit mono PCM. Four overlapping sine tones at 523.251, 659.255, 783.991 and 1046.502 Hz enter 120 ms apart with exponential attack/decay envelopes. It lasts 1.3 seconds; no Microsoft sound recording is included.
+
+The 0.7.0 battery, network and media icons are original Canvas paths. Profile pictures are user-selected images copied into a small private WebP portrait; no default portrait photograph is bundled.

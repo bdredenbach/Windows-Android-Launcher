@@ -5,7 +5,7 @@ collect() {
   free -m > screenshots/host-memory.txt
   if ! timeout -k 2s 4s adb shell true; then return; fi
   timeout -k 2s 8s adb logcat -d -t 500 > screenshots/device-log.txt 2>/dev/null || true
-  for name in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure aero-opaque aero-colors aero-windows startup-pearl welcome-center startup-settings aero-failure; do
+  for name in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure aero-opaque aero-colors aero-windows startup-pearl welcome-center startup-settings aero-failure glass-opacity start-search start-portrait tray-battery tray-network tray-volume tray-calendar; do
     timeout -k 2s 4s adb exec-out run-as com.nthexperience.desktop cat "files/$name.png" > "screenshots/$name.png" 2>/dev/null || true
   done
   timeout -k 2s 4s adb exec-out run-as com.nthexperience.desktop cat files/picker-tree.txt > screenshots/picker-tree.txt 2>/dev/null || true
@@ -20,7 +20,7 @@ if [[ "$1" == 30 ]]; then
 fi
 adb shell pm list instrumentation
 adb shell am force-stop com.nthexperience.desktop
-timeout -k 3s 150s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.AeroSmoke | tee aero-test.txt
+timeout -k 3s 230s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.AeroSmoke | tee aero-test.txt
 grep -q 'PASS:' aero-test.txt
 adb devices -l
 timeout -k 3s 10s adb reboot

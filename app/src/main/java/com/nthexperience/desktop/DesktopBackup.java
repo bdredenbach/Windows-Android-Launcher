@@ -17,8 +17,8 @@ final class DesktopBackup {
     static final String FORMAT="nth-desktop-backup";
     static final String PENDING="desktop-restore-preview.json", UNDO="desktop-before-restore.json", EXPORT="desktop-export.json";
     private static final Set<String> BOOLEANS=new HashSet<>(Arrays.asList("aero_transparency","startup_sound","reduce_motion","welcome_on_start","clock_seconds","layout_locked","show_status_bar","snap_gadgets","weather_f","control_panel_classic","explorer_details","sidebar_visible","desktop_v41"));
-    private static final Set<String> INTS=new HashSet<>(Arrays.asList("wallpaper","clock_style","desktop_icon_size","aero_color","aero_intensity","startup_mode"));
-    private static final Set<String> STRINGS=new HashSet<>(Arrays.asList("shortcuts","quick_launch","app_folders","shortcut_names","gadgets","file_manager_apps","gadget_photos","recents","linked_folders","gadget_layout_portrait","gadget_layout_landscape","note","gadget_note","desktop_name","weather_city","weather_lat","weather_lon"));
+    private static final Set<String> INTS=new HashSet<>(Arrays.asList("wallpaper","clock_style","desktop_icon_size","aero_color","aero_intensity","aero_opacity","startup_mode"));
+    private static final Set<String> STRINGS=new HashSet<>(Arrays.asList("shortcuts","quick_launch","app_folders","shortcut_names","gadgets","file_manager_apps","gadget_photos","recents","linked_folders","gadget_layout_portrait","gadget_layout_landscape","note","gadget_note","profile_portrait","linked_files","desktop_name","weather_city","weather_lat","weather_lon"));
     private static final Set<String> BUILTINS=new HashSet<>(Arrays.asList("@computer","@browser","@files","@notes","@appearance","@control","@system","@filemanagers","@gadgets","@sticky","@calendar","@clock","@weather","@pictures","@music","@organize","@quicklaunch","@backup","@welcome"));
     static final class Plan {
         final Map<String,Object> values;
@@ -28,7 +28,7 @@ final class DesktopBackup {
         String string(String key,String fallback){Object value=values.get(key);return value instanceof String?(String)value:fallback;}
         int count(String key){try{return new JSONArray(string(key,"[]")).length();}catch(JSONException ex){return 0;}}
         int folders(){try{return new JSONObject(string("app_folders","{}")).length();}catch(JSONException ex){return 0;}}
-        int relinks(Context context){int missing=0;try{JSONArray links=new JSONArray(string("linked_folders","[]"));for(int i=0;i<links.length();i++){Uri uri=Uri.parse(links.getJSONObject(i).getString("uri"));boolean granted=false;for(android.content.UriPermission p:context.getContentResolver().getPersistedUriPermissions())if(p.isReadPermission()&&p.getUri().equals(uri))granted=true;if(!granted)missing++;}}catch(JSONException ignored){}return missing;}
+        int relinks(Context context){int missing=0;try{JSONArray links=new JSONArray(string("linked_folders","[]"));for(int i=0;i<links.length();i++){Uri uri=Uri.parse(links.getJSONObject(i).getString("uri"));boolean granted=false;for(android.content.UriPermission p:context.getContentResolver().getPersistedUriPermissions())if(p.isReadPermission()&&p.getUri().equals(uri))granted=true;if(!granted)missing++;}JSONArray files=new JSONArray(string("linked_files","[]"));for(int i=0;i<files.length();i++){Uri uri=Uri.parse(files.getJSONObject(i).getString("uri"));boolean granted=false;for(android.content.UriPermission p:context.getContentResolver().getPersistedUriPermissions())if(p.isReadPermission()&&p.getUri().equals(uri))granted=true;if(!granted)missing++;}}catch(JSONException ignored){}return missing;}
     }
     static JSONObject snapshot(DesktopStore store)throws JSONException {
         Map<String,Object> values=new LinkedHashMap<>(store.prefs.getAll());
@@ -39,7 +39,7 @@ final class DesktopBackup {
             String key=entry.getKey(),kind=kind(key);if(kind==null)continue;Object value=entry.getValue();if(value==null)continue;
             JSONObject field=new JSONObject().put("type",kind).put("value",value);settings.put(key,field);
         }
-        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.6.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
+        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.7.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
     }
     static Plan parse(String text)throws JSONException {
         if(text.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)throw new JSONException("Backup is larger than 8 MB");
@@ -49,7 +49,7 @@ final class DesktopBackup {
         Iterator<String> keys=settings.keys();while(keys.hasNext()){
             String key=keys.next(),expected=kind(key);if(expected==null){skipped++;continue;}JSONObject field=settings.getJSONObject(key);if(!expected.equals(field.opt("type")))throw new JSONException("Wrong setting type: "+key);Object value=field.get("value");
             if(expected.equals("boolean")){if(!(value instanceof Boolean))throw new JSONException("Invalid switch: "+key);}
-            else if(expected.equals("int")){if(!integer(value))throw new JSONException("Invalid number: "+key);int n=((Number)value).intValue();if(n<0||n>(key.equals("aero_color")?7:key.equals("aero_intensity")?100:key.equals("clock_style")?1:2))throw new JSONException("Setting out of range: "+key);value=n;}
+            else if(expected.equals("int")){if(!integer(value))throw new JSONException("Invalid number: "+key);int n=((Number)value).intValue();if(n<0||n>(key.equals("aero_color")?7:(key.equals("aero_intensity")||key.equals("aero_opacity"))?100:key.equals("clock_style")?1:2))throw new JSONException("Setting out of range: "+key);value=n;}
             else{if(!(value instanceof String))throw new JSONException("Invalid text: "+key);int limit=key.equals("note")||key.equals("gadget_note")?2*1024*1024:512*1024;if(((String)value).length()>limit)throw new JSONException("Setting too large: "+key);}
             values.put(key,value);
         }
@@ -71,6 +71,8 @@ final class DesktopBackup {
         for(String gadget:ids(array((String)values.get("gadgets")),6))if(!Arrays.asList(GadgetView.IDS).contains(gadget))throw new JSONException("Unknown gadget");
         for(String photo:ids(array((String)values.get("gadget_photos")),100))if(!"content".equals(Uri.parse(photo).getScheme()))throw new JSONException("Invalid photo reference");
         JSONArray links=array((String)values.get("linked_folders"));if(links.length()>16)throw new JSONException("Too many linked folders");for(int i=0;i<links.length();i++){JSONObject link=links.getJSONObject(i);Object uri=link.get("uri"),name=link.get("name");if(!(uri instanceof String)||((String)uri).length()>8192||!"content".equals(Uri.parse((String)uri).getScheme())||!DocumentsContract.isTreeUri(Uri.parse((String)uri))||!(name instanceof String)||((String)name).length()>512)throw new JSONException("Invalid linked folder");}
+        if(values.containsKey("profile_portrait")&&!ProfilePortrait.valid((String)values.get("profile_portrait")))throw new JSONException("Invalid profile picture");
+        if(values.containsKey("linked_files"))LinkedFiles.validate(array((String)values.get("linked_files")));
         for(String key:new ArrayList<>(values.keySet())){
             if(key.equals("gadget_layout_portrait")||key.equals("gadget_layout_landscape"))layout(object((String)values.get(key)));
             else if(key.startsWith("window_portrait_")||key.startsWith("window_landscape_")){JSONObject geometry=object((String)values.get(key));for(String n:Arrays.asList("x","y","w","h"))if(geometry.has(n))number(geometry.get(n),0,n.equals("x")||n.equals("y")?1:2000);if(geometry.has("maximized")&&!(geometry.get("maximized") instanceof Boolean))throw new JSONException("Invalid window state");}

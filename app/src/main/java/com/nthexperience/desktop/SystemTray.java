@@ -1,0 +1,87 @@
+package com.nthexperience.desktop;
+
+import android.content.*;
+import android.graphics.*;
+import android.media.AudioManager;
+import android.net.*;
+import android.os.*;
+import android.view.*;
+import android.widget.*;
+import java.util.*;
+
+/** Foreground-only status subscriptions and native flyouts, within the desktop's safe bounds. */
+final class SystemTray extends LinearLayout {
+    interface Host {void action(String id);void open(String id);void opening();}
+    private final FrameLayout workspace;
+    private final AeroWallpaper wallpaper;
+    private final Host host;
+    private final Handler main=new Handler(Looper.getMainLooper());
+    private final ConnectivityManager connections;
+    private final AudioManager audio;
+    private final PowerManager power;
+    private final ArrayList<TrayIcon> icons=new ArrayList<>();
+    private FrameLayout cover;
+    private LinearLayout frame;
+    private TextView summary;
+    private SeekBar volume;
+    private Intent battery;
+    private String page="";
+    private int leftInset,rightInset,restoreVolume;
+    private boolean running,batteryRegistered,networkRegistered,tracking;
+    private final BroadcastReceiver batteryChanged=new BroadcastReceiver(){public void onReceive(Context c,Intent i){if(Intent.ACTION_BATTERY_CHANGED.equals(i.getAction()))battery=i;update();}};
+    private final ConnectivityManager.NetworkCallback networkChanged=new ConnectivityManager.NetworkCallback(){public void onAvailable(Network n){refresh();}public void onLost(Network n){refresh();}public void onCapabilitiesChanged(Network n,NetworkCapabilities caps){refresh();}};
+    private final Runnable tick=new Runnable(){public void run(){if(!running||cover==null)return;update();main.postDelayed(this,1000);}};
+    SystemTray(Context c,FrameLayout workspace,AeroWallpaper wallpaper,Host host){
+        super(c);this.workspace=workspace;this.wallpaper=wallpaper;this.host=host;connections=c.getSystemService(ConnectivityManager.class);audio=c.getSystemService(AudioManager.class);power=c.getSystemService(PowerManager.class);setGravity(Gravity.CENTER_VERTICAL);
+        String[] names={"Battery status","Network status","Volume control"};String[] pages={"battery","network","volume"};
+        for(int i=0;i<names.length;i++){TrayIcon icon=new TrayIcon(c,i);icon.setContentDescription(names[i]);icon.setFocusable(true);icon.setBackground(Aero.selection(c));String target=pages[i];icon.setOnClickListener(v->show(target));addView(icon,new LayoutParams(dp(30),dp(44)));icons.add(icon);}
+    }
+    void start(){if(running)return;running=true;try{IntentFilter filter=new IntentFilter(Intent.ACTION_BATTERY_CHANGED);filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);battery=Build.VERSION.SDK_INT>=33?getContext().registerReceiver(batteryChanged,filter,Context.RECEIVER_EXPORTED):getContext().registerReceiver(batteryChanged,filter);batteryRegistered=true;}catch(RuntimeException ignored){}try{if(connections!=null){connections.registerDefaultNetworkCallback(networkChanged);networkRegistered=true;}}catch(RuntimeException ignored){}update();}
+    void stop(){running=false;dismiss();if(batteryRegistered){getContext().unregisterReceiver(batteryChanged);batteryRegistered=false;}if(networkRegistered){connections.unregisterNetworkCallback(networkChanged);networkRegistered=false;}main.removeCallbacksAndMessages(null);}
+    private void refresh(){main.post(()->{if(running)update();});}
+    void bounds(int left,int right){leftInset=left;rightInset=right;if(cover==null)return;FrameLayout.LayoutParams p=(FrameLayout.LayoutParams)frame.getLayoutParams();p.width=Math.min(dp(324),Math.max(1,workspace.getWidth()-left-right-dp(12)));p.height=Math.min(dp(page.equals("calendar")?395:285),Math.max(1,workspace.getHeight()-dp(10)));p.rightMargin=right+dp(6);frame.setLayoutParams(p);}
+    boolean dismiss(){if(cover==null)return false;workspace.removeView(cover);cover=null;summary=null;volume=null;page="";tracking=false;main.removeCallbacks(tick);return true;}
+    void show(String value){
+        if(value.equals(page)&&cover!=null){dismiss();return;}dismiss();host.opening();page=value;
+        cover=new FrameLayout(getContext());cover.setContentDescription("System tray flyout");cover.setOnClickListener(v->dismiss());workspace.addView(cover,new FrameLayout.LayoutParams(-1,-1));
+        frame=Aero.column(getContext());frame.setBackground(new AeroGlass(wallpaper,AeroGlass.START));Aero.pad(frame,6);frame.setClickable(true);FrameLayout.LayoutParams position=new FrameLayout.LayoutParams(dp(324),dp(285),Gravity.BOTTOM|Gravity.END);position.bottomMargin=dp(5);cover.addView(frame,position);
+        LinearLayout title=new LinearLayout(getContext());TextView name=Aero.text(getContext(),value.equals("battery")?"Power and battery":value.equals("network")?"Network connections":value.equals("volume")?"Volume":"Clock and calendar",14,Color.WHITE);name.setPadding(dp(6),0,0,0);title.addView(name,new LayoutParams(0,dp(36),1));TextView close=Aero.button(getContext(),"×",this::dismiss);close.setContentDescription("Close tray flyout");title.addView(close,new LayoutParams(dp(38),dp(34)));frame.addView(title);
+        LinearLayout body=Aero.column(getContext());Aero.pad(body,12);body.setBackground(Aero.panel(getContext(),0xfffdfefe,0xfff0f6fa,1,0xffa8bccb));ScrollView scroll=new ScrollView(getContext());scroll.setFillViewport(true);scroll.addView(body);frame.addView(scroll,new LayoutParams(-1,0,1));
+        summary=Aero.text(getContext(),"",13,Aero.INK);summary.setPadding(0,0,0,dp(12));summary.setContentDescription("Tray status details");body.addView(summary);
+        switch(value){
+            case "battery":button(body,"Power settings",()->host.action("android:battery"));break;
+            case "network":button(body,"Wi-Fi settings",()->host.action("android:wifi"));button(body,"Network settings",()->host.action("android:network"));break;
+            case "volume":
+                volume=new SeekBar(getContext());volume.setContentDescription("Media volume");int max=audio==null?0:audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);volume.setMax(max);volume.setEnabled(audio!=null&&!audio.isVolumeFixed()&&max>0);volume.setProgress(audio==null?0:audio.getStreamVolume(AudioManager.STREAM_MUSIC));restoreVolume=Math.max(1,volume.getProgress());
+                volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar b){tracking=true;}public void onStopTrackingTouch(SeekBar b){tracking=false;update();}public void onProgressChanged(SeekBar b,int n,boolean user){if(user)setVolume(n);}});body.addView(volume,new LayoutParams(-1,dp(44)));
+                button(body,"Mute / restore media",()->{if(audio==null||audio.isVolumeFixed())return;int current=audio.getStreamVolume(AudioManager.STREAM_MUSIC);if(current>0)restoreVolume=current;setVolume(current>0?0:restoreVolume);});button(body,"Sound settings",()->host.action("android:sound"));break;
+            case "calendar":
+                TextView month=Aero.text(getContext(),"",15,0xff234f75);month.setGravity(Gravity.CENTER);MonthCalendarView[] ref=new MonthCalendarView[1];MonthCalendarView calendar=new MonthCalendarView(getContext(),()->{if(ref[0]!=null)month.setText(ref[0].title());});ref[0]=calendar;
+                LinearLayout nav=new LinearLayout(getContext());nav.addView(Aero.button(getContext(),"‹",()->calendar.offset(-1)),new LayoutParams(dp(40),dp(36)));nav.addView(month,new LayoutParams(0,dp(36),1));nav.addView(Aero.button(getContext(),"›",()->calendar.offset(1)),new LayoutParams(dp(40),dp(36)));body.addView(nav);month.setText(calendar.title());body.addView(calendar,new LayoutParams(-1,dp(210)));button(body,"Today",calendar::today);button(body,"Open Calendar",()->host.open("@calendar"));button(body,"Date and time settings",()->host.action("android:date"));break;
+        }
+        bounds(leftInset,rightInset);cover.bringToFront();update();if(running)main.postDelayed(tick,1000);
+    }
+    private void button(LinearLayout body,String title,Runnable action){TextView button=Aero.button(getContext(),title,action);button.setContentDescription(title);LayoutParams p=new LayoutParams(-1,dp(42));p.topMargin=dp(6);body.addView(button,p);}
+    private void setVolume(int level){if(audio==null||audio.isVolumeFixed())return;try{audio.setStreamVolume(AudioManager.STREAM_MUSIC,Math.max(0,Math.min(audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC),level)),0);update();}catch(SecurityException ex){Toast.makeText(getContext(),"Use Sound settings to change this volume",Toast.LENGTH_SHORT).show();}}
+    private int percent(){int level=battery==null?-1:battery.getIntExtra(BatteryManager.EXTRA_LEVEL,-1),scale=battery==null?0:battery.getIntExtra(BatteryManager.EXTRA_SCALE,100);return level<0||scale<1?-1:Math.min(100,Math.max(0,Math.round(level*100f/scale)));}
+    private boolean charging(){int status=battery==null?0:battery.getIntExtra(BatteryManager.EXTRA_STATUS,0);return status==BatteryManager.BATTERY_STATUS_CHARGING||status==BatteryManager.BATTERY_STATUS_FULL;}
+    private String network(){
+        try{NetworkCapabilities caps=connections==null?null:connections.getNetworkCapabilities(connections.getActiveNetwork());if(caps==null)return "Not connected";String transport=caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)?"VPN":caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)?"Wi-Fi":caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)?"Mobile network":caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)?"Ethernet":"Network";return transport+" • "+(caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)?"Internet available":caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)?"Internet not verified":"Local connection");}catch(SecurityException ex){return "Open Network settings for connection details";}
+    }
+    private void update(){
+        for(TrayIcon icon:icons)icon.invalidate();int percentage=percent();icons.get(0).setContentDescription("Battery status"+(percentage<0?"":", "+percentage+"%"));icons.get(1).setContentDescription("Network status");
+        if(summary==null)return;
+        switch(page){case "battery":summary.setText((percentage<0?"Battery level unavailable":percentage+"% remaining")+"\n"+(charging()?"Plugged in":"On battery")+"\nBattery Saver: "+(power!=null&&power.isPowerSaveMode()?"On":"Off"));break;case "network":summary.setText(network());break;case "volume":int current=audio==null?0:audio.getStreamVolume(AudioManager.STREAM_MUSIC),max=audio==null?0:audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);summary.setText("Media volume: "+current+" / "+max+(audio!=null&&audio.isVolumeFixed()?"\nVolume is controlled by your output device":"\nRinger and Do Not Disturb follow Android settings."));if(volume!=null&&!tracking)volume.setProgress(current);break;case "calendar":summary.setText(java.text.DateFormat.getDateInstance(java.text.DateFormat.FULL).format(new Date())+"\n"+TimeZone.getDefault().getDisplayName());break;}
+    }
+    private int dp(int n){return Aero.dp(getContext(),n);}
+    private final class TrayIcon extends View {
+        final int kind;final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
+        TrayIcon(Context c,int kind){super(c);this.kind=kind;}
+        @Override protected void onDraw(Canvas original){super.onDraw(original);int save=original.save();original.translate((getWidth()-dp(22))/2f,(getHeight()-dp(22))/2f);original.scale(dp(22)/24f,dp(22)/24f);Canvas c=original;paint.setColor(Color.WHITE);paint.setStrokeWidth(1.5f);paint.setStyle(Paint.Style.STROKE);
+            if(kind==0){c.drawRoundRect(3,6,20,18,2,2,paint);c.drawLine(21,10,21,14,paint);paint.setStyle(Paint.Style.FILL);int level=percent();if(level>=0)c.drawRect(5,8,5+13*level/100f,16,paint);if(charging()){paint.setColor(0xffb4e9ff);Path bolt=new Path();bolt.moveTo(12,3);bolt.lineTo(8,12);bolt.lineTo(12,12);bolt.lineTo(10,21);bolt.lineTo(17,10);bolt.lineTo(13,10);bolt.close();c.drawPath(bolt,paint);}}
+            else if(kind==1){c.drawArc(2,3,22,23,220,100,false,paint);c.drawArc(6,7,18,23,220,100,false,paint);paint.setStyle(Paint.Style.FILL);c.drawCircle(12,17,1.5f,paint);if(network().equals("Not connected")){paint.setStrokeWidth(2);c.drawLine(4,3,20,20,paint);}}
+            else{Path speaker=new Path();speaker.moveTo(3,9);speaker.lineTo(7,9);speaker.lineTo(12,5);speaker.lineTo(12,19);speaker.lineTo(7,15);speaker.lineTo(3,15);speaker.close();c.drawPath(speaker,paint);if(audio!=null&&audio.getStreamVolume(AudioManager.STREAM_MUSIC)==0){c.drawLine(16,8,22,16,paint);c.drawLine(22,8,16,16,paint);}else{c.drawArc(10,6,19,18,-65,130,false,paint);c.drawArc(9,3,23,21,-65,130,false,paint);}}
+            c.restoreToCount(save);
+        }
+    }
+}

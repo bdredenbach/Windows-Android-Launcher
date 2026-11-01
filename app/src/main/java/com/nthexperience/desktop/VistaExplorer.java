@@ -13,7 +13,7 @@ import java.util.concurrent.*;
 import java.util.function.Supplier;
 
 final class VistaExplorer extends VistaShell {
-    interface Files {void chooseFolder();void pickFile(String kind);void openDocument(Uri uri,String mime);void app(String id);}
+    interface Files {void chooseFolder();void linkFile();void pickFile(String kind);void openDocument(Uri uri,String mime);void app(String id);}
     private final Files files;
     private final Supplier<List<AppCatalog.Entry>> apps;
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
@@ -44,6 +44,9 @@ final class VistaExplorer extends VistaShell {
         String[][] favorites={{"documents","Documents","Open a document"},{"pictures","Pictures","Open a picture"},{"music","Music","Open an audio file"},{"videos","Videos","Open a video"},{"downloads","Downloads","Choose a downloaded file"}};
         for(String[] favorite:favorites)if(matches(favorite[1]))task(column,favorite[0],favorite[1],favorite[2],()->files.pickFile(favorite[0]));
         if(matches("File Managers"))task(column,"folderapps","File Managers","Your chosen file manager apps",()->navigate("managers"));
+        heading(column,"Start search files","Only files you choose here appear in Start search.");JSONArray favoritesFiles=LinkedFiles.list(store);
+        for(int i=0;i<favoritesFiles.length();i++){JSONObject file=favoritesFiles.optJSONObject(i);if(file==null||!matches(file.optString("name")))continue;int before=column.getChildCount();task(column,"documentfile",file.optString("name"),"Linked file • Hold to remove",()->files.openDocument(Uri.parse(file.optString("uri")),file.optString("mime")));View row=column.getChildAt(before);row.setOnLongClickListener(v->{PopupMenu menu=new PopupMenu(getContext(),row);menu.getMenu().add("Remove from Start search").setOnMenuItemClickListener(w->{LinkedFiles.remove(store,file.optString("uri"));render();return true;});menu.show();return true;});}
+        link(column,"Add a file to Start search…",files::linkFile).setContentDescription("Link a file for Start search");
         heading(column,"Linked folders","Folders you choose can be browsed inside this window.");JSONArray links=DocumentFolders.links(store);int shown=0;
         for(int i=0;i<links.length();i++){JSONObject folder=links.optJSONObject(i);if(folder==null)continue;String uri=folder.optString("uri"),name=folder.optString("name","Linked folder");if(!matches(name))continue;shown++;int before=column.getChildCount();task(column,"files",name,"Browse folder",()->openLinked(uri,name));View row=column.getChildAt(before);row.setOnLongClickListener(v->{PopupMenu menu=new PopupMenu(getContext(),row);menu.getMenu().add("Remove folder link").setOnMenuItemClickListener(w->{DocumentFolders.remove(getContext(),store,uri);render();return true;});menu.show();return true;});}
         link(column,"Add a folder…",files::chooseFolder).setContentDescription("Link a folder");status.setText(shown+" linked folder"+(shown==1?"":"s")+"  •  File access stays under your control");body(scrolling(column));
