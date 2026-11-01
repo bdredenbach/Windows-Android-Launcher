@@ -50,6 +50,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private OnBackInvokedCallback backCallback;
     private final BroadcastReceiver packages=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){scanApps();}};
     private final BroadcastReceiver timeChanged=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){updateClock();}};
+    private final Runnable desktopRender=()->{if(!destroyed)renderDesktop();};
     private final Runnable clockTick=new Runnable(){public void run(){updateClock();main.postDelayed(this,60000-System.currentTimeMillis()%60000);}};
 
     @Override public void onCreate(Bundle saved){
@@ -108,7 +109,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             if(desktopParams.rightMargin!=reserved||desktopParams.leftMargin!=desktopCutoutLeft){desktopParams.rightMargin=reserved;desktopParams.leftMargin=desktopCutoutLeft;desktopScroll.setLayoutParams(desktopParams);}
             int next=Math.max(1,Math.min(9,(width-reserved-desktopCutoutLeft-dp(12))/dp(82)));
             int rows=Math.max(1,(height-dp(16))/dp(94));
-            if(next!=columns||rows!=desktopRows){columns=next;desktopRows=rows;renderDesktop();}
+            if(next!=columns||rows!=desktopRows){columns=next;desktopRows=rows;desktop.removeCallbacks(desktopRender);desktop.post(desktopRender);}
             sidebar.workspaceSize(width,height);
             for(DesktopWindow tool:windows.values())tool.fitToHost();
             if(startMenu!=null){startMenu.availableHeight(height);FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)startMenu.getLayoutParams();int h=Math.min(dp(540),Math.max(1,height-dp(8)));int w=Math.min(dp(420),Math.max(1,width-dp(12)));if(lp.height!=h||lp.width!=w){lp.height=h;lp.width=w;startMenu.setLayoutParams(lp);}}
