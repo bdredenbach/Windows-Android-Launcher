@@ -1,3 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name="com.nthexperience.desktop.TestAwayActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+    </application>
     <instrumentation android:name="com.nthexperience.desktop.AeroSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
 </manifest>
