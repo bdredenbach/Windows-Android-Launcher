@@ -64,6 +64,9 @@ jobs:
           arch: x86_64
           target: ${{ matrix.api == 30 && 'default' || 'google_apis' }}
           profile: ${{ matrix.api == 30 && 'pixel_2' || 'pixel_7' }}
+          ram-size: 2048M
+          heap-size: 384M
+          emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           emulator-boot-timeout: 300
           script: |

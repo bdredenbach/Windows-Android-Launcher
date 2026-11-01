@@ -2,6 +2,8 @@
 set -euo pipefail
 collect() {
   mkdir -p screenshots
+  free -m > screenshots/host-memory.txt
+  adb logcat -d -t 500 > screenshots/device-log.txt 2>/dev/null || true
   for name in desktop start-menu notepad gadget-gallery gadgets-desktop calendar floating-gadgets landscape landscape-notepad landscape-start landscape-calendar restored-portrait control-panel control-panel-classic personalization system computer computer-landscape file-managers explorer-folder desktop-clean default-home-start desktop-context-menu landscape-cutout-left landscape-cutout-right app-folder folder-portrait folder-landscape quick-launch desktop-organization backup-preview backup-restored backup-recovered failure aero-opaque aero-colors aero-windows startup-pearl welcome-center startup-settings startup-after-reboot aero-failure; do
     adb exec-out run-as com.nthexperience.desktop cat "files/$name.png" > "screenshots/$name.png" 2>/dev/null || true
   done
