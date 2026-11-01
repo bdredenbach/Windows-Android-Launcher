@@ -271,6 +271,18 @@ public class LauncherSmoke extends Instrumentation {
     private boolean pickerNode(android.view.accessibility.AccessibilityNodeInfo node){return node.getPackageName()!=null&&!getTargetContext().getPackageName().contentEquals(node.getPackageName());}
     private void awaitPicker() throws Exception {long deadline=SystemClock.uptimeMillis()+10000;while(SystemClock.uptimeMillis()<deadline){if(systemNode(getUiAutomation().getRootInActiveWindow(),node->pickerNode(node)&&node.getText()!=null&&"Use this folder".equalsIgnoreCase(node.getText().toString()))!=null)return;Thread.sleep(150);}throw new AssertionError("Android folder picker did not appear");}
     protected final void clickPickerText(String text) throws Exception {long deadline=SystemClock.uptimeMillis()+10000;while(SystemClock.uptimeMillis()<deadline){android.view.accessibility.AccessibilityNodeInfo node=systemNode(getUiAutomation().getRootInActiveWindow(),v->pickerNode(v)&&v.getText()!=null&&text.equalsIgnoreCase(v.getText().toString()));if(node!=null&&node.isEnabled()&&node.isVisibleToUser()){android.graphics.Rect bounds=new android.graphics.Rect();node.getBoundsInScreen(bounds);if(!bounds.isEmpty()){long down=SystemClock.uptimeMillis();inject(down,MotionEvent.ACTION_DOWN,bounds.exactCenterX(),bounds.exactCenterY());Thread.sleep(80);inject(down,MotionEvent.ACTION_UP,bounds.exactCenterX(),bounds.exactCenterY());Thread.sleep(450);return;}}Thread.sleep(150);}throw new AssertionError("Folder picker item not found: "+text);}
+    protected final void tapPickerNode(Predicate<android.view.accessibility.AccessibilityNodeInfo> match) throws Exception {
+        long deadline=SystemClock.uptimeMillis()+10000;
+        while(SystemClock.uptimeMillis()<deadline){
+            android.view.accessibility.AccessibilityNodeInfo node=systemNode(getUiAutomation().getRootInActiveWindow(),v->pickerNode(v)&&match.test(v));
+            if(node!=null&&node.isEnabled()&&node.isVisibleToUser()){
+                android.graphics.Rect bounds=new android.graphics.Rect();node.getBoundsInScreen(bounds);
+                if(!bounds.isEmpty()){long down=SystemClock.uptimeMillis();inject(down,MotionEvent.ACTION_DOWN,bounds.exactCenterX(),bounds.exactCenterY());Thread.sleep(80);inject(down,MotionEvent.ACTION_UP,bounds.exactCenterX(),bounds.exactCenterY());Thread.sleep(450);return;}
+            }
+            Thread.sleep(150);
+        }
+        throw new AssertionError("Document picker item not found");
+    }
     private void clickSystemText(String text) throws Exception {try{clickSystemNode(node->node.getText()!=null&&text.equalsIgnoreCase(node.getText().toString()));}catch(AssertionError ex){throw new AssertionError("System item not found: "+text,ex);}}
     protected final void clickSystemDescription(String text) throws Exception {clickSystemNode(node->node.getContentDescription()!=null&&(text.equalsIgnoreCase(node.getContentDescription().toString())||node.getContentDescription().toString().equalsIgnoreCase("Open navigation drawer")));}
     protected final void clickSystemNode(Predicate<android.view.accessibility.AccessibilityNodeInfo> match) throws Exception {
