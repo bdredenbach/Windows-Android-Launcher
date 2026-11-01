@@ -19,7 +19,17 @@ trap collect EXIT
 adb install -r fixture/build/outputs/apk/debug/fixture-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-timeout -k 3s 190s adb shell am instrument -w -e suite storage com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee storage-test.txt
+# Permission changes can restart an Android app; apply them outside instrumentation.
+adb shell appops set --uid com.nthexperience.desktop MANAGE_EXTERNAL_STORAGE deny
+timeout -k 3s 90s adb shell am instrument -w -e suite storage -e phase setup com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee storage-setup-test.txt
+grep -q 'PASS:' storage-setup-test.txt
+adb shell am force-stop com.nthexperience.desktop
+adb shell appops set --uid com.nthexperience.desktop MANAGE_EXTERNAL_STORAGE allow
+timeout -k 3s 150s adb shell am instrument -w -e suite storage -e phase access com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee storage-access-test.txt
+grep -q 'PASS:' storage-access-test.txt
+adb shell am force-stop com.nthexperience.desktop
+adb shell appops set --uid com.nthexperience.desktop MANAGE_EXTERNAL_STORAGE deny
+timeout -k 3s 60s adb shell am instrument -w -e suite storage -e phase revoked com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee storage-test.txt
 grep -q 'PASS:' storage-test.txt
 adb shell am force-stop com.nthexperience.desktop
 timeout -k 3s 260s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee explorer-test.txt

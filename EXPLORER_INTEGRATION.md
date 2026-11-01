@@ -1,6 +1,6 @@
 # Using Nth Explorer from another Android app
 
-Nth Desktop 0.10.0 offers a file chooser through `ACTION_GET_CONTENT` and an explicit Nth contract. This selects existing files; it does not replace another application's private browser or Android's Storage Access Framework permission screens. Existing Nth applications need to adopt the contract in their own code; this repository changes only Nth Desktop.
+Nth Desktop 0.11.0 offers a file chooser through `ACTION_GET_CONTENT` and an explicit Nth contract. This selects existing files; it does not replace another application's private browser or Android's Storage Access Framework permission screens. Existing Nth applications need to adopt the contract in their own code; this repository changes only Nth Desktop.
 
 ## Generic chooser
 
@@ -28,7 +28,7 @@ try {
 
 Use your Activity Result callback's `RESULT_OK` data. Read every URI in `ClipData` for multiple selection, or `data.getData()` for a single file. Do not rely on filesystem paths. Use `ContentResolver.openInputStream(uri)` and close the stream. Handle revoked/unavailable content and I/O failures. Cancellation returns `RESULT_CANCELED` with no selection.
 
-`Intent.EXTRA_MIME_TYPES` can specify a MIME list (up to 32). Nth supports at most 256 selected files per result. Directories and virtual documents are not returned. The user chooses from linked folders and can explicitly authorize another folder through Android's system picker.
+`Intent.EXTRA_MIME_TYPES` can specify a MIME list (up to 32). Nth supports at most 256 selected files per result. Directories and virtual documents are not returned. The user chooses from linked folders, or from primary device storage when Nth has separately approved all-files access. They can explicitly authorize another linked folder through Android's system picker. Device access is not transferred to the requesting app.
 
 Nth returns **temporary read-only grants** for the selected `content://` URIs. It returns no write, persistable or prefix grants and no access to unselected files. Do not call `takePersistableUriPermission` on this result. If your app needs a durable copy, import the stream into its own storage while access remains available. If it needs long-term editable access, use the Android system `ACTION_OPEN_DOCUMENT` flow instead.
 

@@ -87,5 +87,7 @@ jobs:
             gadgets-test.txt
             explorer-test.txt
             storage-test.txt
+            storage-setup-test.txt
+            storage-access-test.txt
             reboot-test.txt
             screenshots/
