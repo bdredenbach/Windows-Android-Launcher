@@ -62,7 +62,7 @@ final class BrowserPanel extends LinearLayout {
         int percent;
     }
     BrowserPanel(Activity activity) {
-        super(activity);this.activity=activity;data=new BrowserData(activity);setOrientation(VERTICAL);
+        super(activity);this.activity=activity;data=new BrowserData(activity);setOrientation(VERTICAL);setFocusableInTouchMode(true);
         cleanupOrphanProfiles();
         mobileAgent=WebSettings.getDefaultUserAgent(activity);
         toolbar=new LinearLayout(activity);toolbar.setGravity(Gravity.CENTER_VERTICAL);toolbar.setPadding(dp(2),0,dp(2),0);
@@ -167,6 +167,7 @@ final class BrowserPanel extends LinearLayout {
     private void restoreTabs(){restoring=true;JSONArray saved=data.list("tabs");for(int i=0;i<saved.length()&&i<MAX_TABS;i++){JSONObject item=saved.optJSONObject(i);if(item==null)continue;String url=item.optString("url");if(url.isEmpty()||BrowserUrls.web(url))addTab(url,false);}if(tabs.isEmpty())addTab("",false);else select(tabs.get(Math.max(0,Math.min(tabs.size()-1,data.prefs.getInt("selected",0)))));restoring=false;save();}
     void save(){if(restoring||closed)return;JSONArray saved=new JSONArray();int index=0;for(Tab tab:tabs)if(!tab.privateTab){JSONObject item=new JSONObject();GadgetLayout.put(item,"url",tab.url);saved.put(item);if(tab==selected)index=saved.length()-1;}data.prefs.edit().putString("tabs",saved.toString()).putInt("selected",index).apply();}
     void active(boolean value){foreground=value;if(selected!=null){if(value&&isShown())selected.web.resumeTimers();else selected.web.pauseTimers();}for(Tab tab:tabs)if(value&&tab==selected&&isShown()&&tab.failure==null&&!tab.url.isEmpty())tab.web.onResume();else tab.web.onPause();if(!value)exitFullScreen();}
+    @Override protected void onAttachedToWindow(){super.onAttachedToWindow();post(()->{if(!closed)active(foreground);});}
     @Override protected void onVisibilityChanged(View view,int visibility){super.onVisibilityChanged(view,visibility);if(tabs!=null)active(foreground);}
     private void exitFullScreen(){if(fullScreen==null)return;if(fullScreen.getParent() instanceof ViewGroup)((ViewGroup)fullScreen.getParent()).removeView(fullScreen);fullScreen=null;toolbar.setVisibility(VISIBLE);((View)tabScroll.getParent()).setVisibility(VISIBLE);status.setVisibility(VISIBLE);WebChromeClient.CustomViewCallback callback=fullScreenCallback;fullScreenCallback=null;if(callback!=null)callback.onCustomViewHidden();}
     private void clearPrivateIfUnused(){for(Tab tab:tabs)if(tab.privateTab)return;if(privateStorage!=null){WebStorage storage=privateStorage;privateStorage=null;privateName=null;WebStorageCompat.deleteBrowsingData(storage,()->{});}}
