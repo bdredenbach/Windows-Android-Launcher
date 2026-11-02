@@ -64,7 +64,7 @@ final class BrowserPanel extends LinearLayout {
     BrowserPanel(Activity activity) {
         super(activity);this.activity=activity;data=new BrowserData(activity);setOrientation(VERTICAL);setFocusableInTouchMode(true);
         cleanupOrphanProfiles();
-        mobileAgent=WebSettings.getDefaultUserAgent(activity);
+        mobileAgent=WebSettings.getDefaultUserAgent(activity);WebView.setWebContentsDebuggingEnabled(false);
         toolbar=new LinearLayout(activity);toolbar.setGravity(Gravity.CENTER_VERTICAL);toolbar.setPadding(dp(2),0,dp(2),0);
         toolbar.setBackground(Aero.gloss(activity,new int[]{0xffedf8fc,0xffdbeaf2,0xffc4d9e7,0xffe0edf4},0,0xffa5b9c8));
         back=glyph("back","Browser Back",this::goBack,44);toolbar.addView(back);
@@ -137,7 +137,7 @@ final class BrowserPanel extends LinearLayout {
             public boolean onJsAlert(WebView v,String url,String text,JsResult result){return scriptDialog(tab,url,text,result,null);}
             public boolean onJsConfirm(WebView v,String url,String text,JsResult result){return scriptDialog(tab,url,text,result,"");}
             public boolean onJsPrompt(WebView v,String url,String text,String initial,JsPromptResult result){if(tab!=selected||!isShown()){result.cancel();return true;}EditText edit=new EditText(activity);edit.setText(initial);transientDialog=Aero.dialog(activity).setTitle(BrowserUrls.origin(url)).setMessage(text).setView(edit).setPositiveButton("OK",(d,w)->result.confirm(edit.getText().toString())).setNegativeButton("Cancel",(d,w)->result.cancel()).setOnCancelListener(d->result.cancel()).show();watchDialog();return true;}
-            public void onConsoleMessage(String message,int line,String source){} // Do not copy website data into launcher logs.
+            public boolean onConsoleMessage(ConsoleMessage message){return true;} // Consume website console output without copying it into launcher logs.
         });
         view.setDownloadListener((url,userAgent,disposition,mime,length)->{if(tab==selected&&isShown())download(tab,url,userAgent,disposition,mime,length);});
         view.setFindListener((index,count,done)->{if(tab==selected)findCount.setText(count==0?"0 matches":(index+1)+" / "+count);});
