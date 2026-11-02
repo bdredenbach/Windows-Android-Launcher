@@ -32,19 +32,20 @@ jobs:
       - name: Check launcher state and layout geometry
         run: |
           mkdir -p build/state-check
-          javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java app/src/main/java/com/nthexperience/desktop/StartupPolicy.java checks/StartupPolicyCheck.java app/src/main/java/com/nthexperience/desktop/GadgetMath.java checks/GadgetMathCheck.java app/src/main/java/com/nthexperience/desktop/BrowserUrls.java checks/BrowserUrlsCheck.java
+          javac -d build/state-check app/src/main/java/com/nthexperience/desktop/LauncherState.java checks/LauncherStateCheck.java app/src/main/java/com/nthexperience/desktop/DesktopGeometry.java checks/DesktopGeometryCheck.java app/src/main/java/com/nthexperience/desktop/StartupPolicy.java checks/StartupPolicyCheck.java app/src/main/java/com/nthexperience/desktop/GadgetMath.java checks/GadgetMathCheck.java app/src/main/java/com/nthexperience/desktop/BrowserUrls.java checks/BrowserUrlsCheck.java app/src/main/java/com/nthexperience/desktop/DesktopMetrics.java checks/DesktopMetricsCheck.java
           java -cp build/state-check LauncherStateCheck
           java -cp build/state-check DesktopGeometryCheck
           java -cp build/state-check StartupPolicyCheck
           java -cp build/state-check com.nthexperience.desktop.GadgetMathCheck
           java -cp build/state-check com.nthexperience.desktop.BrowserUrlsCheck
+          java -cp build/state-check com.nthexperience.desktop.DesktopMetricsCheck
       - run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
       - name: Check packaged test registrations
         run: python3 checks/CheckTestManifest.py
       - uses: actions/upload-artifact@v4
         if: matrix.api == 30
         with:
-          name: Nth-Desktop-0.16.0-debug
+          name: Nth-Desktop-0.17.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - name: Keep APK verification tool for the handoff
         if: matrix.api == 30

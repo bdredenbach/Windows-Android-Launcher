@@ -69,9 +69,16 @@ final class DesktopStore {
         prefs.edit().putString("app_folders",all.toString()).putString("shortcuts",new JSONArray(ids).toString()).putString("quick_launch",new JSONArray(quick).toString()).putString("shortcut_names",names.toString()).apply();
     }
     void shift(List<String> ids,String id,int direction){int at=ids.indexOf(id),to=at+direction;if(at>=0&&to>=0&&to<ids.size())Collections.swap(ids,at,to);}
-    int iconSize(){int value=prefs.getInt("desktop_icon_size",1);return value==0?38:value==2?58:46;}
-    int tileWidth(){return prefs.getInt("desktop_icon_size",1)==0?70:prefs.getInt("desktop_icon_size",1)==2?96:80;}
-    int tileHeight(){return prefs.getInt("desktop_icon_size",1)==0?82:prefs.getInt("desktop_icon_size",1)==2?112:94;}
+    int iconPercent(){int old=prefs.getInt("desktop_icon_size",1);return Math.max(60,Math.min(150,prefs.getInt("desktop_icon_percent",old==0?83:old==2?126:100)));}
+    int iconSize(){return Math.round(46*iconPercent()/100f);}
+    boolean iconLabels(){return prefs.getBoolean("desktop_labels",true);}
+    int labelSize(){return Math.max(10,Math.min(16,prefs.getInt("desktop_label_size",iconSize()>46?12:11)));}
+    int spacingX(){return Math.max(0,Math.min(24,prefs.getInt("desktop_spacing_x",0)));}
+    int spacingY(){return Math.max(0,Math.min(24,prefs.getInt("desktop_spacing_y",0)));}
+    int tileWidth(){return iconSize()+34+spacingX();}
+    int tileHeight(){return iconSize()+(iconLabels()?48:24)+spacingY();}
+    int gridColumns(String orientation){return Math.max(0,Math.min(10,prefs.getInt("desktop_columns_"+orientation,0)));}
+    int gridRows(String orientation){return Math.max(0,Math.min(16,prefs.getInt("desktop_rows_"+orientation,0)));}
     static String cleanName(String name){String value=name==null?"":name.replaceAll("[\\p{Cntrl}]"," ").trim();return value.substring(0,Math.min(40,value.length()));}
     static List<String> array(JSONArray values){List<String> result=new ArrayList<>();if(values!=null)for(int i=0;i<values.length();i++){Object item=values.opt(i);if(item instanceof String)result.add((String)item);}return LauncherState.normalize(result);}
     private List<String> leafItems(List<String> items){List<String> result=new ArrayList<>();for(String id:LauncherState.normalize(items))if(!id.startsWith("folder:")&&result.size()<MAX_ITEMS)result.add(id);return result;}

@@ -20,7 +20,7 @@ abstract class VistaShell extends LinearLayout {
     final TextView address,status,back,forward,up,folders;
     private final ArrayList<String> history=new ArrayList<>();
     private int historyIndex=-1;
-    private boolean restoring,ready,compact,keepFoldersButton;private Boolean navigationOverride;
+    private boolean restoring,ready,compact,keepFoldersButton;private Boolean navigationOverride;private String navigationPreference;
     private int pendingPosition=-1,pendingOffset;
     private boolean restoreFocus;
     VistaShell(Context c,DesktopStore store,Actions actions,String hint){
@@ -37,9 +37,16 @@ abstract class VistaShell extends LinearLayout {
         addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{status.setVisibility(b-t<dp(250)?GONE:VISIBLE);boolean next=r-l<dp(490);if(!ready||next!=compact){compact=next;sideScroll.setVisibility(navigationOverride==null?(compact?GONE:VISIBLE):navigationOverride?VISIBLE:GONE);folders.setVisibility(keepFoldersButton||compact?VISIBLE:GONE);if(ready)render();}});
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int n,int f){}public void afterTextChanged(Editable e){}public void onTextChanged(CharSequence s,int start,int before,int count){if(ready&&!restoring)render();}});
     }
-    final void enableNavigationToggle(){keepFoldersButton=true;folders.setVisibility(VISIBLE);folders.setOnClickListener(v->toggleNavigationPane());}
+    final void enableNavigationToggle(){navigationPreference="explorer_navigation";navigationOverride=store.prefs.getBoolean(navigationPreference,true);sideScroll.setVisibility(navigationOverride?VISIBLE:GONE);keepFoldersButton=true;folders.setVisibility(VISIBLE);folders.setOnClickListener(v->toggleNavigationPane());}
     final boolean navigationPaneVisible(){return sideScroll.getVisibility()==VISIBLE;}
-    final void toggleNavigationPane(){navigationOverride=!navigationPaneVisible();sideScroll.setVisibility(navigationOverride?VISIBLE:GONE);if(ready)render();}
+    final void toggleNavigationPane(){navigationOverride=!navigationPaneVisible();if(navigationPreference!=null)store.prefs.edit().putBoolean(navigationPreference,navigationOverride).apply();sideScroll.setVisibility(navigationOverride?VISIBLE:GONE);if(ready)render();}
+    final void explorerChrome(java.util.function.Consumer<String> menu){
+        LinearLayout classic=new LinearLayout(getContext());classic.setBackground(Aero.panel(getContext(),0xfffcfcfc,0xffe4e8ed,0,0xffafb9c2));
+        for(String label:new String[]{"File","Edit","View","Tools","Help"}){TextView item=command(label,()->menu.accept(label));item.setContentDescription(label+" menu");classic.addView(item,new LayoutParams(-2,dp(26)));}addView(classic,1,new LayoutParams(-1,dp(27)));
+        ((ViewGroup)commands.getParent()).setBackground(Aero.gloss(getContext(),new int[]{0xff567d94,0xff2d536b,0xff173e56,0xff346077},0,0xff7c9bae));folders.setTextColor(Color.WHITE);
+        for(int i=0;i<commands.getChildCount();i++)if(commands.getChildAt(i) instanceof TextView)((TextView)commands.getChildAt(i)).setTextColor(Color.WHITE);
+        for(TextView button:new TextView[]{back,forward})button.setBackground(Aero.gloss(getContext(),new int[]{0xffeaf7ff,0xffa9c9df,0xff7397b3,0xffc9e0ee},16,0xff839baa));
+    }
     private View scrollTarget(View root){if(root instanceof AbsListView||root instanceof ScrollView)return root;if(root instanceof ViewGroup)for(int i=0;i<((ViewGroup)root).getChildCount();i++){View child=scrollTarget(((ViewGroup)root).getChildAt(i));if(child!=null)return child;}return null;}
     final void start(String page){history.add(page);historyIndex=0;ready=true;render();updateNavigation();}
     final String page(){return historyIndex>=0?history.get(historyIndex):"home";}
@@ -69,7 +76,7 @@ abstract class VistaShell extends LinearLayout {
     }
     final void restore(JSONObject value){
         if(value==null)return;restoring=true;JSONArray saved=value.optJSONArray("history");if(saved!=null&&saved.length()>0){history.clear();for(int i=0;i<Math.min(16,saved.length());i++)history.add(saved.optString(i,"home"));historyIndex=Math.max(0,Math.min(history.size()-1,value.optInt("index")));}
-        int nav=value.optInt("navigation",-1);navigationOverride=nav<0?null:nav==1;sideScroll.setVisibility(navigationOverride==null?(compact?GONE:VISIBLE):navigationOverride?VISIBLE:GONE);restoreExtra(value.optJSONObject("extra"));search.setText(value.optString("query"));search.setSelection(Math.max(0,Math.min(search.length(),value.optInt("cursor"))));restoreFocus=value.optBoolean("focus");pendingPosition=value.optInt("position",0);pendingOffset=value.optInt("offset");restoring=false;render();updateNavigation();if(restoreFocus)search.requestFocus();
+        int nav=value.optInt("navigation",-1);navigationOverride=navigationPreference!=null?store.prefs.getBoolean(navigationPreference,true):nav<0?null:nav==1;sideScroll.setVisibility(navigationOverride==null?(compact?GONE:VISIBLE):navigationOverride?VISIBLE:GONE);restoreExtra(value.optJSONObject("extra"));search.setText(value.optString("query"));search.setSelection(Math.max(0,Math.min(search.length(),value.optInt("cursor"))));restoreFocus=value.optBoolean("focus");pendingPosition=value.optInt("position",0);pendingOffset=value.optInt("offset");restoring=false;render();updateNavigation();if(restoreFocus)search.requestFocus();
     }
     final void body(View view){content.removeAllViews();content.addView(view,new FrameLayout.LayoutParams(-1,-1));if(pendingPosition>=0){final int position=pendingPosition,offset=pendingOffset;view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener(){public void onGlobalLayout(){view.getViewTreeObserver().removeOnGlobalLayoutListener(this);View target=scrollTarget(view);if(target instanceof ListView)((ListView)target).setSelectionFromTop(position,offset);else if(target instanceof AbsListView)((AbsListView)target).setSelection(position);else if(target!=null)target.scrollTo(0,offset);}});pendingPosition=-1;}}
     final void loading(View view){content.removeAllViews();content.addView(view,new FrameLayout.LayoutParams(-1,-1));}
