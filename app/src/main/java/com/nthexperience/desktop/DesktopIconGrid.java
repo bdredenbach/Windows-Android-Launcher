@@ -23,9 +23,9 @@ final class DesktopIconGrid extends ViewGroup {
     private Rect at(float x,float y,int width,int height,boolean snap){int w=Math.max(1,tileWidth),h=Math.max(1,tileHeight);if(snap){x=DesktopGeometry.clamp(DesktopGeometry.snap(x,w),0,Math.max(0,(width-w)/w)*w);y=DesktopGeometry.clamp(DesktopGeometry.snap(y,h),0,Math.max(0,(height-h)/h)*h);}int left=Math.round(DesktopGeometry.clamp(x,0,Math.max(0,width-w))),top=Math.round(DesktopGeometry.clamp(y,0,Math.max(0,height-h)));return new Rect(left,top,left+w,top+h);}
     void place(String id,float x,float y){
         if(store.prefs.getBoolean("layout_locked",false))return;
-        Rect target=at(x,y,getWidth(),Math.max(viewportHeight,tileHeight),store.prefs.getBoolean("snap_desktop",true));
+        Rect target=at(x,y,getWidth(),Math.max(viewportHeight,getHeight()),store.prefs.getBoolean("snap_desktop",true));
         if(blocked(target))return;
-        JSONObject all=saved(),point=new JSONObject();GadgetLayout.put(point,"x",DesktopGeometry.fraction(target.left,getWidth()-tileWidth));GadgetLayout.put(point,"y",target.top/getResources().getDisplayMetrics().density);GadgetLayout.put(all,id,point);store.prefs.edit().putString(key,all.toString()).apply();requestLayout();
+        JSONObject all=saved(),point=new JSONObject();for(int i=0;i<getChildCount();i++){View child=getChildAt(i);String other=String.valueOf(child.getTag());if(all.has(other))continue;JSONObject previous=new JSONObject();GadgetLayout.put(previous,"x",DesktopGeometry.fraction(child.getLeft(),getWidth()-tileWidth));GadgetLayout.put(previous,"y",child.getTop()/getResources().getDisplayMetrics().density);GadgetLayout.put(all,other,previous);}GadgetLayout.put(point,"x",DesktopGeometry.fraction(target.left,getWidth()-tileWidth));GadgetLayout.put(point,"y",target.top/getResources().getDisplayMetrics().density);GadgetLayout.put(all,id,point);store.prefs.edit().putString(key,all.toString()).apply();requestLayout();
     }
     void swapPositions(String moving,String target){
         View a=null,b=null;for(int i=0;i<getChildCount();i++){View v=getChildAt(i);if(moving.equals(v.getTag()))a=v;if(target.equals(v.getTag()))b=v;}
@@ -35,7 +35,8 @@ final class DesktopIconGrid extends ViewGroup {
         int width=MeasureSpec.getSize(widthSpec),w=Math.max(1,tileWidth),h=Math.max(1,tileHeight),count=getChildCount();
         int[] origin=new int[2];getLocationOnScreen(origin);plannedX=origin[0];plannedY=origin[1];positions.clear();for(int i=0;i<count;i++)positions.add(null);
         JSONObject all=saved();boolean snap=store.prefs.getBoolean("snap_desktop",true);int bottom=Math.max(viewportHeight,h);float density=getResources().getDisplayMetrics().density;
-        for(int i=0;i<count;i++){JSONObject point=all.optJSONObject(String.valueOf(getChildAt(i).getTag()));if(point==null)continue;Rect cell=at((float)point.optDouble("x",0)*Math.max(0,width-w),(float)point.optDouble("y",0)*density,width,Math.max(viewportHeight,h),snap);if(!blocked(cell)){positions.set(i,cell);bottom=Math.max(bottom,cell.bottom);}}
+        int extent=bottom;for(int i=0;i<count;i++){JSONObject point=all.optJSONObject(String.valueOf(getChildAt(i).getTag()));if(point!=null)extent=Math.max(extent,Math.round(DesktopGeometry.clamp((float)point.optDouble("y",0),0,60000)*density)+h);}
+        for(int i=0;i<count;i++){JSONObject point=all.optJSONObject(String.valueOf(getChildAt(i).getTag()));if(point==null)continue;Rect cell=at((float)point.optDouble("x",0)*Math.max(0,width-w),(float)point.optDouble("y",0)*density,width,extent,snap);if(!blocked(cell)){positions.set(i,cell);bottom=Math.max(bottom,cell.bottom);}}
         int columns=Math.max(1,width/w),rows=Math.max(1,Math.max(viewportHeight/h,(count+columns-1)/columns));
         for(int i=0;i<count;i++)if(positions.get(i)==null){boolean found=false;for(int extra=0;!found;extra++){for(int column=0;column<columns&&!found;column++)for(int row=0;row<rows+extra&&!found;row++){Rect cell=new Rect(column*w,row*h,(column+1)*w,(row+1)*h);if(!blocked(cell)&&!occupied(cell,positions)){positions.set(i,cell);bottom=Math.max(bottom,cell.bottom);found=true;}}}}
         for(int i=0;i<count;i++)getChildAt(i).measure(MeasureSpec.makeMeasureSpec(w,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(h,MeasureSpec.EXACTLY));setMeasuredDimension(width,resolveSize(bottom,heightSpec));
