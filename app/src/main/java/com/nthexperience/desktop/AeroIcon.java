@@ -10,7 +10,7 @@ final class AeroIcon extends View {
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     AeroIcon(Context c, String kind) { super(c); this.kind = kind; setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); }
     @Override protected void onDraw(Canvas canvas) {
-        float s = Math.min(getWidth(),getHeight())/64f;
+        float s = Math.min(getWidth()-getPaddingLeft()-getPaddingRight(),getHeight()-getPaddingTop()-getPaddingBottom())/64f;
         canvas.save(); canvas.translate((getWidth()-64*s)/2,(getHeight()-64*s)/2); canvas.scale(s,s);
         p.setShader(null); p.setStyle(Paint.Style.FILL); p.setAlpha(255);
         if(VistaArtwork.draw(canvas,kind)){canvas.restore();return;}

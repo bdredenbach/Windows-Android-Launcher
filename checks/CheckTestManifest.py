@@ -3,7 +3,7 @@ from pathlib import Path
 import struct
 import zipfile
 
-required = {'StorageSmoke', 'BrowserSmoke', 'PhotoSmoke', 'ContinuitySmoke', 'AuthenticitySmoke', 'FileOpenSmoke'}
+required = {'StorageSmoke', 'BrowserSmoke', 'PhotoSmoke', 'ContinuitySmoke', 'AuthenticitySmoke', 'FileOpenSmoke', 'PolishSmoke'}
 apk = Path('app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk')
 with zipfile.ZipFile(apk) as archive:
     data = archive.read('AndroidManifest.xml')
@@ -45,4 +45,4 @@ while offset < len(data):
                     suites.add(strings[raw if raw != 0xffffffff else value].rsplit('.', 1)[-1])
     offset += size
 assert required <= suites, 'Test APK is missing instrumentation: ' + ', '.join(sorted(required - suites))
-print('PASS: all six native suites are registered in the packaged test APK')
+print('PASS: all seven native suites are registered in the packaged test APK')

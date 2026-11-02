@@ -25,7 +25,7 @@ final class ControlPanelCatalog {
     private static Task t(String title,String description,String destination){return new Task(title,description,destination);}
     static final List<Panel> PANELS=Collections.unmodifiableList(Arrays.asList(
         new Panel("welcome","system","Welcome Center","orb","Set up your Nth desktop","open:@welcome","Getting started"),
-        new Panel("system","system","System","computer","View device, memory and desktop information","page:system","Device information;RAM;processor"),
+        new Panel("system","system","System","computer","View device, memory and desktop information","page:system","Device information;RAM;processor",t("Task Manager","Switch windows, end a Nth task and view performance","open:@taskmanager")),
         new Panel("backup","system","Backup and Restore","drive","Save or restore your desktop, folders and notes","open:@backup","Backup and Restore Center"),
         new Panel("access","system","File access","files","Set up device access or connect folders","storage-access","permissions;storage access"),
         new Panel("storage","system","Storage","drive","Storage use and device cleanup · Android","android:storage","disk space"),
