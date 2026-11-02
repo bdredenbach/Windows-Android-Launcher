@@ -17,7 +17,7 @@ final class GadgetGallery extends VistaShell {
         if(count==0)heading(column,"No matching gadgets","Try another category or clear your search.");link(column,"Show Sidebar",host::reveal).setContentDescription("Show Sidebar");CheckBox lock=Aero.check(getContext(),"Lock desktop layout",store.prefs.getBoolean("layout_locked",false));lock.setContentDescription("Lock desktop layout");lock.setOnCheckedChangeListener((v,value)->store.prefs.edit().putBoolean("layout_locked",value).apply());column.addView(lock);CheckBox snap=Aero.check(getContext(),"Snap gadgets to grid",store.prefs.getBoolean("snap_gadgets",true));snap.setOnCheckedChangeListener((v,value)->store.prefs.edit().putBoolean("snap_gadgets",value).apply());column.addView(snap);status.setText(count+" available gadgets  •  "+store.gadgets().size()+" on your desktop");body(scrolling(column));
     }
     private void open(String kind){host.action("gadget:"+kind);}
-    private void categories(){PopupMenu menu=new PopupMenu(getContext(),commands);for(String name:CATEGORIES)menu.getMenu().add(name).setCheckable(true).setChecked(name.equals(category)).setOnMenuItemClickListener(v->{category=name;render();return true;});menu.show();}
+    private void categories(){DesktopContextMenu menu=new DesktopContextMenu(getContext(),"Gadget categories");for(String name:CATEGORIES)menu.checked(name,name.equals(category),()->{category=name;render();});ContextMenus.centered(commands,(x,y)->ContextMenus.show(menu,commands,x,y));}
     @Override void showFolders(){categories();}
     @Override void goUp(){category="All gadgets";render();}
     @Override JSONObject extraState(){JSONObject state=new JSONObject();GadgetLayout.put(state,"category",category);return state;}

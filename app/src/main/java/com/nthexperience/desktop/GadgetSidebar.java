@@ -125,14 +125,13 @@ final class GadgetSidebar extends LinearLayout {
     void reveal(){layout.visible(true);visibilityFromStore();actions.sidebarChanged();}
     boolean ticking(){return active&&anyVisible();}
     void menu(GadgetView face,String id){
-        PopupMenu menu=new PopupMenu(getContext(),face);menu.getMenu().add("Open "+GadgetView.title(id)).setOnMenuItemClickListener(v->{actions.gadgetAction(id);return true;});
+        DesktopContextMenu menu=new DesktopContextMenu(getContext(),"Gadget menu");menu.item("Open "+GadgetView.title(id),"programs",()->actions.gadgetAction(id));
         if(!locked()){
-            menu.getMenu().add(layout.docked(id)?"Move to desktop":"Dock in Sidebar").setOnMenuItemClickListener(v->{if(layout.docked(id))layout.position(id,.35f,.15f,layout.scale(id));else layout.dock(id);rebuild();return true;});
-            android.view.SubMenu sizes=menu.getMenu().addSubMenu("Gadget size");String[] labels={"Small","Normal","Large","Extra large"};float[] scales={.8f,1,1.35f,1.75f};
-            for(int i=0;i<labels.length;i++){final float scale=scales[i];sizes.add(labels[i]).setOnMenuItemClickListener(v->{layout.position(id,layout.x(id),layout.y(id),scale);rebuild();return true;});}
-            menu.getMenu().add("Drag to arrange").setOnMenuItemClickListener(v->{beginDrag(face,id);return true;});
+            menu.item(layout.docked(id)?"Move to desktop":"Dock in Sidebar","computer",()->{if(layout.docked(id))layout.position(id,.35f,.15f,layout.scale(id));else layout.dock(id);rebuild();});
+            menu.submenu("Gadget size","appearance",()->{DesktopContextMenu sizes=new DesktopContextMenu(getContext(),"Gadget size");String[] labels={"Small","Normal","Large","Extra large"};float[] scales={.8f,1,1.35f,1.75f};for(int i=0;i<labels.length;i++){float scale=scales[i];sizes.checked(labels[i],Math.abs(layout.scale(id)-scale)<.01f,()->{layout.position(id,layout.x(id),layout.y(id),scale);rebuild();});}ContextMenus.centered(face,(x,y)->ContextMenus.show(sizes,face,x,y));});
+            menu.item("Drag to arrange","computer",()->beginDrag(face,id));
         }
-        menu.getMenu().add("Close gadget").setOnMenuItemClickListener(v->{List<String> ids=store.gadgets();ids.remove(id);store.gadgets(ids);rebuild();return true;});menu.show();
+        menu.separator();menu.item("Close gadget","delete",()->{List<String> ids=store.gadgets();ids.remove(id);store.gadgets(ids);rebuild();});ContextMenus.centered(face,(x,y)->ContextMenus.show(menu,face,x,y));
     }
     private void refreshReadings(){
         Intent battery=getContext().registerReceiver(null,new IntentFilter(Intent.ACTION_BATTERY_CHANGED));int level=battery==null?-1:battery.getIntExtra(BatteryManager.EXTRA_LEVEL,-1),scale=battery==null?-1:battery.getIntExtra(BatteryManager.EXTRA_SCALE,-1);
