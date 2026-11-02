@@ -23,6 +23,11 @@ adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 # Exercise the integrated browser before the storage suites reset launcher preferences.
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
+if [[ "$1" == 30 ]]; then
+  timeout -k 3s 90s adb shell am instrument -w -e suite gadgets -e top-only true com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee desktop-top-test.txt
+  grep -q 'PASS:' desktop-top-test.txt
+  adb shell am force-stop com.nthexperience.desktop
+fi
 timeout -k 3s 240s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.BrowserSmoke | tee browser-test.txt
 grep -q 'PASS:' browser-test.txt
 adb shell am force-stop com.nthexperience.desktop

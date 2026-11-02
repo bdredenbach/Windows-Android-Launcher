@@ -86,6 +86,7 @@ jobs:
             smoke-test.txt
             aero-test.txt
             gadgets-test.txt
+            desktop-top-test.txt
             explorer-test.txt
             storage-test.txt
             storage-setup-test.txt

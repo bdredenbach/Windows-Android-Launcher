@@ -15,13 +15,15 @@ import java.util.function.Predicate;
 
 /** Real native UI, persistence, provider callbacks and parser boundaries on disposable emulators. */
 public class GadgetSmoke extends AeroSmoke {
-    private MainActivity activity;private View root;private boolean ownSuite,systemBarsPresent;
+    private MainActivity activity;private View root;private boolean ownSuite,systemBarsPresent,topOnly;
     private final BlockingQueue<MainActivity> resumed=new LinkedBlockingQueue<>();
     private final Application.ActivityLifecycleCallbacks lifecycle=new Application.ActivityLifecycleCallbacks(){public void onActivityResumed(Activity a){if(a instanceof MainActivity)resumed.offer((MainActivity)a);}public void onActivityCreated(Activity a,Bundle b){}public void onActivityStarted(Activity a){}public void onActivityStopped(Activity a){}public void onActivityPaused(Activity a){}public void onActivitySaveInstanceState(Activity a,Bundle b){}public void onActivityDestroyed(Activity a){}};
-    @Override public void onCreate(Bundle args){ownSuite=args==null||args.getString("suite")==null;super.onCreate(args);}
+    @Override public void onCreate(Bundle args){ownSuite=args==null||args.getString("suite")==null;topOnly=args!=null&&args.getBoolean("top-only",false);super.onCreate(args);}
     @Override public void onStart(){if(!ownSuite){super.onStart();return;}Bundle result=new Bundle();Application application=(Application)getTargetContext().getApplicationContext();application.registerActivityLifecycleCallbacks(lifecycle);try{
         DesktopStore store=new DesktopStore(getTargetContext());getTargetContext().getSharedPreferences(StartupExperience.SESSION,0).edit().putBoolean("seen",true).putBoolean("welcome_seen",true).putInt("boot",StartupExperience.boot(getTargetContext())).commit();store.prefs.edit().putBoolean("weather_follow",false).remove("gadget_data").remove("feed_url").remove("feed_items").commit();
+        if(topOnly){getTargetContext().getSharedPreferences(StorageAccess.PREFS,0).edit().putBoolean("seen",true).commit();store.prefs.edit().putInt("startup_mode",2).putBoolean("welcome_on_start",false).commit();}
         Intent intent=new Intent(Intent.ACTION_MAIN).setComponent(new ComponentName(getTargetContext(),MainActivity.class)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);activity=(MainActivity)startActivitySync(intent);root=activity.getWindow().getDecorView();Thread.sleep(300);
+        if(topOnly){alignment(store);application.unregisterActivityLifecycleCallbacks(lifecycle);result.putString("stream","PASS: portrait cutout, hidden-status top alignment, safe captions and actual Sidebar touch.\n");finish(Activity.RESULT_OK,result);return;}
         gallery(store);tools(store);newTools(store);extraTools(store);parsers(store);location(store);alignment(store);artwork(store);result.putString("stream","PASS: twenty-one searchable native gadgets, distinct real window icons, calculator and conversions, checklist actions, live stopwatch/laps/countdown, world zones, actual storage, RSS/Atom parsing, gadget backup validation, activity recreation, and Android fused/network mock-location follow/pause/resume with stale-fix rejection; distinct gadget artwork, real network counters, compass lifecycle, solvable tile puzzle, and both landscape directions with status-bar and notification-shade alignment.\n");application.unregisterActivityLifecycleCallbacks(lifecycle);finish(Activity.RESULT_OK,result);
     }catch(Throwable failure){try{shot("gadgets-failure.png");}catch(Exception ignored){}java.io.StringWriter text=new java.io.StringWriter();failure.printStackTrace(new java.io.PrintWriter(text));result.putString("stream","FAIL: "+text+"\n");application.unregisterActivityLifecycleCallbacks(lifecycle);finish(Activity.RESULT_CANCELED,result);}}
     private void gallery(DesktopStore store)throws Exception{
@@ -59,7 +61,7 @@ public class GadgetSmoke extends AeroSmoke {
         if(cutout!=null)shell("cmd overlay enable-exclusive --user 0 --category "+cutout);
         try{
             if(systemBarsPresent&&cutout!=null)portraitTopAlignment(store);
-            int modes=Build.VERSION.SDK_INT==30&&overlays.contains("com.android.internal.systemui.navbar.gestural")?2:1;
+            int modes=topOnly?0:Build.VERSION.SDK_INT==30&&overlays.contains("com.android.internal.systemui.navbar.gestural")?2:1;
             for(int mode=0;mode<modes;mode++){
                 String nav=mode==0?"threebutton":"gestural";if(overlays.contains("com.android.internal.systemui.navbar."+nav))shell("cmd overlay enable-exclusive --user 0 --category com.android.internal.systemui.navbar."+nav);
                 for(int direction=0;direction<2;direction++){
