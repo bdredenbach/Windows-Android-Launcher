@@ -102,6 +102,8 @@ public class LauncherSmoke extends Instrumentation {
         }
     }
     private void layoutChecks() throws Exception {
+        // Exercise first-visit landscape cloning independently of earlier rotation suites.
+        ui(()->new DesktopStore(getTargetContext()).prefs.edit().remove("gadget_layout_landscape").commit());
         progress("dragging Clock out of the Sidebar");
         View clock=find(v->"Clock gadget".equals(v.getContentDescription()));check(clock!=null,"Clock available for drag");
         int[] rootLocation=new int[2];root.getLocationOnScreen(rootLocation);
