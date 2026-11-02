@@ -42,7 +42,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: matrix.api == 30
         with:
-          name: Nth-Desktop-0.15.0-debug
+          name: Nth-Desktop-0.16.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - name: Keep APK verification tool for the handoff
         if: matrix.api == 30
@@ -54,6 +54,14 @@ jobs:
         with:
           name: APK-verification-tool
           path: build/signing-tool/apksigner.jar
+      - name: Prepare local Java compile kit
+        if: matrix.api == 30
+        run: python3 checks/PrepareCompileKit.py
+      - uses: actions/upload-artifact@v4
+        if: matrix.api == 30
+        with:
+          name: Android-compile-kit
+          path: build/compile-kit/
       - name: Check public gadget services
         if: matrix.api == 30
         run: python3 checks/CheckPublicGadgetServices.py
