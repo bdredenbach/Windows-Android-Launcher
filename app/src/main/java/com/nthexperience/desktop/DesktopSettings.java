@@ -20,6 +20,7 @@ final class DesktopSettings extends LinearLayout {
         slider(this,"Horizontal spacing","desktop_spacing_x",0,24,store.spacingX(),"",true);slider(this,"Vertical spacing","desktop_spacing_y",0,24,store.spacingY(),"",true);
         TextView reset=Aero.button(c,"Restore default icon layout",()->{android.content.SharedPreferences.Editor e=store.prefs.edit();for(String key:new String[]{"desktop_icon_size","desktop_icon_percent","desktop_labels","desktop_label_size","desktop_spacing_x","desktop_spacing_y","desktop_columns_portrait","desktop_rows_portrait","desktop_columns_landscape","desktop_rows_landscape"})e.remove(key);e.apply();changed.run();View parent=(View)getParent();while(parent!=null&&!(parent instanceof VistaControlPanel))parent=parent.getParent() instanceof View?(View)parent.getParent():null;if(parent instanceof VistaControlPanel)((VistaControlPanel)parent).render();});addView(reset,new LayoutParams(-1,dp(44)));updatePreview();
     }
+    @Override protected void onConfigurationChanged(Configuration configuration){super.onConfigurationChanged(configuration);gridLabel();}
     private String orientation(){return getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE?"landscape":"portrait";}
     private void gridLabel(){String o=orientation();int columns=store.gridColumns(o),rows=store.gridRows(o);grid.setText("Desktop grid: "+(columns==0&&rows==0?"Automatic":columns+" × "+rows)+" · "+(o.equals("portrait")?"Portrait":"Landscape"));}
     private void gridDialog(){
