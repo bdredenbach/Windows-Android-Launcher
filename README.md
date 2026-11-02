@@ -1,14 +1,20 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.17.0 — Desktop Settings and consistent folders** adds live icon-size/label previews, separate portrait/landscape desktop grids, spacing controls, persistent folder navigation, and Explorer-style shortcut folders. Compact Sidebar commands, original Vista-style icons, Android app taskbar buttons, the reorganized Start menu and real file organization remain available. Earlier System, Aero, video fullscreen, storage, browser, Gallery, desktop layout and all 21 gadgets remain available.
+A Vista-style Android home launcher by Nth Experience. **0.18.0 — Start glass and consistent navigation** restores Start menu glass opacity, aligns its desktop controls, adds a real launcher restart command and direct desktop Show Sidebar action, and makes Up and clickable breadcrumbs follow the same parent chain. Desktop Settings, Explorer-style shortcut folders, original Vista-inspired icons, Android app taskbar buttons, real file organization and all 21 gadgets remain available.
 
-Hold the Sidebar header or its dark navigation pill for **Bring Gadgets to Front, Add Gadgets, Properties, Help and Close Sidebar**. Closing keeps gadget contents and positions. **Start → Gadgets → Show Sidebar** restores it; Sidebar Properties can keep it above windows while reserving room for window controls.
+Hold the Sidebar header or its dark navigation pill for **Bring Gadgets to Front, Add Gadgets, Properties, Help and Close Sidebar**. Closing keeps gadget contents and positions. **Desktop context menu → Show Sidebar** restores it directly; Start → Gadgets also opens the gallery; Sidebar Properties can keep it above windows while reserving room for window controls.
 
 The built-in icons are original Canvas artwork inspired by Vista's forms and materials. They include perspective computers, golden folders, a blue Internet glyph with a gold orbit, paper documents, drives and Control Panel. No Microsoft icon binaries are bundled.
 
 Desktop cleanup runs once on upgrade, preserving other shortcut order, file-manager app selections, linked folders, notes and gadget layouts. Restoring original desktop icons uses Computer, Internet, Notepad and Personalize. The default-home prompts follow Android's actual home-role state and refresh when the launcher resumes or a menu opens. Long-press blank desktop space or right-click with a mouse for the context menu.
 
 The taskbar and dock use the full width available beside Android's navigation controls. Landscape camera-cutout insets no longer shrink the entire launcher horizontally; desktop icons keep a consistent grid origin and avoid actual cutout rectangles, and portrait top/bottom cutout protection and keyboard/navigation insets are retained.
+
+## Start menu and navigation
+
+Start’s glass navigation pane follows Window Color and Appearance’s transparency and opacity controls, including zero opacity and solid mode. The white programs pane stays readable. The three lower-right controls share one centered row; layout lock reflects its saved setting. **Start → › → Restart Nth Desktop** recreates the launcher while restoring open windows, notes and settings. Battery settings remains separately named. Android’s native power dialog requires an enabled accessibility service; this launcher uses the requested app-restart fallback without adding that access.
+
+Up follows the parent shown in the address bar; Back and Forward follow visits. Granted file roots return to Computer without escaping their permission boundary. Add programs returns to its shortcut folder, rename/dissolve pages include their folder parent, and root pages disable Up. Control Panel has clickable category, Personalization and settings breadcrumbs. Long paths scroll to show the current location.
 
 ## Desktop Settings and folder layout
 

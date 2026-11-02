@@ -55,17 +55,17 @@ final class VistaControlPanel extends VistaShell {
         {"accessibility","Ease of Access Center","accessibility","Accessibility services and display aids · Android","android:accessibility"}};
     static void searchItems(String query,List<StartSearch.Result> out){for(String[] item:ITEMS)if((item[1]+" "+item[3]).toLowerCase(Locale.ROOT).contains(query))out.add(new StartSearch.Result("setting:"+item[4],item[1],"Control Panel",item[2],null,false));}
     private final AeroWallpaper wallpaper;
-    private boolean classic;
+    private boolean classic;private final LinearLayout crumbs;
     private EditText nameInput;
     private String nameDraft;
     VistaControlPanel(Context c,DesktopStore store,AeroWallpaper wallpaper,Actions actions,String initial){
         super(c,store,actions,"Search Control Panel");this.wallpaper=wallpaper;classic=store.prefs.getBoolean("control_panel_classic",false);
-        TextView view=command("View ▾",()->{DesktopContextMenu menu=new DesktopContextMenu(c,"Control Panel views");for(String mode:new String[]{"Control Panel Home","Classic View"})menu.checked(mode,classic==mode.equals("Classic View"),()->{classic=mode.equals("Classic View");store.prefs.edit().putBoolean("control_panel_classic",classic).apply();navigate("home");render();});ContextMenus.centered(commands,(x,y)->ContextMenus.show(menu,commands,x,y));});commands.addView(view,new LayoutParams(-2,dp(36)));start(initial);
+        TextView view=command("View ▾",()->{DesktopContextMenu menu=new DesktopContextMenu(c,"Control Panel views");for(String mode:new String[]{"Control Panel Home","Classic View"})menu.checked(mode,classic==mode.equals("Classic View"),()->{classic=mode.equals("Classic View");store.prefs.edit().putBoolean("control_panel_classic",classic).apply();navigate("home");render();});ContextMenus.centered(commands,(x,y)->ContextMenus.show(menu,commands,x,y));});commands.addView(view,new LayoutParams(-2,dp(36)));LinearLayout location=(LinearLayout)address.getParent();int index=location.indexOfChild(address);location.removeView(address);crumbs=new LinearLayout(c);crumbs.setGravity(Gravity.CENTER_VERTICAL);crumbs.setBackground(Aero.panel(c,0xffffffff,0xfff3f9fd,1,0xff8ea6b8));crumbs.setContentDescription("Address bar");location.addView(crumbs,index,new LayoutParams(0,dp(32),1));start(initial);
     }
     @Override void render(){
         nameInput=null;side.removeAllViews();sideLink("Control Panel Home",()->{classic=false;store.prefs.edit().putBoolean("control_panel_classic",false).apply();navigate("home");render();});sideLink("Classic View",()->{classic=true;store.prefs.edit().putBoolean("control_panel_classic",true).apply();navigate("home");render();});sideLink("Personalization",()->navigate("personalization"));sideLink("Computer",()->actions.open("@computer"));sideLink("Android settings",()->actions.action("android:settings"));
         if(page().equals("system")){side.removeAllViews();sideLink("Control Panel Home",()->navigate("home"));sideLink("Device information",()->actions.action("android:device"));sideLink("File access",()->actions.action("storage-access"));sideLink("Change computer name",()->navigate("accounts"));sideLink("Taskbar and Start Menu",()->navigate("taskbar"));}
-        LinearLayout column=column();String page=page();address.setText("Control Panel"+(page.equals("home")?"":"  ›  "+title(page)));status.setText("Nth Desktop  •  "+(page.equals("home")?(classic?"Classic View":"Control Panel Home"):title(page)));
+        LinearLayout column=column();String page=page();updateAddress();address.setText("Control Panel"+(page.equals("home")?"":"  ›  "+title(page)));status.setText("Nth Desktop  •  "+(page.equals("home")?(classic?"Classic View":"Control Panel Home"):title(page)));
         if(!query().isEmpty()){
             heading(column,"Search results","Settings matching “"+search.getText()+"”");int count=0;for(String[] item:ITEMS)if((item[1]+" "+item[3]).toLowerCase(Locale.getDefault()).contains(query())){item(column,item);count++;}if(count==0)heading(column,"No matching settings","Try a setting such as wallpaper, sound or Wi-Fi.");status.setText(count+" matching settings");
         }else if(page.equals("home")){
@@ -136,7 +136,18 @@ final class VistaControlPanel extends VistaShell {
     private void section(LinearLayout column,String title){TextView text=Aero.text(getContext(),title,14,0xff326421);text.setPadding(0,dp(17),0,dp(7));column.addView(text);View line=new View(getContext());line.setBackgroundColor(0xffd7e2ea);column.addView(line,new LayoutParams(-1,dp(1)));}
     private void property(LinearLayout column,String name,String value){LinearLayout row=new LinearLayout(getContext());row.setGravity(Gravity.TOP);row.setPadding(dp(4),dp(7),dp(2),dp(5));TextView label=Aero.text(getContext(),name+":",12,0xff5c7180),text=Aero.text(getContext(),value,12,0xff263e4e);text.setTag("system:"+name);label.setPadding(0,0,dp(9),0);row.addView(label,new LayoutParams(0,-2,.43f));row.addView(text,new LayoutParams(0,-2,.57f));column.addView(row,new LayoutParams(-1,-2));}
     @Override void showFolders(){DesktopContextMenu menu=new DesktopContextMenu(getContext(),"Control Panel navigation");menu.item("Control Panel Home","control",()->navigate("home"));menu.item("Classic View","control",()->{classic=true;store.prefs.edit().putBoolean("control_panel_classic",true).apply();navigate("home");render();});menu.item("Personalization","appearance",()->navigate("personalization"));for(String[] category:CATEGORIES)menu.item(category[1],"control",()->navigate("category:"+category[0]));ContextMenus.centered(folders,(x,y)->ContextMenus.show(menu,folders,x,y));}
-    @Override void goUp(){navigate("home");}
+    private String parentPage(String value){
+        if(value.equals("home"))return null;
+        if(value.startsWith("category:"))return "home";
+        if(Arrays.asList("background","colors","startup","taskbar","icons","sidebar").contains(value))return "personalization";
+        for(String[] item:ITEMS)if(item[4].equals("page:"+value))return "category:"+item[0];
+        return "home";
+    }
+    private void updateAddress(){
+        crumbs.removeAllViews();HorizontalScrollView scroll=new HorizontalScrollView(getContext());scroll.setHorizontalScrollBarEnabled(false);LinearLayout row=new LinearLayout(getContext());row.setGravity(Gravity.CENTER_VERTICAL);scroll.addView(row);crumbs.addView(scroll,new LayoutParams(-1,-1));List<String> chain=new ArrayList<>();String value=page();while(value!=null&&!chain.contains(value)){chain.add(0,value);value=parentPage(value);}for(String destination:chain){if(row.getChildCount()>0)row.addView(Aero.text(getContext(),"›",15,0xff677e8c));String label=destination.equals("home")?"Control Panel":title(destination);TextView link=command(label,()->navigate(destination));link.setSingleLine(true);link.setContentDescription("Navigate to "+label);row.addView(link,new LayoutParams(-2,-1));}scroll.post(()->scroll.fullScroll(View.FOCUS_RIGHT));
+    }
+    @Override boolean canGoUp(){return parentPage(page())!=null;}
+    @Override void goUp(){String parent=parentPage(page());if(parent!=null)navigate(parent);}
     @Override JSONObject extraState(){JSONObject result=new JSONObject();GadgetLayout.put(result,"classic",classic);if(nameInput!=null)GadgetLayout.put(result,"nameDraft",nameInput.getText().toString());return result;}
     @Override void restoreExtra(JSONObject value){if(value!=null){classic=value.optBoolean("classic");nameDraft=value.optString("nameDraft",null);}}
 }

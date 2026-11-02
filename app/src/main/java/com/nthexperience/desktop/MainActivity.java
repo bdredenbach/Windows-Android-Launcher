@@ -236,7 +236,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         if(desktopMenu!=null)desktopMenu.dismiss();startMenu.hide();desktopMenu=new DesktopContextMenu(this);
         desktopMenu.item("View  ›","appearance",()->desktopViewMenu(x,y));desktopMenu.item("Sort by  ›","programs",()->desktopSortMenu(x,y));desktopMenu.item("New folder","folderapps",()->organizer("@organize","new"));desktopMenu.item("Paste","paste",!ExplorerClipboard.shortcuts.isEmpty(),()->{try{ExplorerClipboard.paste(store,"desktop");desktopChanged();}catch(IllegalArgumentException ex){toast(ex.getMessage());}});desktopMenu.separator();
         desktopMenu.item("All programs","programs",()->showStart(false));desktopMenu.item("Refresh","refresh",()->{scanApps();sidebar.refresh();});desktopMenu.separator();
-        desktopMenu.item("Computer","computer",this::computer);desktopMenu.item("Control Panel","control",()->open("@control"));desktopMenu.item("Gadgets","clock",this::gadgetGallery);desktopMenu.separator();
+        desktopMenu.item("Computer","computer",this::computer);desktopMenu.item("Control Panel","control",()->open("@control"));desktopMenu.item("Show Sidebar","gadgets",()->vistaAction("sidebar-show"));desktopMenu.separator();
         desktopMenu.item("Manage desktop shortcuts","computer",this::manageShortcuts);desktopMenu.item("Personalize","appearance",this::appearance);
         if(!isHome()){desktopMenu.separator();desktopMenu.item("Make default home","orb",this::home);}
         desktopMenu.show(root,x,y,shell.getPaddingLeft(),shell.getPaddingTop()+windowTopInset,shell.getPaddingRight(),shell.getPaddingBottom());
@@ -322,6 +322,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         switch(id){
             case "sidebar-show":sidebar.reveal();renderTaskbar();return;case "sidebar-hide":sidebar.visible(false);renderTaskbar();return;case "sidebar-apply":renderTaskbar();return;
             case "taskbar-refresh":renderTaskbar();return;case "taskbar-usage":ExternalTasks.resetObservation();if(store.prefs.getBoolean("taskbar_usage",false)&&!ExternalTasks.permitted(this))launchSystem(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));scanApps();renderTaskbar();return;
+            case "restart-desktop":startMenu.hide();main.post(this::recreate);return;
             case "show-desktop":for(DesktopWindow w:windows.values())if(w.getParent()!=null&&w.getVisibility()==View.VISIBLE)w.minimize();startMenu.hide();return;
             case "storage-access":storageSetup.show(true);return;case "glass":wallpaper.appearanceChanged();return;case "startup-preview":if(startup!=null)startup.preview();return;
             case "chrome":applySystemChrome();return;case "desktop":renderDesktop();return;case "gadgets":sidebar.setActive(true);sidebar.refresh();return;case "wallpaper":wallpaper.theme(store.prefs.getInt("wallpaper",0));return;

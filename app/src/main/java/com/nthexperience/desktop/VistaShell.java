@@ -59,7 +59,8 @@ abstract class VistaShell extends LinearLayout {
     final void visitHistory(int index){if(index<0||index>=history.size())return;historyIndex=index;resetSearch();render();updateNavigation();}
     private void goForward(){if(historyIndex+1>=history.size())return;historyIndex++;resetSearch();render();updateNavigation();}
     private void resetSearch(){restoring=true;search.setText("");search.clearFocus();requestFocus();restoring=false;}
-    final void updateNavigation(){back.setEnabled(historyIndex>0);back.setAlpha(historyIndex>0?1:.35f);forward.setEnabled(historyIndex+1<history.size());forward.setAlpha(historyIndex+1<history.size()?1:.35f);}
+    boolean canGoUp(){return true;}
+    final void updateNavigation(){up.setEnabled(canGoUp());up.setAlpha(canGoUp()?1:.35f);back.setEnabled(historyIndex>0);back.setAlpha(historyIndex>0?1:.35f);forward.setEnabled(historyIndex+1<history.size());forward.setAlpha(historyIndex+1<history.size()?1:.35f);}
     abstract void render();
     abstract void showFolders();
     abstract void goUp();
