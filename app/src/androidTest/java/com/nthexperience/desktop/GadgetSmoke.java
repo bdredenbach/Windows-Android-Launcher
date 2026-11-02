@@ -21,7 +21,11 @@ public class GadgetSmoke extends AeroSmoke {
     @Override public void onCreate(Bundle args){ownSuite=args==null||args.getString("suite")==null;topOnly=args!=null&&Boolean.parseBoolean(args.getString("top-only","false"));super.onCreate(args);}
     @Override public void onStart(){if(!ownSuite){super.onStart();return;}Bundle result=new Bundle();Application application=(Application)getTargetContext().getApplicationContext();application.registerActivityLifecycleCallbacks(lifecycle);try{
         DesktopStore store=new DesktopStore(getTargetContext());getTargetContext().getSharedPreferences(StartupExperience.SESSION,0).edit().putBoolean("seen",true).putBoolean("welcome_seen",true).putInt("boot",StartupExperience.boot(getTargetContext())).commit();store.prefs.edit().putBoolean("weather_follow",false).remove("gadget_data").remove("feed_url").remove("feed_items").commit();
-        if(topOnly){getTargetContext().getSharedPreferences(StorageAccess.PREFS,0).edit().putBoolean("seen",true).commit();store.prefs.edit().putInt("startup_mode",2).putBoolean("welcome_on_start",false).commit();}
+        if(topOnly){
+            getTargetContext().getSharedPreferences(StorageAccess.PREFS,0).edit().putBoolean("seen",true).commit();store.prefs.edit().putInt("startup_mode",2).putBoolean("welcome_on_start",false).commit();
+            check(Build.VERSION.SDK_INT>=30&&shell("pm path com.android.systemui").contains("package:"),"Portrait fixture has real SystemUI");String overlay=cutoutOverlay(shell("cmd overlay list"));check(overlay!=null,"Portrait fixture includes a cutout overlay");shell("cmd overlay enable-exclusive --user 0 --category "+overlay);
+            awaitPreference(()->{DisplayCutout cutout=getTargetContext().getSystemService(WindowManager.class).getDefaultDisplay().getCutout();return cutout!=null&&cutout.getSafeInsetTop()>0;},"Portrait display cutout is configured before launching the app");
+        }
         Intent intent=new Intent(Intent.ACTION_MAIN).setComponent(new ComponentName(getTargetContext(),MainActivity.class)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);activity=(MainActivity)startActivitySync(intent);root=activity.getWindow().getDecorView();Thread.sleep(300);
         if(topOnly){alignment(store);application.unregisterActivityLifecycleCallbacks(lifecycle);result.putString("stream","PASS: portrait cutout, hidden-status top alignment, safe captions and actual Sidebar touch.\n");finish(Activity.RESULT_OK,result);return;}
         gallery(store);tools(store);newTools(store);extraTools(store);parsers(store);location(store);alignment(store);artwork(store);result.putString("stream","PASS: twenty-one searchable native gadgets, distinct real window icons, calculator and conversions, checklist actions, live stopwatch/laps/countdown, world zones, actual storage, RSS/Atom parsing, gadget backup validation, activity recreation, and Android fused/network mock-location follow/pause/resume with stale-fix rejection; distinct gadget artwork, real network counters, compass lifecycle, solvable tile puzzle, and both landscape directions with status-bar and notification-shade alignment.\n");application.unregisterActivityLifecycleCallbacks(lifecycle);finish(Activity.RESULT_OK,result);
@@ -55,12 +59,13 @@ public class GadgetSmoke extends AeroSmoke {
         MainActivity before=activity;resumed.clear();ui(()->activity.recreate());replacement(before);check(find(v->"Puzzle progress".equals(v.getContentDescription()))!=null,"Puzzle and its tool survive activity recreation");click("@gadget:puzzle","Close window");
         boolean rejected=false;try{TilePuzzle.validate(new JSONObject().put("board",new JSONArray(new int[]{2,1,3,4,5,6,7,8,9,10,11,12,13,14,15,0})));}catch(JSONException expected){rejected=true;}check(rejected,"An impossible imported puzzle is rejected");
     }
+    private String cutoutOverlay(String overlays){for(String name:new String[]{"tall","corner","double"}){String overlay="com.android.internal.display.cutout.emulation."+name;if(overlays.contains(overlay))return overlay;}return null;}
     private void alignment(DesktopStore store)throws Exception{
         progress("checking both landscape directions, status bars and return from notifications");String overlays=shell("cmd overlay list"),cutout=null;systemBarsPresent=shell("pm path com.android.systemui").contains("package:");if(!systemBarsPresent)progress("SystemUI is absent on this image; real status-bar and shade checks run on the Android 11 image");
-        for(String name:new String[]{"tall","corner","double"})if(overlays.contains("com.android.internal.display.cutout.emulation."+name)){cutout="com.android.internal.display.cutout.emulation."+name;break;}
+        cutout=cutoutOverlay(overlays);
         if(cutout!=null)shell("cmd overlay enable-exclusive --user 0 --category "+cutout);
         try{
-            if(systemBarsPresent&&cutout!=null)portraitTopAlignment(store);
+            if(topOnly&&systemBarsPresent&&cutout!=null)portraitTopAlignment(store);
             int modes=topOnly?0:Build.VERSION.SDK_INT==30&&overlays.contains("com.android.internal.systemui.navbar.gestural")?2:1;
             for(int mode=0;mode<modes;mode++){
                 String nav=mode==0?"threebutton":"gestural";if(overlays.contains("com.android.internal.systemui.navbar."+nav))shell("cmd overlay enable-exclusive --user 0 --category com.android.internal.systemui.navbar."+nav);
