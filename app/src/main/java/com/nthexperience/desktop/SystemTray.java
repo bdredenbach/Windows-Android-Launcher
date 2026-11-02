@@ -39,7 +39,9 @@ final class SystemTray extends LinearLayout {
     void start(){if(running)return;running=true;try{IntentFilter filter=new IntentFilter(Intent.ACTION_BATTERY_CHANGED);filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);battery=Build.VERSION.SDK_INT>=33?getContext().registerReceiver(batteryChanged,filter,Context.RECEIVER_EXPORTED):getContext().registerReceiver(batteryChanged,filter);batteryRegistered=true;}catch(RuntimeException ignored){}try{if(connections!=null){connections.registerDefaultNetworkCallback(networkChanged);networkRegistered=true;}}catch(RuntimeException ignored){}update();}
     void stop(){running=false;dismiss();if(batteryRegistered){getContext().unregisterReceiver(batteryChanged);batteryRegistered=false;}if(networkRegistered){connections.unregisterNetworkCallback(networkChanged);networkRegistered=false;}main.removeCallbacksAndMessages(null);}
     private void refresh(){main.post(()->{if(running)update();});}
-    void bounds(int left,int right){leftInset=left;rightInset=right;if(cover==null)return;FrameLayout.LayoutParams p=(FrameLayout.LayoutParams)frame.getLayoutParams();p.width=Math.min(dp(324),Math.max(1,workspace.getWidth()-left-right-dp(12)));p.height=Math.min(dp(page.equals("calendar")?395:285),Math.max(1,workspace.getHeight()-dp(10)));p.rightMargin=right+dp(6);frame.setLayoutParams(p);}
+    private int topInset;
+    void bounds(int left,int right,int top){topInset=top;bounds(left,right);}
+    void bounds(int left,int right){leftInset=left;rightInset=right;if(cover==null)return;FrameLayout.LayoutParams p=(FrameLayout.LayoutParams)frame.getLayoutParams();p.width=Math.min(dp(324),Math.max(1,workspace.getWidth()-left-right-dp(12)));p.height=Math.min(dp(page.equals("calendar")?395:285),Math.max(1,workspace.getHeight()-topInset-dp(10)));p.rightMargin=right+dp(6);frame.setLayoutParams(p);}
     boolean dismiss(){if(cover==null)return false;workspace.removeView(cover);cover=null;summary=null;volume=null;page="";tracking=false;main.removeCallbacks(tick);return true;}
     void show(String value){
         if(value.equals(page)&&cover!=null){dismiss();return;}dismiss();host.opening();page=value;

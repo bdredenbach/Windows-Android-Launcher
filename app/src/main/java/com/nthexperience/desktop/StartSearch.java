@@ -14,6 +14,7 @@ final class StartSearch {
         String q=query.trim().toLowerCase(Locale.ROOT);List<Result> result=new ArrayList<>();
         for(AppCatalog.Entry app:apps){String title=store.name(app.id,app.label);if((title+" "+app.label).toLowerCase(Locale.ROOT).contains(q))result.add(new Result(app.id,title,"Programs","programs",app.icon,true));}
         if(q.isEmpty())return result;
+        if((BrowserPanel.NAME+" browser web internet").toLowerCase(Locale.ROOT).contains(q))result.add(new Result("@browser",store.name("@browser",BrowserPanel.NAME),"Programs","browser",null,true));
         if("photo gallery pictures images".contains(q))result.add(new Result("@photos","Photo Gallery","Programs","pictures",null,true));
         VistaControlPanel.searchItems(q,result);
         for(String[] gadget:GadgetCatalog.ITEMS)if(GadgetCatalog.extra(gadget[0])&&(gadget[1]+" "+gadget[3]).toLowerCase(Locale.ROOT).contains(q))result.add(new Result("@gadget:"+gadget[0],gadget[1],"Gadgets",GadgetCatalog.icon(gadget[0]),null,false));

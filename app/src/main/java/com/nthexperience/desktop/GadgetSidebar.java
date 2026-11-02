@@ -27,7 +27,7 @@ final class GadgetSidebar extends LinearLayout {
     private int page;
     private TextView previousPage,nextPage;
     private final Map<String,FrameLayout> floating=new LinkedHashMap<>();
-    private int hostWidth,hostHeight;
+    private int hostWidth,hostHeight,dockHeight,floatingTop;
     static final class GadgetDrag {final String id;final float offsetX,offsetY;GadgetDrag(String id,View face){this.id=id;offsetX=face.getWidth()/2f;offsetY=face.getHeight()/2f;}}
     private final Map<String,GadgetView> faces=new LinkedHashMap<>();
     private final Handler main=new Handler(Looper.getMainLooper());
@@ -107,20 +107,21 @@ final class GadgetSidebar extends LinearLayout {
         if(!(event.getLocalState() instanceof GadgetDrag)||locked())return false;
         GadgetDrag drag=(GadgetDrag)event.getLocalState();
         if(event.getAction()==DragEvent.ACTION_DROP){
-            int[] bounds=DesktopGeometry.gadget(workspace.getWidth(),workspace.getHeight(),dp(132),dp(GadgetView.height(drag.id)),dp(24),layout.scale(drag.id),0,0);
+            int[] bounds=DesktopGeometry.gadget(hostWidth,hostHeight,dp(132),dp(GadgetView.height(drag.id)),dp(24),layout.scale(drag.id),0,0);
             float grid=store.prefs.getBoolean("snap_gadgets",true)?dp(8):0;
-            float x=DesktopGeometry.snap(event.getX()-drag.offsetX,grid),y=DesktopGeometry.snap(event.getY()-drag.offsetY,grid);
-            layout.position(drag.id,DesktopGeometry.fraction(x,workspace.getWidth()-bounds[2]),DesktopGeometry.fraction(y,workspace.getHeight()-bounds[3]),layout.scale(drag.id));main.post(this::rebuild);
+            float x=DesktopGeometry.snap(event.getX()-drag.offsetX,grid),y=DesktopGeometry.snap(event.getY()-floatingTop-drag.offsetY,grid);
+            layout.position(drag.id,DesktopGeometry.fraction(x,hostWidth-bounds[2]),DesktopGeometry.fraction(y,hostHeight-bounds[3]),layout.scale(drag.id));main.post(this::rebuild);
         }return true;
     }
     private boolean dockDrop(DragEvent event,String target){
         if(!(event.getLocalState() instanceof GadgetDrag)||locked())return false;
         if(event.getAction()==DragEvent.ACTION_DROP){String id=((GadgetDrag)event.getLocalState()).id;layout.dock(id);if(target!=null)layout.before(id,target);main.post(this::rebuild);}return true;
     }
-    void workspaceSize(int width,int height){if(width==hostWidth&&height==hostHeight)return;hostWidth=width;hostHeight=height;fitDocked();for(String id:floating.keySet())fit(id);}
+    void workspaceSize(int width,int height){workspaceSize(width,height,height,0);}
+    void workspaceSize(int width,int height,int dockHeight,int floatingTop){if(width==hostWidth&&height==hostHeight&&dockHeight==this.dockHeight&&floatingTop==this.floatingTop)return;hostWidth=width;hostHeight=height;this.dockHeight=dockHeight;this.floatingTop=floatingTop;fitDocked();for(String id:floating.keySet())fit(id);}
     private void fitDocked(){
-        int total=0,count=0;for(String id:faces.keySet())if(layout.docked(id)){total+=dp(GadgetView.height(id));count++;}if(count==0||hostHeight<1)return;
-        float scale=Math.min(1,Math.max(1,hostHeight-dp(38+17)-dp(9)*count)/(float)Math.max(1,total));
+        int total=0,count=0;for(String id:faces.keySet())if(layout.docked(id)){total+=dp(GadgetView.height(id));count++;}if(count==0||dockHeight<1)return;
+        float scale=Math.min(1,Math.max(1,dockHeight-dp(38+17)-dp(9)*count)/(float)Math.max(1,total));
         for(String id:faces.keySet())if(layout.docked(id)){GadgetView face=faces.get(id);FrameLayout holder=(FrameLayout)face.getParent();int height=Math.max(1,Math.round(dp(GadgetView.height(id))*scale));LayoutParams hp=(LayoutParams)holder.getLayoutParams();if(hp.height!=height){hp.height=height;holder.setLayoutParams(hp);}FrameLayout.LayoutParams fp=(FrameLayout.LayoutParams)face.getLayoutParams();if(fp.height!=height){fp.height=height;face.setLayoutParams(fp);}}
     }
     private void fit(String id){applyBounds(id,layout.scale(id),layout.x(id),layout.y(id));}
