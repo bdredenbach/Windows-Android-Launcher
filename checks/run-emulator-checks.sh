@@ -21,6 +21,8 @@ adb install -r fixture/build/outputs/apk/debug/fixture-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 # Exercise the integrated browser before the storage suites reset launcher preferences.
+adb shell input keyevent KEYCODE_WAKEUP
+adb shell wm dismiss-keyguard
 timeout -k 3s 240s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.BrowserSmoke | tee browser-test.txt
 grep -q 'PASS:' browser-test.txt
 adb shell am force-stop com.nthexperience.desktop

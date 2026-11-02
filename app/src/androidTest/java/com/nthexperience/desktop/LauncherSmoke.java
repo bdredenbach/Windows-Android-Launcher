@@ -271,6 +271,7 @@ public class LauncherSmoke extends Instrumentation {
     private boolean pickerLabel(android.view.accessibility.AccessibilityNodeInfo node,String text){return node.getText()!=null&&text.equalsIgnoreCase(node.getText().toString())||node.getContentDescription()!=null&&(text.equalsIgnoreCase(node.getContentDescription().toString())||node.getContentDescription().toString().startsWith(text+","));}
     private boolean pickerNode(android.view.accessibility.AccessibilityNodeInfo node){return node.getPackageName()!=null&&!getTargetContext().getPackageName().contentEquals(node.getPackageName());}
     private void enterPickerFolder(String name)throws Exception{
+        android.accessibilityservice.AccessibilityServiceInfo info=getUiAutomation().getServiceInfo();info.flags|=android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;getUiAutomation().setServiceInfo(info);
         Predicate<android.view.accessibility.AccessibilityNodeInfo> entered=node->pickerNode(node)&&node.getViewIdResourceName()!=null&&node.getViewIdResourceName().endsWith(":id/breadcrumb_text")&&node.getText()!=null&&name.equals(node.getText().toString());
         for(int attempt=0;attempt<4;attempt++){
             if(systemNode(getUiAutomation().getRootInActiveWindow(),entered)!=null)return;
