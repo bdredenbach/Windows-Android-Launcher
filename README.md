@@ -1,6 +1,6 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.11.1 — File opening and APK installation** opens Internal storage, Documents, Pictures, Music, Videos and Downloads in the built-in Vista browser. Optional file-access setup follows the startup animation, with Later and individual-folder alternatives. Device files use the existing navigation, selection, context menus and verified copy/cut engine. All 17 gadgets, Aero settings, linked folders and backups are retained.
+A Vista-style Android home launcher by Nth Experience. **0.12.0 — Internet** adds an integrated IE9-inspired Chromium WebView browser. The existing Explorer opens Internal storage, Documents, Pictures, Music, Videos and Downloads in the built-in Vista browser. Optional file-access setup follows the startup animation, with Later and individual-folder alternatives. Device files use the existing navigation, selection, context menus and verified copy/cut engine. All 17 gadgets, Aero settings, linked folders and backups are retained.
 
 Desktop cleanup runs once on upgrade, preserving other shortcut order, file-manager app selections, linked folders, notes and gadget layouts. Restoring original desktop icons uses Computer, Internet, Notepad and Personalize. The default-home prompts follow Android's actual home-role state and refresh when the launcher resumes or a menu opens. Long-press blank desktop space or right-click with a mouse for the context menu.
 
@@ -122,7 +122,7 @@ These are native built-in desktop gadgets. This release does not yet host third-
 
 ## Install and update
 
-Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.11.1 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
+Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.12.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
 
 Notes, selected photo references, linked folder references, file-manager shortcuts, preferences and cached forecasts are stored locally. Photo access uses the document picker's retained grants; device-wide shared-file browsing is an optional separate all-files grant. Approximate location is requested when you tap **Use my approximate location** or enable **Follow my location**. A city can be chosen without granting location access. Forecasts require Internet access; city search uses Photon/OSM. City search text is sent to that service. Selected weather coordinates are sent to MET Norway. Uninstalling clears local app data.
 
@@ -130,7 +130,7 @@ GitHub Actions uses its runner's debug key. Its APK artifact may not have the sa
 
 ## Build and checks
 
-JDK 17, Android SDK platform 36, Build Tools 35.0.0, Gradle 8.13 and AGP 8.13.2. Minimum Android 8.0 (API 26), target API 36. No third-party runtime-library dependencies.
+JDK 17, Android SDK platform 36, Build Tools 35.0.0, Gradle 8.13 and AGP 8.13.2. Minimum Android 8.0 (API 26), target API 36. AndroidX WebKit 1.13.0 supplies compatibility APIs; the independently updated Android WebView supplies the browser engine.
 
 ```sh
 ./gradlew assembleDebug assembleDebugAndroidTest
@@ -174,3 +174,15 @@ Licensing of Nth Experience's application code remains for the owner to decide; 
 Drag a shortcut onto the center of another to create a folder, or near its edge to swap positions. Use Desktop Organization to rename, reorder, add or remove shortcuts; dissolving a folder returns its contents to the desktop. Quick Launch can hold up to 12 chosen shortcuts, including folders. The desktop context menu includes New folder, icon sizes and sorting.
 
 Control Panel → Backup and Restore exports desktop settings, app folders, names, Quick Launch, notes and both orientation layouts to a user-chosen JSON file. Opening a backup displays a preview; applying it keeps the previous setup for Undo last restore. Backups contain references to linked folders and photos, not their contents or portable access grants. Restore on another device may require relinking those locations. Unknown/newer backup versions, malformed data, nested folders, invalid settings and excessively large files are rejected before changing live settings.
+
+## Internet
+
+The desktop **Internet** icon opens Nth Internet in a movable, maximizable Aero window. Original drawn controls recall IE9: a large blue Back button, combined address/search field, glass tabs, Home, Favorites and Tools. Modern pages use the installed Chromium-based Android WebView; this app does not bundle an obsolete IE engine or a full Chromium distribution. Keep the device's WebView provider updated. Tools → About shows the actual engine version.
+
+- Eight tabs, actual Back/Forward/reload, Bing/Google/DuckDuckGo address-bar search, Favorites, bounded history, Find, text size, desktop site, share/copy, print/save PDF and in-window full-screen video.
+- Normal tab addresses recover after Activity recreation and reopening Internet. Cookies and website storage persist normally. InPrivate requires both WebView multi-profile isolation and complete browsing-data deletion; it is unavailable on older providers. Private tabs are never saved, close on rotation/closing Internet, and use a fresh isolated profile. Downloads and explicitly saved Favorites remain.
+- Website uploads use Nth Explorer with MIME filters and multiple selection. Camera, microphone and approximate location require a site prompt and Android permission. Local file/content URLs, arbitrary intent URLs, JavaScript address-bar URLs, mixed content and invalid TLS certificates are blocked. No native JavaScript bridge is exposed. First-party cookies work; third-party cookies are blocked.
+- Downloads use Android DownloadManager, visible in Tools → Downloads. Confirm before saving. API 29+ saves to public Downloads; API 26–28 uses the app's external downloads directory (removed on uninstall). Completed files use the same read-only file handoff as Explorer, including Android's APK installer. DownloadManager does not receive browsing cookies, so sign-in protected and blob/data downloads should use Tools → Open in another browser. The app does not claim Chrome sync, extensions, a password manager, identical DRM support or complete Chrome API parity.
+- HTTP websites remain supported and are labeled **Not encrypted**. Browser data is separate from desktop backup settings. Tools → Internet options clears history or website data; older providers explicitly disclose incomplete data-clearing support.
+
+The emulator browser suite uses only test-APK HTTP fixtures and verifies real WebView navigation/JavaScript/cookies/storage, tabs, Favorites/history, Find, desktop UA, unsafe URL rejection, actual downloaded bytes and content URI reads, Explorer upload picker cancellation, conditional private-profile separation and normal tab recovery after Activity recreation. Test fixtures are not included in the app APK.

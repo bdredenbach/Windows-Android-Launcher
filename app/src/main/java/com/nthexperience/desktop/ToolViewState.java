@@ -8,6 +8,7 @@ import org.json.*;
 final class ToolViewState {
     static JSONObject capture(View root){JSONObject result=new JSONObject();capture(root,"",result);return result;}
     private static void capture(View view,String path,JSONObject result){
+        if(view instanceof BrowserPanel)return;
         JSONObject item=new JSONObject();
         if(view instanceof VistaShell){GadgetLayout.put(item,"shell",((VistaShell)view).state());GadgetLayout.put(result,path,item);return;}
         if(view instanceof EditText){EditText text=(EditText)view;String description=String.valueOf(text.getContentDescription());
@@ -21,6 +22,7 @@ final class ToolViewState {
     }
     static void restore(View root,JSONObject state){if(state!=null)restore(root,"",state);}
     private static void restore(View view,String path,JSONObject state){
+        if(view instanceof BrowserPanel)return;
         JSONObject item=state.optJSONObject(path);
         if(item!=null){
             if(view instanceof VistaShell){((VistaShell)view).restore(item.optJSONObject("shell"));return;}
