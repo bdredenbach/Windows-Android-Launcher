@@ -4,35 +4,41 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.view.*;
 import java.util.*;
+import org.json.*;
 
-/** Fixed desktop columns. A camera hole excludes only the cells it actually touches. */
+/** Desktop positions are stored per shortcut and orientation, independent of icon order. */
 final class DesktopIconGrid extends ViewGroup {
+    private final DesktopStore store;
+    private String key;
     private int tileWidth,tileHeight,viewportHeight,plannedX,plannedY;
-    private final List<Rect> cutouts=new ArrayList<>();
-    private final List<Rect> positions=new ArrayList<>();
-    DesktopIconGrid(Context context){super(context);setWillNotDraw(false);setLayerType(LAYER_TYPE_SOFTWARE,null);}
-    void configure(int width,int height,List<Rect> exclusions){
-        if(tileWidth==width&&tileHeight==height&&cutouts.equals(exclusions))return;
-        tileWidth=width;tileHeight=height;cutouts.clear();for(Rect r:exclusions)cutouts.add(new Rect(r));requestLayout();
-    }
+    private final List<Rect> cutouts=new ArrayList<>(),positions=new ArrayList<>();
+    DesktopIconGrid(Context context,DesktopStore store,String orientation){super(context);this.store=store;key="desktop_positions_"+orientation;setLayerType(LAYER_TYPE_SOFTWARE,null);}
+    void orientation(String orientation){key="desktop_positions_"+orientation;requestLayout();}
+    private JSONObject saved(){try{return new JSONObject(store.prefs.getString(key,"{}"));}catch(JSONException|ClassCastException ex){return new JSONObject();}}
+    void clearPositions(){store.prefs.edit().remove(key).apply();requestLayout();}
+    void configure(int width,int height,List<Rect> exclusions){if(tileWidth==width&&tileHeight==height&&cutouts.equals(exclusions))return;tileWidth=width;tileHeight=height;cutouts.clear();for(Rect r:exclusions)cutouts.add(new Rect(r));requestLayout();}
     void viewport(int height){if(viewportHeight!=height){viewportHeight=height;requestLayout();}}
+    private boolean blocked(Rect rect){Rect content=new Rect(rect);content.inset(Aero.dp(getContext(),7),Aero.dp(getContext(),3));content.offset(plannedX,plannedY);for(Rect hole:cutouts)if(Rect.intersects(content,hole))return true;return false;}
+    private boolean occupied(Rect rect,List<Rect> used){for(Rect other:used)if(other!=null&&Rect.intersects(rect,other))return true;return false;}
+    private Rect at(float x,float y,int width,int height,boolean snap){int w=Math.max(1,tileWidth),h=Math.max(1,tileHeight);if(snap){x=DesktopGeometry.snap(x,w);y=DesktopGeometry.snap(y,h);}int left=Math.round(DesktopGeometry.clamp(x,0,Math.max(0,width-w))),top=Math.round(DesktopGeometry.clamp(y,0,Math.max(0,height-h)));return new Rect(left,top,left+w,top+h);}
+    void place(String id,float x,float y){
+        if(store.prefs.getBoolean("layout_locked",false))return;
+        Rect target=at(x,y,getWidth(),Math.max(viewportHeight,tileHeight),store.prefs.getBoolean("snap_desktop",true));
+        if(blocked(target))return;
+        JSONObject all=saved(),point=new JSONObject();GadgetLayout.put(point,"x",DesktopGeometry.fraction(target.left,getWidth()-tileWidth));GadgetLayout.put(point,"y",target.top/getResources().getDisplayMetrics().density);GadgetLayout.put(all,id,point);store.prefs.edit().putString(key,all.toString()).apply();requestLayout();
+    }
+    void swapPositions(String moving,String target){
+        View a=null,b=null;for(int i=0;i<getChildCount();i++){View v=getChildAt(i);if(moving.equals(v.getTag()))a=v;if(target.equals(v.getTag()))b=v;}
+        if(a==null||b==null)return;float ax=a.getX(),ay=a.getY(),bx=b.getX(),by=b.getY();place(moving,bx,by);place(target,ax,ay);
+    }
     @Override protected void onMeasure(int widthSpec,int heightSpec){
-        int width=MeasureSpec.getSize(widthSpec),w=Math.max(1,tileWidth),h=Math.max(1,tileHeight);
-        int columns=Math.max(1,width/w),rows=Math.max(1,Math.max(viewportHeight/h,(getChildCount()+columns-1)/columns));
-        int[] origin=new int[2];getLocationOnScreen(origin);plannedX=origin[0];plannedY=origin[1];
-        // More rows permit scrolling when camera exclusions leave too few cells.
-        for(;;rows++){
-            positions.clear();
-            for(int column=0;column<columns&&positions.size()<getChildCount();column++)for(int row=0;row<rows&&positions.size()<getChildCount();row++){
-                Rect cell=new Rect(column*w,row*h,(column+1)*w,(row+1)*h);
-                Rect content=new Rect(cell);content.inset(Aero.dp(getContext(),7),Aero.dp(getContext(),3));content.offset(origin[0],origin[1]);
-                boolean blocked=false;for(Rect hole:cutouts)if(Rect.intersects(content,hole)){blocked=true;break;}
-                if(!blocked)positions.add(cell);
-            }
-            if(positions.size()==getChildCount())break;
-        }
-        for(int i=0;i<getChildCount();i++)getChildAt(i).measure(MeasureSpec.makeMeasureSpec(w,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(h,MeasureSpec.EXACTLY));
-        setMeasuredDimension(width,resolveSize(Math.max(viewportHeight,rows*h),heightSpec));
+        int width=MeasureSpec.getSize(widthSpec),w=Math.max(1,tileWidth),h=Math.max(1,tileHeight),count=getChildCount();
+        int[] origin=new int[2];getLocationOnScreen(origin);plannedX=origin[0];plannedY=origin[1];positions.clear();for(int i=0;i<count;i++)positions.add(null);
+        JSONObject all=saved();boolean snap=store.prefs.getBoolean("snap_desktop",true);int bottom=Math.max(viewportHeight,h);float density=getResources().getDisplayMetrics().density;
+        for(int i=0;i<count;i++){JSONObject point=all.optJSONObject(String.valueOf(getChildAt(i).getTag()));if(point==null)continue;Rect cell=at((float)point.optDouble("x",0)*Math.max(0,width-w),(float)point.optDouble("y",0)*density,width,Math.max(viewportHeight,h),snap);if(!blocked(cell)){positions.set(i,cell);bottom=Math.max(bottom,cell.bottom);}}
+        int columns=Math.max(1,width/w),rows=Math.max(1,Math.max(viewportHeight/h,(count+columns-1)/columns));
+        for(int i=0;i<count;i++)if(positions.get(i)==null){boolean found=false;for(int extra=0;!found;extra++){for(int column=0;column<columns&&!found;column++)for(int row=0;row<rows+extra&&!found;row++){Rect cell=new Rect(column*w,row*h,(column+1)*w,(row+1)*h);if(!blocked(cell)&&!occupied(cell,positions)){positions.set(i,cell);bottom=Math.max(bottom,cell.bottom);found=true;}}}}
+        for(int i=0;i<count;i++)getChildAt(i).measure(MeasureSpec.makeMeasureSpec(w,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(h,MeasureSpec.EXACTLY));setMeasuredDimension(width,resolveSize(bottom,heightSpec));
     }
     @Override protected void onLayout(boolean changed,int l,int t,int r,int b){for(int i=0;i<getChildCount()&&i<positions.size();i++){Rect p=positions.get(i);getChildAt(i).layout(p.left,p.top,p.right,p.bottom);}int[] origin=new int[2];getLocationOnScreen(origin);if(origin[0]!=plannedX||origin[1]!=plannedY)post(this::requestLayout);}
     @Override protected LayoutParams generateDefaultLayoutParams(){return new LayoutParams(-2,-2);}

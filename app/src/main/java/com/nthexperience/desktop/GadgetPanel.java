@@ -19,6 +19,7 @@ final class GadgetPanel extends VistaShell {
     @Override void render(){
         side.removeAllViews();sideLink("Gadget Gallery",()->host.open("@gadgets"));sideLink("Personalization",()->host.open("@appearance"));address.setText("Gadgets  ›  "+GadgetCatalog.title(kind));status.setText("Nth Desktop  •  "+GadgetCatalog.title(kind));LinearLayout column=column();heading(column,GadgetCatalog.title(kind),GadgetCatalog.description(kind));reading=null;tasksList=null;lapsList=null;feedList=null;
         switch(kind){case "worldclock":world(column);break;case "checklist":checklist(column);break;case "timer":case "stopwatch":timeTool(column);break;case "calculator":calculator(column);break;case "converter":converter(column);break;case "storage":storage(column);break;case "feeds":feed(column);break;case "network":case "compass":hardware(column);break;case "puzzle":puzzle(column);break;}
+        if(GadgetExtras.supports(kind))GadgetExtras.build(getContext(),store,kind,column,this::changed);
         body(scrolling(column));readings();active(true);
     }
     private TextView button(LinearLayout column,String title,Runnable action){TextView button=Aero.button(getContext(),title,action);button.setContentDescription(title);LayoutParams p=new LayoutParams(-1,dp(43));p.topMargin=dp(6);column.addView(button,p);return button;}

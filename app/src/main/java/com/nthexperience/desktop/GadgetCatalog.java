@@ -4,7 +4,7 @@ import java.util.*;
 
 /** The gallery, faces, window captions and backup validation share one catalog. */
 final class GadgetCatalog {
-    static final String[] IDS={"clock","calendar","weather","notes","photo","meters","worldclock","feeds","checklist","timer","stopwatch","calculator","converter","storage","network","compass","puzzle"};
+    static final String[] IDS={"clock","calendar","weather","notes","photo","meters","worldclock","feeds","checklist","timer","stopwatch","calculator","converter","storage","network","compass","puzzle","daysuntil","dice","colors","textcounter"};
     static final String[][] ITEMS={
         {"clock","Clock","Time","An analog clock with ivory and black glass faces."},
         {"calendar","Calendar","Time","Today’s date and a browsable month calendar."},
@@ -22,11 +22,15 @@ final class GadgetCatalog {
         {"storage","Storage Meter","Device","Real internal storage and disk usage, available space and system settings."},
         {"network","Network Meter","Device","Live device receive/send rates, a traffic graph and totals since boot."},
         {"compass","Compass","Device","A magnetic compass that follows the top of your screen in either orientation."},
-        {"puzzle","Tile Puzzle","Games","A saved, solvable fifteen-tile sliding puzzle with move count."}};
+        {"puzzle","Tile Puzzle","Games","A saved, solvable fifteen-tile sliding puzzle with move count."},
+        {"daysuntil","Days Until","Time","Count calendar days until an event, or days since a past event."},
+        {"dice","Dice Roller","Games","Roll up to six dice with 4, 6, 8, 10, 12, 20 or 100 sides."},
+        {"colors","Color Studio","Productivity","Mix red, green and blue, enter a hex color and copy its code."},
+        {"textcounter","Text Counter","Productivity","A saved text pad with live word, character and reading-time counts."}};
     static boolean valid(String id){return Arrays.asList(IDS).contains(id);}
     static boolean extra(String id){return valid(id)&&Arrays.asList(IDS).indexOf(id)>=6;}
     static String title(String id){for(String[] row:ITEMS)if(row[0].equals(id))return row[1];return "Gadget";}
     static String description(String id){for(String[] row:ITEMS)if(row[0].equals(id))return row[3];return "";}
-    static String icon(String id){return id.equals("photo")?"pictures":id.equals("meters")?"power":id.equals("storage")?"drive":id;}
+    static String icon(String id){return id.equals("daysuntil")?"calendar":id.equals("dice")?"puzzle":id.equals("colors")?"appearance":id.equals("textcounter")?"notes":id.equals("photo")?"pictures":id.equals("meters")?"power":id.equals("storage")?"drive":id;}
     static String toolIcon(String tool){switch(tool){case "@sticky":return "sticky";case "@calendar":return "calendar";case "@weather":return "weather";case "@gadgets":return "gadgets";case "@clock":return "clock";default:return tool.startsWith("@gadget:")?icon(tool.substring(8)):"programs";}}
 }

@@ -21,7 +21,7 @@ final class DesktopWindow extends LinearLayout {
     private int normalW, normalH;
     private float positionX=.5f,positionY=.33f;
     private final DesktopStore store;
-    private final String geometryKey;
+    private String geometryKey;
     final String toolId;
     private float downX, downY, originX, originY;
     private final AeroGlass glass;
@@ -106,6 +106,7 @@ final class DesktopWindow extends LinearLayout {
         GadgetLayout.put(result,"x",positionX);GadgetLayout.put(result,"y",positionY);GadgetLayout.put(result,"w",normalW/density);GadgetLayout.put(result,"h",normalH/density);GadgetLayout.put(result,"maximized",maximized);return result;
     }
     void saveGeometry(){store.prefs.edit().putString(geometryKey,geometry().toString()).apply();}
+    void orientation(String key){saveGeometry();JSONObject previous=geometry();geometryKey="window_"+key+"_"+toolId;readGeometry(previous);}
     void readGeometry(JSONObject fallback){
         JSONObject value=fallback;String saved=store.prefs.getString(geometryKey,null);if(saved!=null)try{value=new JSONObject(saved);}catch(JSONException ignored){}
         if(value==null)return;

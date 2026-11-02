@@ -23,7 +23,9 @@ final class GadgetSidebar extends LinearLayout {
     private final LinearLayout gadgets;
     final FrameLayout floatingHost;
     private final FrameLayout workspace;
-    final GadgetLayout layout;
+    GadgetLayout layout;
+    private int page;
+    private TextView previousPage,nextPage;
     private final Map<String,FrameLayout> floating=new LinkedHashMap<>();
     private int hostWidth,hostHeight;
     static final class GadgetDrag {final String id;final float offsetX,offsetY;GadgetDrag(String id,View face){this.id=id;offsetX=face.getWidth()/2f;offsetY=face.getHeight()/2f;}}
@@ -46,17 +48,22 @@ final class GadgetSidebar extends LinearLayout {
     GadgetSidebar(Context c,DesktopStore store,AeroWallpaper wallpaper,Actions actions,FrameLayout workspace,String layoutKey){
         super(c);this.store=store;this.actions=actions;this.workspace=workspace;layout=new GadgetLayout(store,layoutKey);floatingHost=new FrameLayout(c);floatingHost.setClipChildren(false);floatingHost.setContentDescription("Desktop floating gadgets");workspace.setOnDragListener((v,event)->desktopDrop(event));setOrientation(VERTICAL);setBackground(new AeroGlass(wallpaper,AeroGlass.SIDEBAR));
         hardware=new GadgetHardware(c,this::refresh);weather=new WeatherClient(store,this::refresh);feeds=new FeedClient(store,this::refresh);setContentDescription("Desktop gadget sidebar");
-        LinearLayout header=new LinearLayout(c);header.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
-        TextView plus=Aero.text(c,"＋",23,0xffedf6ff);plus.setGravity(Gravity.CENTER);plus.setContentDescription("Add gadgets");plus.setOnClickListener(v->actions.gallery());header.addView(plus,new LayoutParams(Aero.dp(c,48),Aero.dp(c,36)));
-        TextView hide=Aero.text(c,"›",25,0xffd5e5ee);hide.setGravity(Gravity.CENTER);hide.setContentDescription("Hide gadget sidebar");hide.setOnClickListener(v->{layout.visible(false);visibilityFromStore();actions.sidebarChanged();});header.addView(hide,new LayoutParams(Aero.dp(c,36),Aero.dp(c,36)));addView(header,new LayoutParams(-1,Aero.dp(c,36)));
+        LinearLayout header=new LinearLayout(c);header.setGravity(Gravity.CENTER);header.setPadding(dp(3),dp(1),dp(3),dp(1));
+        LinearLayout pill=new LinearLayout(c);pill.setGravity(Gravity.CENTER_VERTICAL);pill.setBackground(Aero.gloss(c,new int[]{0xdd3c4248,0xee101820,0xee0b1117,0xdd29333d},16,0x997e8993));
+        TextView plus=nav("+","Add gadgets",()->actions.gallery());pill.addView(plus,new LayoutParams(dp(40),dp(34)));
+        View divider=new View(c);divider.setBackgroundColor(0xff78828b);pill.addView(divider,new LayoutParams(dp(1),dp(18)));
+        previousPage=nav("‹","Previous five Sidebar gadgets",()->page(-1));nextPage=nav("›","Next five Sidebar gadgets",()->page(1));pill.addView(previousPage,new LayoutParams(dp(40),dp(34)));pill.addView(nextPage,new LayoutParams(dp(40),dp(34)));header.addView(pill);addView(header,new LayoutParams(-1,dp(38)));
+        ContextMenus.bind(header,(x,y)->{DesktopContextMenu menu=new DesktopContextMenu(c,"Sidebar menu");menu.item("Add gadgets","gadgets",()->actions.gallery());menu.item("Hide gadget sidebar","close",()->{layout.visible(false);visibilityFromStore();actions.sidebarChanged();});ContextMenus.show(menu,header,x,y);});
         ScrollView scroll=new ScrollView(c);scroll.setVerticalScrollBarEnabled(false);scroll.setClipToPadding(false);gadgets=Aero.column(c);gadgets.setGravity(Gravity.CENTER_HORIZONTAL);gadgets.setPadding(Aero.dp(c,2),Aero.dp(c,1),Aero.dp(c,2),Aero.dp(c,16));scroll.addView(gadgets);addView(scroll,new LayoutParams(-1,0,1));rebuild();visibilityFromStore();
     }
     void rebuild(){
         if(closed)return;
         gadgets.removeAllViews();floatingHost.removeAllViews();faces.clear();floating.clear();
-        int docked=0;
+        int docked=0;List<String> dockedIds=new ArrayList<>();for(String id:layout.ordered())if(layout.docked(id))dockedIds.add(id);page=Math.min(page,Math.max(0,(dockedIds.size()-1)/5));
+        previousPage.setEnabled(page>0);nextPage.setEnabled((page+1)*5<dockedIds.size());previousPage.setAlpha(previousPage.isEnabled()?1:.35f);nextPage.setAlpha(nextPage.isEnabled()?1:.35f);setContentDescription("Desktop gadget sidebar");
         for(String id:layout.ordered()){
             if(!Arrays.asList(GadgetView.IDS).contains(id))continue;
+            if(layout.docked(id)&&(dockedIds.indexOf(id)<page*5||dockedIds.indexOf(id)>=(page+1)*5))continue;
             GadgetView face=new GadgetView(getContext(),id,store,weather);face.photo=photo;face.hardware=hardware;
             face.setOnClickListener(v->actions.gadgetAction(id));
             face.setOnLongClickListener(v->beginDrag(face,id));
@@ -87,8 +94,11 @@ final class GadgetSidebar extends LinearLayout {
         if(docked==0){TextView empty=Aero.text(getContext(),"Add a gadget\nto your Sidebar",13,0xffe8f2f7);empty.setGravity(Gravity.CENTER);Aero.pad(empty,14);empty.setOnClickListener(v->actions.gallery());gadgets.addView(empty);}
         setOnDragListener((v,event)->dockDrop(event,null));
         for(String id:floating.keySet())fit(id);
-        refreshReadings();updateActivity();
+        fitDocked();refreshReadings();updateActivity();
     }
+    private TextView nav(String text,String description,Runnable action){TextView button=Aero.text(getContext(),text,23,0xffeef4f9);button.setGravity(Gravity.CENTER);button.setContentDescription(description);button.setFocusable(true);button.setOnClickListener(v->action.run());return button;}
+    private void page(int direction){page=Math.max(0,page+direction);rebuild();}
+    void orientation(String key){layout.save();layout=new GadgetLayout(store,key);page=0;rebuild();visibilityFromStore();actions.sidebarChanged();}
     private int dp(int value){return Aero.dp(getContext(),value);}
     boolean locked(){return store.prefs.getBoolean("layout_locked",false);}
     private boolean beginDrag(GadgetView face,String id){if(locked()){Toast.makeText(getContext(),"Unlock the desktop layout in Gadgets to arrange it",Toast.LENGTH_SHORT).show();return true;}return face.startDragAndDrop(ClipData.newPlainText("gadget",id),new View.DragShadowBuilder(face),new GadgetDrag(id,face),0);}
@@ -106,7 +116,12 @@ final class GadgetSidebar extends LinearLayout {
         if(!(event.getLocalState() instanceof GadgetDrag)||locked())return false;
         if(event.getAction()==DragEvent.ACTION_DROP){String id=((GadgetDrag)event.getLocalState()).id;layout.dock(id);if(target!=null)layout.before(id,target);main.post(this::rebuild);}return true;
     }
-    void workspaceSize(int width,int height){if(width==hostWidth&&height==hostHeight)return;hostWidth=width;hostHeight=height;for(String id:floating.keySet())fit(id);}
+    void workspaceSize(int width,int height){if(width==hostWidth&&height==hostHeight)return;hostWidth=width;hostHeight=height;fitDocked();for(String id:floating.keySet())fit(id);}
+    private void fitDocked(){
+        int total=0,count=0;for(String id:faces.keySet())if(layout.docked(id)){total+=dp(GadgetView.height(id));count++;}if(count==0||hostHeight<1)return;
+        float scale=Math.min(1,Math.max(1,hostHeight-dp(38+17)-dp(9)*count)/(float)Math.max(1,total));
+        for(String id:faces.keySet())if(layout.docked(id)){GadgetView face=faces.get(id);FrameLayout holder=(FrameLayout)face.getParent();int height=Math.max(1,Math.round(dp(GadgetView.height(id))*scale));LayoutParams hp=(LayoutParams)holder.getLayoutParams();if(hp.height!=height){hp.height=height;holder.setLayoutParams(hp);}FrameLayout.LayoutParams fp=(FrameLayout.LayoutParams)face.getLayoutParams();if(fp.height!=height){fp.height=height;face.setLayoutParams(fp);}}
+    }
     private void fit(String id){applyBounds(id,layout.scale(id),layout.x(id),layout.y(id));}
     private void applyBounds(String id,float scale,float x,float y){
         FrameLayout holder=floating.get(id);if(holder==null||hostWidth<1||hostHeight<1)return;

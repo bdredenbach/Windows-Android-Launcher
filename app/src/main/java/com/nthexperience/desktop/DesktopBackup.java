@@ -16,10 +16,10 @@ final class DesktopBackup {
     static final int MAX_BYTES=8*1024*1024;
     static final String FORMAT="nth-desktop-backup";
     static final String PENDING="desktop-restore-preview.json", UNDO="desktop-before-restore.json", EXPORT="desktop-export.json";
-    private static final Set<String> BOOLEANS=new HashSet<>(Arrays.asList("weather_follow","aero_transparency","startup_sound","reduce_motion","welcome_on_start","clock_seconds","layout_locked","show_status_bar","snap_gadgets","weather_f","control_panel_classic","explorer_details","sidebar_visible","desktop_v41"));
+    private static final Set<String> BOOLEANS=new HashSet<>(Arrays.asList("weather_follow","aero_transparency","startup_sound","reduce_motion","welcome_on_start","clock_seconds","layout_locked","show_status_bar","snap_gadgets","snap_desktop","weather_f","control_panel_classic","explorer_details","sidebar_visible","desktop_v41"));
     private static final Set<String> INTS=new HashSet<>(Arrays.asList("wallpaper","clock_style","desktop_icon_size","aero_color","aero_intensity","aero_opacity","startup_mode"));
-    private static final Set<String> STRINGS=new HashSet<>(Arrays.asList("shortcuts","quick_launch","app_folders","shortcut_names","gadgets","file_manager_apps","gadget_photos","recents","linked_folders","gadget_layout_portrait","gadget_layout_landscape","note","gadget_note","profile_portrait","linked_files","desktop_name","weather_city","weather_lat","weather_lon","gadget_data","feed_url","explorer_favorites"));
-    private static final Set<String> BUILTINS=new HashSet<>(Arrays.asList("@computer","@browser","@photos","@files","@notes","@appearance","@control","@system","@filemanagers","@gadgets","@sticky","@calendar","@clock","@weather","@pictures","@music","@organize","@quicklaunch","@backup","@welcome"));
+    private static final Set<String> STRINGS=new HashSet<>(Arrays.asList("shortcuts","quick_launch","app_folders","shortcut_names","gadgets","file_manager_apps","gadget_photos","recents","linked_folders","gadget_layout_portrait","gadget_layout_landscape","note","gadget_note","profile_portrait","linked_files","desktop_name","weather_city","weather_lat","weather_lon","gadget_data","feed_url","explorer_favorites","desktop_positions_portrait","desktop_positions_landscape"));
+    private static final Set<String> BUILTINS=new HashSet<>(Arrays.asList("@computer","@browser","@photos","@documents","@files","@notes","@appearance","@control","@system","@filemanagers","@gadgets","@sticky","@calendar","@clock","@weather","@pictures","@music","@organize","@quicklaunch","@backup","@welcome"));
     static final class Plan {
         final Map<String,Object> values;
         final String text,created;
@@ -35,11 +35,12 @@ final class DesktopBackup {
         values.put("shortcuts",new JSONArray(store.desktop()).toString());values.put("quick_launch",new JSONArray(store.quickLaunch()).toString());values.put("app_folders",store.folders().toString());
         values.putIfAbsent("shortcut_names","{}");values.put("gadgets",new JSONArray(store.gadgets()).toString());values.put("file_manager_apps",new JSONArray(store.fileManagers()).toString());values.put("gadget_photos",new JSONArray(store.photos()).toString());values.put("recents",new JSONArray(store.recents()).toString());values.putIfAbsent("linked_folders","[]");values.putIfAbsent("note","");values.putIfAbsent("gadget_note","");
         values.putIfAbsent("gadget_layout_portrait",values.getOrDefault("gadget_layout_landscape","{}"));values.putIfAbsent("gadget_layout_landscape",values.getOrDefault("gadget_layout_portrait","{}"));
+        for(String key:Arrays.asList("desktop_positions_portrait","desktop_positions_landscape"))if(values.containsKey(key)){JSONObject points=object((String)values.get(key));Iterator<String> ids=points.keys();while(ids.hasNext())if(!store.desktop().contains(ids.next()))ids.remove();values.put(key,points.toString());}
         JSONObject settings=new JSONObject();for(Map.Entry<String,Object> entry:values.entrySet()){
             String key=entry.getKey(),kind=kind(key);if(kind==null)continue;Object value=entry.getValue();if(value==null)continue;
             JSONObject field=new JSONObject().put("type",kind).put("value",value);settings.put(key,field);
         }
-        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.11.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
+        return new JSONObject().put("format",FORMAT).put("version",1).put("appVersion","0.14.0").put("createdAt",new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",Locale.US).format(new Date())).put("settings",settings);
     }
     static Plan parse(String text)throws JSONException {
         if(text.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)throw new JSONException("Backup is larger than 8 MB");
@@ -77,7 +78,8 @@ final class DesktopBackup {
         if(values.containsKey("profile_portrait")&&!ProfilePortrait.valid((String)values.get("profile_portrait")))throw new JSONException("Invalid profile picture");
         if(values.containsKey("linked_files"))LinkedFiles.validate(array((String)values.get("linked_files")));
         for(String key:new ArrayList<>(values.keySet())){
-            if(key.equals("gadget_layout_portrait")||key.equals("gadget_layout_landscape"))layout(object((String)values.get(key)));
+            if(key.equals("desktop_positions_portrait")||key.equals("desktop_positions_landscape")){JSONObject points=object((String)values.get(key));if(points.length()>512)throw new JSONException("Too many desktop positions");Iterator<String> ids=points.keys();while(ids.hasNext()){String id=ids.next();if(!shortcut(id,folders,true))throw new JSONException("Invalid positioned shortcut");JSONObject point=points.getJSONObject(id);number(point.get("x"),0,1);number(point.get("y"),0,60000);}}
+            else if(key.equals("gadget_layout_portrait")||key.equals("gadget_layout_landscape"))layout(object((String)values.get(key)));
             else if(key.startsWith("window_portrait_")||key.startsWith("window_landscape_")){JSONObject geometry=object((String)values.get(key));for(String n:Arrays.asList("x","y","w","h"))if(geometry.has(n))number(geometry.get(n),0,n.equals("x")||n.equals("y")?1:2000);if(geometry.has("maximized")&&!(geometry.get("maximized") instanceof Boolean))throw new JSONException("Invalid window state");}
             else if(key.equals("desktop_name"))checkName(values.get(key));
         }

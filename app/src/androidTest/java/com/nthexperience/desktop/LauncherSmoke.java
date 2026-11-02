@@ -139,7 +139,7 @@ public class LauncherSmoke extends Instrumentation {
         EditText recreated=(EditText)find(v->"Notepad text".equals(v.getContentDescription()));check(recreated!=null&&recreated.getSelectionStart()==4,"Activity recreation restores window and cursor");ui(()->recreated.setText(oldNote));
         ui(()->find(v->"Close window".equals(v.getContentDescription())).performClick());snapshot("restored-portrait.png");
     }
-    private void rotate(int requested,int expected) throws Exception {MainActivity previous=activity;resumed.clear();ui(()->activity.setRequestedOrientation(requested));awaitReplacement(previous,expected);}
+    private void rotate(int requested,int expected) throws Exception {ui(()->activity.setRequestedOrientation(requested));long end=SystemClock.uptimeMillis()+12000;while(SystemClock.uptimeMillis()<end){refreshActivity();if(activity.getResources().getConfiguration().orientation==expected&&(expected==Configuration.ORIENTATION_LANDSCAPE?root.getWidth()>root.getHeight():root.getHeight()>root.getWidth())){Thread.sleep(300);waitForIdleSync();return;}Thread.sleep(100);}throw new AssertionError("Orientation did not settle");}
     private void awaitReplacement(MainActivity previous,int orientation) throws Exception {
         long deadline=SystemClock.uptimeMillis()+15000;MainActivity next=null;
         while(SystemClock.uptimeMillis()<deadline){MainActivity candidate=resumed.poll(1,TimeUnit.SECONDS);if(candidate!=null&&candidate!=previous&&candidate.getResources().getConfiguration().orientation==orientation){next=candidate;break;}}

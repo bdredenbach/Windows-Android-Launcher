@@ -13,6 +13,7 @@
         <activity android:name="com.nthexperience.desktop.PickerCallerActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" />
     </application>
     <instrumentation android:name="com.nthexperience.desktop.StorageSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
+    <instrumentation android:name="com.nthexperience.desktop.ContinuitySmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
     <instrumentation android:name="com.nthexperience.desktop.PhotoSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
     <instrumentation android:name="com.nthexperience.desktop.BrowserSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
     <instrumentation android:name="com.nthexperience.desktop.FileOpenSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
