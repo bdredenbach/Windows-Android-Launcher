@@ -54,7 +54,25 @@ public class AeroSmoke extends LauncherSmoke {
         // Grid items expose a combined filename/size/date description instead of
         // a text child. Use the native file action, excluding its separate Preview control.
         // A synchronous injected DOWN can stall long enough to become a hold on a busy emulator.
-        try{getUiAutomation().waitForIdle(200,5000);clickSystemNode(n->n.getPackageName()!=null&&n.getPackageName().toString().endsWith(".documentsui")&&((n.getText()!=null&&filename.contentEquals(n.getText()))||(n.getContentDescription()!=null&&(filename.contentEquals(n.getContentDescription())||n.getContentDescription().toString().startsWith(filename+",")))));}catch(AssertionError missing){StringBuilder tree=new StringBuilder();pickerTree(getUiAutomation().getRootInActiveWindow(),tree,0);progress("Document picker hierarchy: "+tree);throw missing;}
+        try{
+            Predicate<android.view.accessibility.AccessibilityNodeInfo> file=n->n.getPackageName()!=null&&n.getPackageName().toString().endsWith(".documentsui")&&((n.getText()!=null&&filename.contentEquals(n.getText()))||(n.getContentDescription()!=null&&(filename.contentEquals(n.getContentDescription())||n.getContentDescription().toString().startsWith(filename+","))));
+            getUiAutomation().waitForIdle(200,5000);clickSystemNode(file);
+            long end=SystemClock.uptimeMillis()+10000,last=SystemClock.uptimeMillis();int attempts=1;
+            while(SystemClock.uptimeMillis()<end){
+                android.view.accessibility.AccessibilityNodeInfo active=getUiAutomation().getRootInActiveWindow();
+                if(active!=null&&systemNode(active,n->n.getPackageName()!=null&&getTargetContext().getPackageName().contentEquals(n.getPackageName()))!=null)return;
+                boolean picker=active!=null&&systemNode(active,n->n.getPackageName()!=null&&n.getPackageName().toString().endsWith(".documentsui"))!=null;
+                if(picker&&SystemClock.uptimeMillis()-last>650){
+                    Predicate<android.view.accessibility.AccessibilityNodeInfo> open=n->n.getPackageName()!=null&&n.getPackageName().toString().endsWith(".documentsui")&&n.getText()!=null&&"Open".equalsIgnoreCase(n.getText().toString())&&n.isEnabled()&&n.isVisibleToUser();
+                    if(systemNode(active,open)!=null)clickSystemNode(open);
+                    else if(attempts<3&&systemNode(active,file)!=null){clickSystemNode(file);attempts++;}
+                    last=SystemClock.uptimeMillis();
+                }
+                Thread.sleep(100);
+            }
+            throw new AssertionError("Android picker did not return its selected file: "+filename);
+        }catch(AssertionError missing){StringBuilder tree=new StringBuilder();pickerTree(getUiAutomation().getRootInActiveWindow(),tree,0);progress("Document picker hierarchy: "+tree);throw missing;}
+
     }
     private void pickerTree(android.view.accessibility.AccessibilityNodeInfo node,StringBuilder out,int depth){if(node==null||depth>20)return;out.append("\n").append(node.getViewIdResourceName()).append(" text=").append(node.getText()).append(" description=").append(node.getContentDescription());for(int i=0;i<node.getChildCount();i++)pickerTree(node.getChild(i),out,depth+1);}
     private EditText startSearch(){return (EditText)find(v->"Search apps, settings, notes and linked files".equals(v.getContentDescription()));}
