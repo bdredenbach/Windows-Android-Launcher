@@ -193,7 +193,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             case "@weather":weatherSettings();return;
             case "@sticky":stickyNote();return;
             case "@calendar":calendar();return;
-            case "@documents":explorer("@files","home");DesktopWindow documents=windows.get("@files");if(documents!=null&&documents.body instanceof VistaExplorer)((VistaExplorer)documents.body).openDevice("documents");return;
+            case "@documents":explorer("@files","home");DesktopWindow documents=windows.get("@files");if(documents!=null&&documents.body instanceof VistaExplorer)((VistaExplorer)documents.body).openFavorite("documents");return;
             case "@pictures":explorer("@files","home");DesktopWindow pictures=windows.get("@files");if(pictures!=null&&pictures.body instanceof VistaExplorer)((VistaExplorer)pictures.body).openDevice("pictures");return;
             case "@music":pickDocument("music");return;
             case "@computer":computer();return;

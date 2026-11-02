@@ -20,7 +20,7 @@ final class DesktopIconGrid extends ViewGroup {
     void viewport(int height){if(viewportHeight!=height){viewportHeight=height;requestLayout();}}
     private boolean blocked(Rect rect){Rect content=new Rect(rect);content.inset(Aero.dp(getContext(),7),Aero.dp(getContext(),3));content.offset(plannedX,plannedY);for(Rect hole:cutouts)if(Rect.intersects(content,hole))return true;return false;}
     private boolean occupied(Rect rect,List<Rect> used){for(Rect other:used)if(other!=null&&Rect.intersects(rect,other))return true;return false;}
-    private Rect at(float x,float y,int width,int height,boolean snap){int w=Math.max(1,tileWidth),h=Math.max(1,tileHeight);if(snap){x=DesktopGeometry.snap(x,w);y=DesktopGeometry.snap(y,h);}int left=Math.round(DesktopGeometry.clamp(x,0,Math.max(0,width-w))),top=Math.round(DesktopGeometry.clamp(y,0,Math.max(0,height-h)));return new Rect(left,top,left+w,top+h);}
+    private Rect at(float x,float y,int width,int height,boolean snap){int w=Math.max(1,tileWidth),h=Math.max(1,tileHeight);if(snap){x=DesktopGeometry.clamp(DesktopGeometry.snap(x,w),0,Math.max(0,(width-w)/w)*w);y=DesktopGeometry.clamp(DesktopGeometry.snap(y,h),0,Math.max(0,(height-h)/h)*h);}int left=Math.round(DesktopGeometry.clamp(x,0,Math.max(0,width-w))),top=Math.round(DesktopGeometry.clamp(y,0,Math.max(0,height-h)));return new Rect(left,top,left+w,top+h);}
     void place(String id,float x,float y){
         if(store.prefs.getBoolean("layout_locked",false))return;
         Rect target=at(x,y,getWidth(),Math.max(viewportHeight,tileHeight),store.prefs.getBoolean("snap_desktop",true));
