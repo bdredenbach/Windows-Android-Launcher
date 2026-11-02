@@ -24,7 +24,7 @@ adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 if [[ "$1" == 30 ]]; then
-  timeout -k 3s 90s adb shell am instrument -w -e suite gadgets -e top-only true com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee desktop-top-test.txt
+  timeout -k 3s 90s adb shell am instrument -w -e suite gadgets --ez top-only true com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee desktop-top-test.txt
   grep -q 'PASS:' desktop-top-test.txt
   adb shell am force-stop com.nthexperience.desktop
 fi
