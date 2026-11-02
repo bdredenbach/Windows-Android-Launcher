@@ -23,6 +23,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell pm list instrumentation | tee instrumentation-test.txt
 grep -q 'com.nthexperience.desktop.AuthenticitySmoke' instrumentation-test.txt
+# Validate the new shell commands first; every existing suite still follows.
+timeout -k 3s 240s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.AuthenticitySmoke | tee authenticity-test.txt
+grep -q 'PASS:' authenticity-test.txt
+adb shell am force-stop com.nthexperience.desktop
 # Exercise the integrated browser before the storage suites reset launcher preferences.
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
@@ -33,9 +37,6 @@ adb shell am force-stop com.nthexperience.desktop
 adb shell appops set --uid com.nthexperience.desktop MANAGE_EXTERNAL_STORAGE allow
 timeout -k 3s 230s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.PhotoSmoke | tee photo-test.txt
 grep -q 'PASS:' photo-test.txt
-adb shell am force-stop com.nthexperience.desktop
-timeout -k 3s 240s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.AuthenticitySmoke | tee authenticity-test.txt
-grep -q 'PASS:' authenticity-test.txt
 adb shell am force-stop com.nthexperience.desktop
 timeout -k 3s 210s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.ContinuitySmoke | tee continuity-test.txt
 grep -q 'PASS:' continuity-test.txt
