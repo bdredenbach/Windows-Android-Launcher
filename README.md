@@ -1,6 +1,6 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.18.0 — Start glass and consistent navigation** restores Start menu glass opacity, aligns its desktop controls, adds a real launcher restart command and direct desktop Show Sidebar action, and makes Up and clickable breadcrumbs follow the same parent chain. Desktop Settings, Explorer-style shortcut folders, original Vista-inspired icons, Android app taskbar buttons, real file organization and all 21 gadgets remain available.
+A Vista-style Android home launcher by Nth Experience. **0.19.0 — Vista Control Panel** replaces repeated settings lists with distinct category, applet and task pages; adds the original blue-to-green task pane, compact task links and an alphabetical Classic View icon grid; and keeps settings searchable through one canonical catalog. Existing Start glass, app restart, Sidebar, Desktop Settings, file organization, browser, Gallery and gadgets remain available.
 
 Hold the Sidebar header or its dark navigation pill for **Bring Gadgets to Front, Add Gadgets, Properties, Help and Close Sidebar**. Closing keeps gadget contents and positions. **Desktop context menu → Show Sidebar** restores it directly; Start → Gadgets also opens the gallery; Sidebar Properties can keep it above windows while reserving room for window controls.
 
@@ -26,9 +26,11 @@ New and existing desktop shortcut folders share Explorer’s File/Edit/View/Tool
 
 ## Control Panel and Personalization
 
-Open **Start → Control Panel**. Vista's category names, green section headings, task links, navigation pane, address bar and Category/Classic views organize real settings. Search finds matching settings across categories. Desktop Background, Window Color and Appearance, Desktop Settings, Taskbar and Start Menu, Clock and desktop-name pages change the launcher's actual preferences. System shows real Android device, memory and internal-storage information.
+Control Panel Home shows Vista's supported categories with green titles, original icons and common blue task links. Open a category to see its applets and their related tasks. **Classic View** is a fitted alphabetical icon grid containing each applet once. Use the task pane's Home/Classic links, or **Control Panel ▾** on a narrow window. Wide windows keep search beside the address bar and show a blue-to-green task pane with category navigation or relevant See also links. Narrow windows move related links below the page. The Explorer Folders toolbar and repeated status strip are removed from Control Panel.
 
-Wi-Fi, security, sound, storage, Bluetooth, accessibility, accounts, language and other operating-system settings open the matching Android page, with Android Settings as a fallback. The launcher themes its own settings; it does not replace Android's system Settings app.
+Appearance and Personalization has four applets: Personalization, Desktop Settings, Taskbar and Start Menu, and Windows Sidebar Properties. Personalization contains Window Color and Appearance, Desktop Background, and Startup and Sounds. Desktop icon/grid/label/snap options belong to Desktop Settings. Quick Launch belongs to Taskbar. Gadget Gallery belongs to Sidebar. Links elsewhere open those same settings. Search groups matches by their owning applet, deduplicates destinations and retains familiar task names and synonyms. Existing page IDs, preferences and backup compatibility are retained.
+
+This is a native Android adaptation, using original artwork and working launcher settings or corresponding Android settings screens. Unsupported Windows-only applets are not added. The Vista-specific category and task-link references are Microsoft's [category assignments](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/legacy/cc144183(v=vs.85)) and [searchable task links](https://learn.microsoft.com/en-us/windows/win32/shell/creating-searchable-task-links). The later [Control Panels UX guide](https://learn.microsoft.com/en-us/windows/win32/uxguide/winenv-ctrl-panels) informs the shared task/related-link organization; its own notice identifies it as a Windows 7 guide.
 
 ## Computer, Explorer and File Managers
 
