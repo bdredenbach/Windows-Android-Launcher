@@ -52,8 +52,9 @@ public class AeroSmoke extends LauncherSmoke {
     }
     private void choosePickerFile(String filename)throws Exception{
         // Grid items expose a combined filename/size/date description instead of
-        // a text child. Tap the file tile, excluding its separate Preview control.
-        try{tapPickerNode(n->(n.getText()!=null&&filename.contentEquals(n.getText()))||(n.getContentDescription()!=null&&(filename.contentEquals(n.getContentDescription())||n.getContentDescription().toString().startsWith(filename+","))));}catch(AssertionError missing){StringBuilder tree=new StringBuilder();pickerTree(getUiAutomation().getRootInActiveWindow(),tree,0);progress("Document picker hierarchy: "+tree);throw missing;}
+        // a text child. Use the native file action, excluding its separate Preview control.
+        // A synchronous injected DOWN can stall long enough to become a hold on a busy emulator.
+        try{getUiAutomation().waitForIdle(200,5000);clickSystemNode(n->n.getPackageName()!=null&&n.getPackageName().toString().endsWith(".documentsui")&&((n.getText()!=null&&filename.contentEquals(n.getText()))||(n.getContentDescription()!=null&&(filename.contentEquals(n.getContentDescription())||n.getContentDescription().toString().startsWith(filename+",")))));}catch(AssertionError missing){StringBuilder tree=new StringBuilder();pickerTree(getUiAutomation().getRootInActiveWindow(),tree,0);progress("Document picker hierarchy: "+tree);throw missing;}
     }
     private void pickerTree(android.view.accessibility.AccessibilityNodeInfo node,StringBuilder out,int depth){if(node==null||depth>20)return;out.append("\n").append(node.getViewIdResourceName()).append(" text=").append(node.getText()).append(" description=").append(node.getContentDescription());for(int i=0;i<node.getChildCount();i++)pickerTree(node.getChild(i),out,depth+1);}
     private EditText startSearch(){return (EditText)find(v->"Search apps, settings, notes and linked files".equals(v.getContentDescription()));}
