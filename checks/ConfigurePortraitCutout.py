@@ -18,5 +18,8 @@ while time.monotonic() < deadline:
         break
     time.sleep(.15)
 else:
+    print(adb('cmd', 'overlay', 'list'))
+    print(adb('dumpsys', 'display'))
+    print(state)
     raise AssertionError('WindowManager has not activated the portrait cutout')
 adb('am', 'force-stop', 'com.nthexperience.desktop')
