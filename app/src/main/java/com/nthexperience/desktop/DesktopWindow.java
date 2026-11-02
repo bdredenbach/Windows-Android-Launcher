@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -21,7 +22,7 @@ final class DesktopWindow extends LinearLayout {
     private int normalW, normalH,safeTop,safeRight;
     private float positionX=.5f,positionY=.33f;
     private final DesktopStore store;
-    private String geometryKey;
+    private String geometryKey,captionKind="";
     final String toolId;
     private float downX, downY, originX, originY;
     private final AeroGlass glass;
@@ -57,6 +58,8 @@ final class DesktopWindow extends LinearLayout {
         });
         label.setContentDescription(title+". Drag to move window.");
     }
+    boolean captionIcon(String kind){if(captionKind.equals(kind))return false;captionKind=kind;ViewGroup chrome=(ViewGroup)getChildAt(0);View old=chrome.getChildAt(0);ViewGroup.LayoutParams params=old.getLayoutParams();chrome.removeViewAt(0);chrome.addView(new AeroIcon(getContext(),kind),0,params);return true;}
+    String caption(){return titleLabel.getText().toString();}
     void caption(String title){titleLabel.setText(title);titleLabel.setContentDescription(title+". Drag to move window.");}
     boolean minimizing(){return minimizing;}
     boolean active(){return active;}

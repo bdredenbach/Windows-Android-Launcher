@@ -39,6 +39,8 @@ jobs:
           java -cp build/state-check com.nthexperience.desktop.GadgetMathCheck
           java -cp build/state-check com.nthexperience.desktop.BrowserUrlsCheck
       - run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
+      - name: Check packaged test registrations
+        run: python3 checks/CheckTestManifest.py
       - uses: actions/upload-artifact@v4
         if: matrix.api == 30
         with:
