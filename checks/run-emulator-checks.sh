@@ -40,11 +40,11 @@ adb shell appops set --uid com.nthexperience.desktop MANAGE_EXTERNAL_STORAGE all
 timeout -k 3s 230s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.PhotoSmoke | tee photo-test.txt
 grep -q 'PASS:' photo-test.txt
 adb shell am force-stop com.nthexperience.desktop
-timeout -k 3s 210s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.ContinuitySmoke | tee continuity-test.txt
-grep -q 'PASS:' continuity-test.txt
-adb shell am force-stop com.nthexperience.desktop
 timeout -k 3s 240s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.AuthenticitySmoke | tee authenticity-test.txt
 grep -q 'PASS:' authenticity-test.txt
+adb shell am force-stop com.nthexperience.desktop
+timeout -k 3s 210s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.ContinuitySmoke | tee continuity-test.txt
+grep -q 'PASS:' continuity-test.txt
 adb shell am force-stop com.nthexperience.desktop
 # Permission changes can restart an Android app; apply them outside instrumentation.
 adb shell appops set --uid com.nthexperience.desktop MANAGE_EXTERNAL_STORAGE deny
