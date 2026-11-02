@@ -1,6 +1,6 @@
 # Nth Desktop for Android
 
-A Vista-style Android home launcher by Nth Experience. **0.12.0 — Internet** adds an integrated IE9-inspired Chromium WebView browser. The existing Explorer opens Internal storage, Documents, Pictures, Music, Videos and Downloads in the built-in Vista browser. Optional file-access setup follows the startup animation, with Later and individual-folder alternatives. Device files use the existing navigation, selection, context menus and verified copy/cut engine. All 17 gadgets, Aero settings, linked folders and backups are retained.
+A Vista-style Android home launcher by Nth Experience. **0.13.0 — Vista continuity and Photo Gallery** adds shared Vista menus/dialogs and an integrated picture viewer alongside the IE9-inspired Chromium WebView browser. The existing Explorer opens Internal storage, Documents, Pictures, Music, Videos and Downloads in the built-in Vista browser. Optional file-access setup follows the startup animation, with Later and individual-folder alternatives. Device files use the existing navigation, selection, context menus and verified copy/cut engine. All 17 gadgets, Aero settings, linked folders and backups are retained.
 
 Desktop cleanup runs once on upgrade, preserving other shortcut order, file-manager app selections, linked folders, notes and gadget layouts. Restoring original desktop icons uses Computer, Internet, Notepad and Personalize. The default-home prompts follow Android's actual home-role state and refresh when the launcher resumes or a menu opens. Long-press blank desktop space or right-click with a mouse for the context menu.
 
@@ -122,7 +122,7 @@ These are native built-in desktop gadgets. This release does not yet host third-
 
 ## Install and update
 
-Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.12.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
+Install the supplied test APK, then open **Nth Desktop**. Try it before choosing **Make home**. To switch back: **Android Settings → Apps → Default apps → Home app**. The 0.13.0 handoff APK uses the same preserved test signing key as the earlier supplied builds, so it can be installed as an update.
 
 Notes, selected photo references, linked folder references, file-manager shortcuts, preferences and cached forecasts are stored locally. Photo access uses the document picker's retained grants; device-wide shared-file browsing is an optional separate all-files grant. Approximate location is requested when you tap **Use my approximate location** or enable **Follow my location**. A city can be chosen without granting location access. Forecasts require Internet access; city search uses Photon/OSM. City search text is sent to that service. Selected weather coordinates are sent to MET Norway. Uninstalling clears local app data.
 
@@ -186,3 +186,15 @@ The desktop **Internet** icon opens Nth Internet in a movable, maximizable Aero 
 - HTTP websites remain supported and are labeled **Not encrypted**. Browser data is separate from desktop backup settings. Tools → Internet options clears history or website data; older providers explicitly disclose incomplete data-clearing support.
 
 The emulator browser suite uses only test-APK HTTP fixtures and verifies real WebView navigation/JavaScript/cookies/storage, tabs, Favorites/history, Find, desktop UA, unsafe URL rejection, actual downloaded bytes and content URI reads, Explorer upload picker cancellation, conditional private-profile separation and normal tab recovery after Activity recreation. Test fixtures are not included in the app APK.
+
+## Photo Gallery and shared Vista controls
+
+Picture taps in Nth Explorer, linked files and Internet downloads now open in a Photo Gallery-style desktop window. Open with remains an explicit external-app choice. Pictures in Start opens the built-in Explorer Pictures folder; Photo Gallery is searchable in Start and available in desktop/Quick Launch organization and Desktop Icon Settings.
+
+The viewer supports previous/next in the current folder's filtered/sorted picture order, fit, zoom buttons, pinch zoom/pan, double-tap zoom, EXIF orientation, view-only quarter-turn rotation, a four-second slideshow, properties and read-only sharing. Back to folder restores the originating Explorer window. A single-file opening does not infer permission to enumerate neighboring pictures. Rotation, zoom and selected picture survive Activity recreation/portrait/landscape. Slideshows stop when minimized, backgrounded or closed. Read access is checked again on resume; revocation removes the displayed bitmap and shows recovery guidance.
+
+Decoding runs on a cancellable worker, bounds decoded dimensions/pixel counts, rejects corrupt/unsupported data gracefully and ignores stale results after a new picture or closed window. PNG/JPEG/WebP are exercised by the emulator suite. Other image formats depend on the platform decoder; animated files show the first frame. Source files are never edited by view rotation or zoom. The current scope is a still-picture viewer, with Media Player and Recycle Bin left for later releases.
+
+All built-in message/list dialogs share Vista captions, fonts, buttons and selection styling while retaining Android cancellation, selection and permission semantics. Internet Tools and Favorites now use the same pointer/touch/keyboard menu surface as Explorer. System-owned Android permission/installer screens keep their native behavior.
+
+The PhotoSmoke instrumentation suite uses actual native and granted SAF images, drawn-pixel assertions, EXIF-tagged JPEGs, a large image, corrupt data, physical toolbar/taskbar taps, timed slideshow behavior, source-byte hashes, Activity recreation, both orientations and actual URI revocation. FileOpenSmoke checks picture taps in Gallery and still verifies external read-only byte delivery through Open with. Test-only fixtures never ship in the app APK.
