@@ -13,6 +13,7 @@ final class AeroIcon extends View {
         float s = Math.min(getWidth(),getHeight())/64f;
         canvas.save(); canvas.translate((getWidth()-64*s)/2,(getHeight()-64*s)/2); canvas.scale(s,s);
         p.setShader(null); p.setStyle(Paint.Style.FILL); p.setAlpha(255);
+        if(VistaArtwork.draw(canvas,kind)){canvas.restore();return;}
         if (kind.equals("orb")) {
             p.setShader(new RadialGradient(24,16,45,new int[]{0xffb9f5df,0xff237fbd,0xff071d44},null,Shader.TileMode.CLAMP));
             canvas.drawCircle(32,32,29,p); p.setShader(null);p.setColor(0xff061a32);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2);canvas.drawCircle(32,32,29,p);p.setStyle(Paint.Style.FILL);

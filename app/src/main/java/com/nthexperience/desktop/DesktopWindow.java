@@ -18,7 +18,7 @@ final class DesktopWindow extends LinearLayout {
     private final TextView maximizeButton;
     private final TextView titleLabel;
     private boolean maximized;
-    private int normalW, normalH,safeTop;
+    private int normalW, normalH,safeTop,safeRight;
     private float positionX=.5f,positionY=.33f;
     private final DesktopStore store;
     private String geometryKey;
@@ -48,10 +48,10 @@ final class DesktopWindow extends LinearLayout {
         label.setOnTouchListener((v,e)->{
             if(e.getActionMasked()==MotionEvent.ACTION_DOWN){ settle();bringToFront();changed.run();downX=e.getRawX(); downY=e.getRawY(); originX=getX(); originY=getY(); return true; }
             if(e.getActionMasked()==MotionEvent.ACTION_MOVE){
-                if(!maximized){ setX(clamp(originX+e.getRawX()-downX,0,Math.max(0,host.getWidth()-getWidth()))); setY(clamp(originY+e.getRawY()-downY,safeTop,Math.max(safeTop,host.getHeight()-getHeight())));invalidate(); }
+                if(!maximized){ setX(clamp(originX+e.getRawX()-downX,0,Math.max(0,hostWidth()-getWidth()))); setY(clamp(originY+e.getRawY()-downY,safeTop,Math.max(safeTop,host.getHeight()-getHeight())));invalidate(); }
                 return true;
             }
-            if(e.getActionMasked()==MotionEvent.ACTION_UP){if(!maximized){positionX=DesktopGeometry.fraction(getX(),host.getWidth()-getWidth());positionY=DesktopGeometry.fraction(getY()-safeTop,host.getHeight()-safeTop-getHeight());saveGeometry();}v.performClick();return true;}
+            if(e.getActionMasked()==MotionEvent.ACTION_UP){if(!maximized){positionX=DesktopGeometry.fraction(getX(),hostWidth()-getWidth());positionY=DesktopGeometry.fraction(getY()-safeTop,host.getHeight()-safeTop-getHeight());saveGeometry();}v.performClick();return true;}
             if(e.getActionMasked()==MotionEvent.ACTION_CANCEL){fitToHost();return true;}
             return true;
         });
@@ -71,10 +71,10 @@ final class DesktopWindow extends LinearLayout {
     }
     void open(){
         int margin=Aero.dp(getContext(),12);
-        int width=Math.min(Aero.dp(getContext(),520),host.getWidth()-margin*2);
+        int width=Math.min(Aero.dp(getContext(),520),hostWidth()-margin*2);
         int height=Math.min(Aero.dp(getContext(),490),host.getHeight()-safeTop-margin*2);
         FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(Math.max(1,width),Math.max(1,height));
-        normalW=width;normalH=height;host.addView(this,lp); setX((host.getWidth()-width)/2f); setY(safeTop+Math.max(margin,(host.getHeight()-safeTop-height)/3f));
+        normalW=width;normalH=height;host.addView(this,lp); setX((hostWidth()-width)/2f); setY(safeTop+Math.max(margin,(host.getHeight()-safeTop-height)/3f));
         if((toolId.equals("@browser")||toolId.equals("@photos"))&&!store.prefs.contains(geometryKey))maximized=true;
         readGeometry(null);maximizeButton.setText(maximized?"❐":"□");fitToHost();changed.run();
     }
@@ -86,14 +86,16 @@ final class DesktopWindow extends LinearLayout {
     void minimize(){hideKeyboard();settle();if(!Aero.motion(getContext())){setVisibility(GONE);changed.run();return;}minimizing=true;int token=++transition;setPivotX(getWidth()*.2f);setPivotY(host.getHeight()-getY()+Aero.dp(getContext(),20));changed.run();animate().scaleX(.15f).scaleY(.15f).alpha(0).setDuration(180).withEndAction(()->{if(token!=transition)return;setVisibility(GONE);settle();changed.run();}).start();}
     void restore(){boolean hidden=getVisibility()!=VISIBLE||minimizing;settle();setVisibility(VISIBLE);bringToFront();changed.run();if(hidden&&Aero.motion(getContext())){int token=++transition;setPivotX(getWidth()*.2f);setPivotY(host.getHeight()-getY()+Aero.dp(getContext(),20));setScaleX(.18f);setScaleY(.18f);setAlpha(0);animate().scaleX(1).scaleY(1).alpha(1).setDuration(190).withEndAction(()->{if(token==transition)settle();}).start();}}
     @Override protected void onDetachedFromWindow(){settle();super.onDetachedFromWindow();}
+    private int hostWidth(){return Math.max(1,host.getWidth()-safeRight);}
+    void safeRight(int inset){int next=Math.max(0,Math.min(inset,Math.max(0,host.getWidth()-Aero.dp(getContext(),180))));if(safeRight!=next){safeRight=next;fitToHost();}}
     void safeTop(int inset){safeTop=Math.max(0,inset);fitToHost();}
     void fitToHost(){
         if(getParent()==null)return;
         FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)getLayoutParams();
         int margin=Aero.dp(getContext(),8);
-        int width=maximized?host.getWidth():Math.max(1,Math.min(normalW,host.getWidth()-margin*2));
+        int width=maximized?hostWidth():Math.max(1,Math.min(normalW,hostWidth()-margin*2));
         int height=maximized?Math.max(1,host.getHeight()-safeTop):Math.max(1,Math.min(normalH,host.getHeight()-safeTop-margin*2));
-        setX(maximized?0:positionX*Math.max(0,host.getWidth()-width));
+        setX(maximized?0:positionX*Math.max(0,hostWidth()-width));
         setY(safeTop+(maximized?0:positionY*Math.max(0,host.getHeight()-safeTop-height)));
         // Called from the host layout listener. Reapplying identical parameters
         // would request another layout forever once any tool window is open.

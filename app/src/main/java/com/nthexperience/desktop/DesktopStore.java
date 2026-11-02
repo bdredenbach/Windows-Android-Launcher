@@ -29,6 +29,8 @@ final class DesktopStore {
     void fileManagers(List<String> ids){save("file_manager_apps",ids);}
     List<String> photos(){return list("gadget_photos",new ArrayList<>());}
     void photos(List<String> ids){save("gadget_photos",ids);}
+    List<String> startPins(){return list("start_pins",Arrays.asList("@browser","@notes"));}
+    void startPins(List<String> ids){save("start_pins",ids);}
     List<String> recents() { return list("recents", new ArrayList<>()); }
     List<String> quickLaunch(){return list("quick_launch",Arrays.asList("@browser","@files","@notes"));}
     void quickLaunch(List<String> ids){save("quick_launch",ids.subList(0,Math.min(MAX_QUICK,ids.size())));}

@@ -47,7 +47,7 @@ public class LauncherSmoke extends Instrumentation {
             EditText search=(EditText)find(v->v instanceof EditText&&"Search apps, settings, notes and linked files".equals(v.getContentDescription()));
             ui(()->search.setText("__no_such_installed_program__"));check(list.getCount()==0,"Search filters unmatched apps");
             ui(()->search.setText(""));check(list.getCount()>0,"Clearing search restores apps");
-            int recentCount=list.getCount();ui(()->find(v->v instanceof TextView&&"All Programs  ›".contentEquals(((TextView)v).getText())).performClick());check(list.getCount()>=recentCount,"All Programs expands the list");snapshot("start-menu.png");
+            int recentCount=list.getCount();ui(()->find(v->v instanceof TextView&&"All Programs  ›".contentEquals(((TextView)v).getText())).performClick());check(list.getCount()>0&&find(v->v instanceof TextView&&"Accessories".contentEquals(((TextView)v).getText()))!=null,"All Programs exposes its actual Accessories folder");snapshot("start-menu.png");
             progress("opening Notepad");ui(()->activity.open("@notes"));
             EditText editor=(EditText)find(v->v instanceof EditText&&"Notepad text".equals(v.getContentDescription()));
             check(editor!=null,"Notepad opens");previous=editor.getText().toString();

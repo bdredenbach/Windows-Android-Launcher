@@ -103,6 +103,7 @@ jobs:
             file-open-test.txt
             browser-test.txt
             photo-test.txt
+            authenticity-test.txt
             continuity-test.txt
             reboot-test.txt
             screenshots/

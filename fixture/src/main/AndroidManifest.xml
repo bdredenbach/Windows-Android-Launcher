@@ -4,6 +4,7 @@
         <provider android:name=".FixtureProvider" android:authorities="com.nthexperience.desktop.fixture.documents" android:exported="true" android:grantUriPermissions="true" android:permission="android.permission.MANAGE_DOCUMENTS">
             <intent-filter><action android:name="android.content.action.DOCUMENTS_PROVIDER" /></intent-filter>
         </provider>
+        <activity android:name=".TaskActivity" android:exported="true" android:launchMode="singleTask" android:label="Task switch probe"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
         <activity android:name=".GrantActivity" android:exported="true" />
     </application>
 </manifest>

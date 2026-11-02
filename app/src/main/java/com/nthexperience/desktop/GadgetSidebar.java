@@ -54,7 +54,7 @@ final class GadgetSidebar extends LinearLayout {
         View divider=new View(c);divider.setBackgroundColor(0xff78828b);pill.addView(divider,new LayoutParams(dp(1),dp(18)));
         previousPage=nav("‹","Previous five Sidebar gadgets",()->page(-1));nextPage=nav("›","Next five Sidebar gadgets",()->page(1));pill.addView(previousPage,new LayoutParams(dp(40),dp(34)));pill.addView(nextPage,new LayoutParams(dp(40),dp(34)));header.addView(pill);addView(header,new LayoutParams(-1,dp(38)));
         ContextMenus.bind(header,(x,y)->sidebarMenu(header,x,y));
-        ScrollView scroll=new ScrollView(c);scroll.setVerticalScrollBarEnabled(false);scroll.setClipToPadding(false);gadgets=Aero.column(c);gadgets.setGravity(Gravity.CENTER_HORIZONTAL);gadgets.setPadding(Aero.dp(c,2),Aero.dp(c,1),Aero.dp(c,2),Aero.dp(c,16));scroll.addView(gadgets);addView(scroll,new LayoutParams(-1,0,1));rebuild();visibilityFromStore();
+        ScrollView scroll=new ScrollView(c);ContextMenus.blank(scroll,(x,y)->sidebarMenu(scroll,x,y));ContextMenus.bind(this,(x,y)->sidebarMenu(this,x,y));scroll.setVerticalScrollBarEnabled(false);scroll.setClipToPadding(false);gadgets=Aero.column(c);gadgets.setGravity(Gravity.CENTER_HORIZONTAL);gadgets.setPadding(Aero.dp(c,2),Aero.dp(c,1),Aero.dp(c,2),Aero.dp(c,16));scroll.addView(gadgets);addView(scroll,new LayoutParams(-1,0,1));rebuild();visibilityFromStore();
     }
     void rebuild(){
         if(closed)return;
@@ -97,7 +97,15 @@ final class GadgetSidebar extends LinearLayout {
         fitDocked();refreshReadings();updateActivity();
     }
     private TextView nav(String text,String description,Runnable action){TextView button=Aero.text(getContext(),text,23,0xffeef4f9);button.setGravity(Gravity.CENTER);button.setContentDescription(description);button.setFocusable(true);button.setOnClickListener(v->action.run());ContextMenus.bind(button,(x,y)->sidebarMenu(button,x,y));return button;}
-    private void sidebarMenu(View anchor,float x,float y){DesktopContextMenu menu=new DesktopContextMenu(getContext(),"Sidebar menu");menu.item("Add gadgets","gadgets",()->actions.gallery());menu.item("Hide gadget sidebar","close",()->{layout.visible(false);visibilityFromStore();actions.sidebarChanged();});ContextMenus.show(menu,anchor,x,y);}
+    private void sidebarMenu(View anchor,float x,float y){
+        DesktopContextMenu menu=new DesktopContextMenu(getContext(),"Sidebar menu",28,214);
+        menu.item("Bring Gadgets to Front","empty",this::raise);menu.item("Add Gadgets…","empty",()->actions.gallery());menu.separator();
+        menu.item("Properties","empty",()->actions.gadgetAction("sidebar-properties"));menu.item("Help","empty",()->Aero.dialog(getContext()).setTitle("Windows Sidebar-style gadgets").setMessage("Use + to add gadgets and the arrows to page through five at a time. Hold this bar for Sidebar commands. Close Sidebar hides the dock without deleting gadgets or their data. Reopen it from Start → Gadgets → Show Sidebar. Hold and drag a gadget to move it; its options button changes settings or removes it.").setPositiveButton("OK",null).show());menu.separator();
+        menu.item("Close Sidebar","empty",()->{layout.visible(false);visibilityFromStore();actions.sidebarChanged();});ContextMenus.show(menu,anchor,x,y);
+    }
+    void raise(){bringToFront();floatingHost.bringToFront();}
+    void visible(boolean value){layout.visible(value);visibilityFromStore();actions.sidebarChanged();}
+
     private void page(int direction){page=Math.max(0,page+direction);rebuild();}
     void orientation(String key){layout.save();layout=new GadgetLayout(store,key);page=0;rebuild();visibilityFromStore();actions.sidebarChanged();}
     private int dp(int value){return Aero.dp(getContext(),value);}

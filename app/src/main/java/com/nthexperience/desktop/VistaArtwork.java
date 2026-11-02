@@ -1,0 +1,47 @@
+package com.nthexperience.desktop;
+
+import android.graphics.*;
+
+/** Original small-size artwork: perspective, metal edges, paper, glass and warm folder fronts. */
+final class VistaArtwork {
+    private final Canvas c;private final Paint p=new Paint(3);
+    private VistaArtwork(Canvas canvas){c=canvas;}
+    static boolean draw(Canvas canvas,String kind){VistaArtwork art=new VistaArtwork(canvas);switch(kind){
+        case "computer":art.computer();return true;case "network":art.network();return true;
+        case "files":case "folderapps":case "documents":case "pictures":case "music":case "videos":case "downloads":art.folder(kind);return true;
+        case "browser":art.internet();return true;case "notes":art.notepad();return true;case "control":art.control();return true;
+        case "appearance":art.personalize();return true;case "drive":art.drive();return true;
+        case "pdffile":case "archivefile":art.paper(kind);return true;case "search":art.search();return true;
+        default:return false;
+    }}
+    private Path path(float... points){Path path=new Path();path.moveTo(points[0],points[1]);for(int i=2;i<points.length;i+=2)path.lineTo(points[i],points[i+1]);path.close();return path;}
+    private void poly(int top,int bottom,float... points){Path path=path(points);p.setStyle(Paint.Style.FILL);p.setShader(new LinearGradient(0,4,8,61,top,bottom,Shader.TileMode.CLAMP));c.drawPath(path,p);p.setShader(null);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.65f);p.setColor(0x99445962);c.drawPath(path,p);p.setStyle(Paint.Style.FILL);}
+    private void rect(float l,float t,float r,float b,float radius,int top,int bottom){p.setShader(new LinearGradient(l,t,r,b,top,bottom,Shader.TileMode.CLAMP));c.drawRoundRect(l,t,r,b,radius,radius,p);p.setShader(null);}
+    private void line(float x,float y,float r,float b,float width,int color){p.setColor(color);p.setStrokeWidth(width);c.drawLine(x,y,r,b,p);}
+    private void oval(float l,float t,float r,float b,int color){p.setColor(color);c.drawOval(l,t,r,b,p);}
+    private void shadow(float l,float t,float r,float b){oval(l,t,r,b,0x24000000);oval(l+3,t+1,r-3,b-1,0x1d000000);}
+    private void screen(float x,float y,float width,float height){
+        int save=c.save();c.translate(x,y);c.scale(width/45,height/35);
+        poly(0xfff8fbff,0xff76838f,0,0,45,4,43,33,0,29);poly(0xff172938,0xff101a29,3,3,42,7,40,29,3,25);
+        poly(0xff124caa,0xff051333,5,5,40,9,38,27,5,23);Path glow=new Path();glow.moveTo(5,23);glow.cubicTo(25,14,22,15,39,10);glow.lineTo(38,26);glow.close();p.setShader(new LinearGradient(7,9,40,28,new int[]{0xff0562cb,0xff50b7b0,0xff07545f},null,Shader.TileMode.CLAMP));c.drawPath(glow,p);p.setShader(null);
+        line(6,23,38,13,.7f,0x998bddf0);poly(0x55ffffff,0x00ffffff,5,5,40,9,39,15,5,19);line(2,1,44,5,.8f,0xffecf5ff);oval(36,28,38,30,0xff83e8a2);c.restoreToCount(save);
+    }
+    private void computer(){shadow(8,53,59,62);poly(0xfff5f7fa,0xff667787,4,8,18,5,22,46,6,48);poly(0xffaebbc7,0xff526273,18,5,25,10,26,45,22,46);line(7,16,16,14,2,0xff2d3a4c);line(8,20,16,18,1,0xff8395a8);oval(11,38,14,41,0xff78d39b);screen(14,12,46,36);poly(0xffa5b6c3,0xff4e6176,31,45,39,46,40,55,28,54);poly(0xffdce5ed,0xff798c9e,22,54,40,52,50,57,30,61,21,58);line(25,55,42,54,.8f,0xfff0f7fb);}
+    private void network(){shadow(3,52,62,62);poly(0xffb7e399,0xff408256,17,47,41,43,62,53,37,61,5,55);screen(5,4,35,29);poly(0xffb4c5d4,0xff62788f,18,31,24,32,24,39,12,40,10,38,18,36);screen(26,22,35,29);poly(0xffd8e5ee,0xff68849b,39,48,44,48,44,55,51,57,34,58,31,55,39,53);line(15,49,26,50,2,0xffd6efb9);line(26,50,36,55,2,0xffceddb1);}
+    private void folder(String kind){shadow(4,53,59,62);poly(0xffffe9a3,0xffb27b22,7,12,29,8,35,14,56,11,56,50,11,57);poly(0xffe1b84f,0xffa06412,7,12,12,15,15,55,11,57);poly(0xfff3f5ef,0xffbdcbd5,18,17,52,13,53,48,17,52);poly(0xfffdfdf7,0xffd7e4eb,22,20,55,17,53,49,21,52);
+        if(kind.equals("pictures")){poly(0xff66bce6,0xffe3eee5,24,22,52,19,50,43,23,46);oval(42,24,48,30,0xffffe682);poly(0xff58896c,0xff285c49,24,43,32,30,40,39,44,32,51,42,50,43,23,46);}
+        else if(kind.equals("documents")){for(int i=0;i<4;i++)line(27,26+i*5,48,24+i*5,1.2f,0xff6f8ba1);}
+        else if(kind.equals("music")){p.setColor(0xff3d86b7);c.drawRect(38,24,41,41,p);c.drawRect(28,27,31,44,p);poly(0xff76b4df,0xff215886,29,25,41,21,41,27,29,31);oval(22,40,31,46,0xff2f78a7);oval(32,36,41,42,0xff2c6f9b);}
+        else if(kind.equals("videos")){poly(0xff677d8d,0xff14212e,24,23,51,20,50,42,23,45);for(int x=26;x<49;x+=7){rect(x,24,x+3,27,0,0xffd2dee6,0xff9eaebd);rect(x,39,x+3,42,0,0xffd2dee6,0xff9eaebd);}poly(0xfff2f8fc,0xffb4d4e5,34,28,43,33,34,38);}
+        else if(kind.equals("folderapps")){for(int i=0;i<4;i++)rect(28+i%2*10,25+i/2*9,36+i%2*10,32+i/2*9,1,i%2==0?0xff99c9f0:0xff9fd47b,i%2==0?0xff376ea8:0xff578f35);}
+        poly(0xffffedaf,0xffd69c2c,13,29,59,22,53,54,11,59,6,55);poly(0xffd89c31,0xffa16b15,6,28,13,29,11,59,6,55);line(14,30,57,24,1,0xfffff2c8);poly(0x44fffbed,0x00fffbed,14,31,57,25,56,34,13,40);
+        if(kind.equals("downloads")){poly(0xff83c562,0xff26732d,29,31,39,30,39,41,46,40,34,52,22,44,29,43);}
+    }
+    private void internet(){shadow(6,54,58,62);c.save();c.rotate(-24,32,32);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(4);p.setShader(new LinearGradient(0,17,0,44,0xfffff1a0,0xffb97a12,Shader.TileMode.CLAMP));c.drawOval(0,21,64,44,p);p.setShader(null);p.setStyle(Paint.Style.FILL);c.restore();p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD_ITALIC));p.setTextSize(66);p.setColor(0xff124883);c.drawText("e",7,53,p);p.setShader(new LinearGradient(0,7,0,55,new int[]{0xffb2eafa,0xff36a9e2,0xff176aa9},new float[]{0,.45f,1},Shader.TileMode.CLAMP));c.drawText("e",6,51,p);p.setShader(null);c.save();c.rotate(-24,32,32);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(4);p.setShader(new LinearGradient(0,18,0,44,0xffffdf69,0xffd7a425,Shader.TileMode.CLAMP));c.drawArc(0,21,64,44,4,166,false,p);p.setShader(null);p.setStyle(Paint.Style.FILL);c.restore();}
+    private void notepad(){shadow(6,53,59,62);poly(0xffb5d6e7,0xff367394,8,13,43,6,54,49,16,59);poly(0xfffdfefb,0xffd5e2e8,11,12,43,8,51,48,17,56);for(int i=0;i<7;i++)line(17,22+i*4,40,17+i*4,.9f,0xff78a6bf);for(int i=0;i<6;i++){oval(13+i*5,10-i*.7f,15+i*5,14-i*.7f,0xff465e71);line(14+i*5,7-i*.6f,15+i*5,13-i*.6f,1.2f,0xffc4d2dc);}c.save();c.rotate(26,44,34);poly(0xffffe38c,0xffc9952e,42,13,49,13,49,52,45,59,42,52);poly(0xffebc99a,0xffbd9359,42,51,49,51,45,59);poly(0xff565c69,0xff222b3b,44,56,46,56,45,60);rect(42,13,49,20,0,0xffe5a998,0xffb67466);line(44,21,44,49,1,0xfffff0b0);c.restore();}
+    private void control(){shadow(5,53,60,60);poly(0xffe2edf4,0xff8ea6ba,7,14,51,7,59,46,12,55);poly(0xff258bd2,0xff153e78,10,16,49,10,51,18,12,25);poly(0xfff9fcfd,0xffd2e4ee,12,26,52,20,56,44,16,51);for(int i=0;i<6;i++){float x=19+i%3*11,y=29+i/3*12;rect(x,y,x+7,y+7,1,i%2==0?0xffb1d7ed:0xffa8d87c,i%2==0?0xff478fb4:0xff5e9636);line(x,y+9,x+7,y+8,.7f,0xff7191a5);}line(13,15,47,10,1,0xff8dc9ed);}
+    private void personalize(){screen(4,5,49,40);poly(0xffb8cbd8,0xff63798e,21,43,31,43,32,51,19,51);poly(0xffe8eff3,0xff7b93aa,11,52,34,49,43,54,20,58);oval(35,33,61,59,0xffba9144);p.setShader(new RadialGradient(43,39,18,new int[]{0xffffe6a1,0xffe2b957,0xff936b30},null,Shader.TileMode.CLAMP));c.drawCircle(47,46,12,p);p.setShader(null);oval(38,37,47,44,0x77ffffff);}
+    private void drive(){shadow(3,51,61,59);poly(0xfff3f6f8,0xff8599aa,13,9,49,9,60,37,5,37);poly(0xffbecbd5,0xff4f6273,5,37,60,37,58,52,7,55);rect(9,40,55,49,2,0xff263b4d,0xff637b8b);line(14,43,38,43,1,0xffbdcbd6);oval(48,42,51,45,0xff94e573);line(15,12,47,12,1,0xfffafcfd);}
+    private void paper(String kind){shadow(9,55,55,62);poly(0xfffdfdfd,0xffc9dce9,13,5,40,5,53,18,53,58,13,58);poly(0xffe3edf4,0xffa2bdcf,40,5,40,18,53,18);if(kind.equals("pdffile")){p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(15);p.setColor(0xffae3a34);c.drawText("PDF",17,43,p);line(18,49,46,49,2,0xffd9a29c);}else{rect(29,13,36,54,1,0xfff1d079,0xffa37e36);for(int y=14;y<52;y+=5){rect(29,y,32,y+3,0,0xff7c6d50,0xffb89c60);rect(33,y+2,36,y+5,0,0xffd9c38a,0xff9b8249);}rect(27,38,38,45,1,0xffe0d4b3,0xff8c7a59);}}
+    private void search(){folder("files");c.save();c.rotate(25,42,38);rect(43,42,50,62,2,0xff9bb4ca,0xff344c64);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(4);p.setColor(0xff6b8ba3);c.drawCircle(45,33,12,p);p.setStyle(Paint.Style.FILL);p.setShader(new RadialGradient(41,29,15,new int[]{0xfff5fcff,0xffa5d4e8},null,Shader.TileMode.CLAMP));c.drawCircle(45,33,10,p);p.setShader(null);c.restore();}
+}

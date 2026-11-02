@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity android:name="com.nthexperience.desktop.ShareProbeActivity" android:exported="true" android:label="Nth send test receiver" android:theme="@android:style/Theme.Material.Light.NoActionBar"><intent-filter><action android:name="android.intent.action.SEND"/><action android:name="android.intent.action.SEND_MULTIPLE"/><category android:name="android.intent.category.DEFAULT"/><data android:mimeType="*/*"/></intent-filter></activity>
         <activity android:name="com.nthexperience.desktop.FileViewActivity" android:exported="true" android:label="Nth file test viewer" android:theme="@android:style/Theme.Material.Light.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -12,6 +13,7 @@
         <activity android:name="com.nthexperience.desktop.TestAwayActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" />
         <activity android:name="com.nthexperience.desktop.PickerCallerActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" />
     </application>
+    <instrumentation android:name="com.nthexperience.desktop.AuthenticitySmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
     <instrumentation android:name="com.nthexperience.desktop.StorageSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
     <instrumentation android:name="com.nthexperience.desktop.ContinuitySmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
     <instrumentation android:name="com.nthexperience.desktop.PhotoSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />

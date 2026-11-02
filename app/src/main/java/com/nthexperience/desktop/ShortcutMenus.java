@@ -17,6 +17,7 @@ final class ShortcutMenus {
         String destination=store.isFolder(id)?"contents:"+id:source;menu.item("Paste","paste",!ExplorerClipboard.shortcuts.isEmpty(),()->paste(context,store,destination,host));menu.separator();
         menu.item("Delete shortcut","delete",inSource,()->{List<String> values=ExplorerClipboard.members(store,source);values.remove(id);ExplorerClipboard.members(store,source,values);host.changed();});
         menu.item("Rename shortcut…","notes",()->host.rename(id));menu.separator();
+        menu.item(store.startPins().contains(id)?"Unpin from Start Menu":"Pin to Start Menu","programs",()->{List<String> pins=store.startPins();if(pins.contains(id))pins.remove(id);else if(pins.size()<32)pins.add(id);store.startPins(pins);host.changed();});
         menu.item(store.pinned(id)?"Remove from desktop":"Add to desktop","computer",()->{store.toggle(id);host.changed();});
         menu.item("Add to Quick Launch","programs",!store.quickLaunch().contains(id)&&store.quickLaunch().size()<DesktopStore.MAX_QUICK,()->{List<String> quick=store.quickLaunch();quick.add(id);store.quickLaunch(quick);host.changed();});
         if(source.equals("quick"))menu.item("Customize Quick Launch…","control",()->host.open("@quicklaunch"));
