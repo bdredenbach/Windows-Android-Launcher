@@ -19,7 +19,7 @@ final class DesktopBackup {
     private static final Set<String> BOOLEANS=new HashSet<>(Arrays.asList("weather_follow","aero_transparency","startup_sound","reduce_motion","welcome_on_start","clock_seconds","layout_locked","show_status_bar","snap_gadgets","weather_f","control_panel_classic","explorer_details","sidebar_visible","desktop_v41"));
     private static final Set<String> INTS=new HashSet<>(Arrays.asList("wallpaper","clock_style","desktop_icon_size","aero_color","aero_intensity","aero_opacity","startup_mode"));
     private static final Set<String> STRINGS=new HashSet<>(Arrays.asList("shortcuts","quick_launch","app_folders","shortcut_names","gadgets","file_manager_apps","gadget_photos","recents","linked_folders","gadget_layout_portrait","gadget_layout_landscape","note","gadget_note","profile_portrait","linked_files","desktop_name","weather_city","weather_lat","weather_lon","gadget_data","feed_url","explorer_favorites"));
-    private static final Set<String> BUILTINS=new HashSet<>(Arrays.asList("@computer","@browser","@files","@notes","@appearance","@control","@system","@filemanagers","@gadgets","@sticky","@calendar","@clock","@weather","@pictures","@music","@organize","@quicklaunch","@backup","@welcome"));
+    private static final Set<String> BUILTINS=new HashSet<>(Arrays.asList("@computer","@browser","@photos","@files","@notes","@appearance","@control","@system","@filemanagers","@gadgets","@sticky","@calendar","@clock","@weather","@pictures","@music","@organize","@quicklaunch","@backup","@welcome"));
     static final class Plan {
         final Map<String,Object> values;
         final String text,created;

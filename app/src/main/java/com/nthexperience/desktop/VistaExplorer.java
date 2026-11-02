@@ -18,6 +18,7 @@ final class VistaExplorer extends VistaShell {
         void chooseFolder();void linkFile();void pickFile(String kind);void openDocument(Uri uri,String mime);void app(String id);
         default void openDocument(Uri uri,String mime,String name){openDocument(uri,mime);}
         default void openWith(Uri uri,String mime,String name){openDocument(uri,mime,name);}
+        default void openPicture(Uri uri,String mime,String name,JSONObject source){openDocument(uri,mime,name);}
         default void requestFolder(Uri initial){chooseFolder();}default void requestDeviceAccess(){}default void changed(){}
     }
     interface Selection {boolean accepts(String mime);boolean multiple();void changed(List<Uri> files);}
@@ -91,7 +92,8 @@ final class VistaExplorer extends VistaShell {
         if(visible.isEmpty()){LinearLayout empty=column();heading(empty,query().isEmpty()?"This folder is empty":"No matching items","Hold blank space for folder actions.");link(empty,"Folder actions…",()->ContextMenus.centered(empty,(x,y)->background(empty,x,y)));ScrollView scroll=scrolling(empty);ContextMenus.blank(scroll,(x,y)->background(scroll,x,y));body(scroll);}else body(list);
     }
     private String metadata(DocumentFolders.Item item){String type=item.directory()?"File folder":fileType(item.mime);String result=item.directory()?type:item.size<0?type:android.text.format.Formatter.formatFileSize(getContext(),item.size)+"  •  "+type;if(details&&item.modified>0)result+="  •  "+android.text.format.DateFormat.getDateFormat(getContext()).format(new Date(item.modified));return result;}
-    private void activate(DocumentOps.Ref reference){if(selectionMode&&!reference.item.directory()){select(reference,!selected.containsKey(reference.uri.toString()));return;}if(reference.item.directory()){try{navigate(DocumentFolders.childPage(page(),reference.item));}catch(JSONException ex){error();}}else files.openDocument(reference.uri,reference.item.mime,reference.item.name);}
+    private void openFile(DocumentOps.Ref ref){if(picker==null&&PhotoImage.picture(ref.item.name,ref.item.mime)){JSONObject context=new JSONObject();GadgetLayout.put(context,"page",page());GadgetLayout.put(context,"query",query());GadgetLayout.put(context,"sort",sort);GadgetLayout.put(context,"descending",descending);files.openPicture(ref.uri,ref.item.mime,ref.item.name,context);}else files.openDocument(ref.uri,ref.item.mime,ref.item.name);}
+    private void activate(DocumentOps.Ref reference){if(selectionMode&&!reference.item.directory()){select(reference,!selected.containsKey(reference.uri.toString()));return;}if(reference.item.directory()){try{navigate(DocumentFolders.childPage(page(),reference.item));}catch(JSONException ex){error();}}else openFile(reference);}
     private void select(DocumentOps.Ref reference,boolean value){message="";if(value)selected.put(reference.uri.toString(),reference);else selected.remove(reference.uri.toString());selectionChanged();if(listing!=null)fileList();}
     private void selectionChanged(){if(picker!=null){List<Uri> uris=new ArrayList<>();for(DocumentOps.Ref ref:selected.values())if(!ref.item.directory()&&picker.accepts(ref.item.mime))uris.add(ref.uri);picker.changed(uris);}}
     private List<DocumentOps.Ref> targets(DocumentOps.Ref reference){return selected.containsKey(reference.uri.toString())?new ArrayList<>(selected.values()):Collections.singletonList(reference);}
@@ -104,7 +106,7 @@ final class VistaExplorer extends VistaShell {
         menu.item("Delete…","delete",!busy&&targets.stream().allMatch(r->DocumentOps.writable(getContext(),r.uri,DocumentsContract.Document.FLAG_SUPPORTS_DELETE,r.item)),()->confirmDelete(targets));menu.item("Rename…","notes",!busy&&targets.size()==1&&DocumentOps.writable(getContext(),reference.uri,DocumentsContract.Document.FLAG_SUPPORTS_RENAME,reference.item),()->rename(reference));
         menu.item("Select","checklist",picker==null||!reference.item.directory(),()->{selectionMode=true;select(reference,true);});menu.item("Properties","control",()->properties(reference));if(!canCreate()&&(!StorageAccess.ours(parent())||!StorageAccess.has(getContext())))menu.item("Enable changes for this folder…","security",()->requestChanges(parent()));show(menu,anchor,x,y);
     }
-    private void activateOpen(DocumentOps.Ref reference){if(reference.item.directory())try{navigate(DocumentFolders.childPage(page(),reference.item));}catch(JSONException ignored){}else files.openDocument(reference.uri,reference.item.mime,reference.item.name);}
+    private void activateOpen(DocumentOps.Ref reference){if(reference.item.directory())try{navigate(DocumentFolders.childPage(page(),reference.item));}catch(JSONException ignored){}else openFile(reference);}
     private void openWith(DocumentOps.Ref reference){files.openWith(reference.uri,reference.item.mime,reference.item.name);}
     private void copy(List<DocumentOps.Ref> refs,boolean cut){ExplorerClipboard.files(refs,cut);message=refs.size()+" item"+(refs.size()==1?"":"s")+(cut?" cut. Choose a destination and Paste.":" copied. Choose a destination and Paste.");render();files.changed();}
     private void paste(){pasteInto(parent());}

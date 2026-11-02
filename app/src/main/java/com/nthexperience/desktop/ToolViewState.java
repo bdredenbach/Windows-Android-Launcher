@@ -10,6 +10,7 @@ final class ToolViewState {
     private static void capture(View view,String path,JSONObject result){
         if(view instanceof BrowserPanel)return;
         JSONObject item=new JSONObject();
+        if(view instanceof PhotoGallery){GadgetLayout.put(item,"photo",((PhotoGallery)view).state());GadgetLayout.put(result,path,item);return;}
         if(view instanceof VistaShell){GadgetLayout.put(item,"shell",((VistaShell)view).state());GadgetLayout.put(result,path,item);return;}
         if(view instanceof EditText){EditText text=(EditText)view;String description=String.valueOf(text.getContentDescription());
             if(!description.equals("Notepad text")&&!description.equals("Sticky note text"))GadgetLayout.put(item,"text",text.getText().toString().substring(0,Math.min(2000,text.length())));
@@ -25,6 +26,7 @@ final class ToolViewState {
         if(view instanceof BrowserPanel)return;
         JSONObject item=state.optJSONObject(path);
         if(item!=null){
+            if(view instanceof PhotoGallery){((PhotoGallery)view).restore(item.optJSONObject("photo"));return;}
             if(view instanceof VistaShell){((VistaShell)view).restore(item.optJSONObject("shell"));return;}
             if(view instanceof EditText){EditText text=(EditText)view;if(item.has("text"))text.setText(item.optString("text"));int length=text.length();text.setSelection(Math.max(0,Math.min(length,item.optInt("start",length))),Math.max(0,Math.min(length,item.optInt("end",length))));if(item.optBoolean("focus")&&view.isShown())text.requestFocus();}
             if(view instanceof MonthCalendarView)((MonthCalendarView)view).restore(item.optLong("month"),item.optLong("selected"));
