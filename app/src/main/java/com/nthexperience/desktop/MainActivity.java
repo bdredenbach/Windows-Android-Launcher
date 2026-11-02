@@ -197,7 +197,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             case "@computer":computer();return;
             case "@notes":notes();return;
             case "@appearance":appearance();return;
-            case "@browser":if(!restoreTool(id))window(id,"Internet",new BrowserPanel(this));return;
+            case "@browser":if(!restoreTool(id))try{window(id,"Internet",new BrowserPanel(this));}catch(RuntimeException|LinkageError ex){Aero.dialog(this).setTitle("Browser engine unavailable").setMessage("Install or enable Android System WebView, then reopen Internet.").setPositiveButton("OK",null).show();}return;
             case "@files":explorer("@files","home");return;
         }
         if(id.startsWith("@gadget:")&&GadgetCatalog.extra(id.substring(8))){gadgetPanel(id.substring(8));return;}
