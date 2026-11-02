@@ -16,7 +16,7 @@ final class GadgetExtras {
     static LocalDate target(JSONObject data){try{return LocalDate.parse(data.optString("date"));}catch(RuntimeException ex){return LocalDate.now();}}
     static long days(JSONObject data){return ChronoUnit.DAYS.between(LocalDate.now(),target(data));}
     static String dayLabel(JSONObject data){long days=days(data);return days==0?"Today":Math.abs(days)+(days<0?" days ago":" days to go");}
-    static int words(String text){String value=text.trim();return value.isEmpty()?0:value.split("(?U)\\s+").length;}
+    static int words(String text){int count=0;boolean inWord=false;for(int i=0;i<text.length();){int point=text.codePointAt(i);i+=Character.charCount(point);boolean space=Character.isWhitespace(point)||Character.isSpaceChar(point);if(!space&&!inWord)count++;inWord=!space;}return count;}
     static String hex(JSONObject data){return String.format(Locale.ROOT,"#%06X",data.optInt("rgb",0x4286b4)&0xffffff);}
     static void validate(String kind,JSONObject data)throws JSONException{
         if(kind.equals("daysuntil")){if(data.optString("title").length()>80)throw new JSONException("Event name too long");if(data.has("date"))try{LocalDate date=LocalDate.parse(data.getString("date"));if(date.getYear()<1900||date.getYear()>2200)throw new IllegalArgumentException();}catch(RuntimeException ex){throw new JSONException("Invalid event date");}}
