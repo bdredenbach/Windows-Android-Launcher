@@ -32,11 +32,14 @@ public final class DesktopExtrasSmoke extends Instrumentation {
     }
     private void previews()throws Exception{
         progress("native window overview and pointer preview");ui(()->home.open("@notes"));DesktopWindow notes=window("@notes");EditText edit=(EditText)find(notes,v->"Notepad text".equals(v.getContentDescription()));ui(()->edit.setText("Extras keeps this note"));ui(()->home.open("@calendar"));DesktopWindow calendar=window("@calendar");ui(calendar::minimize);
+        View arrow = find(root, v -> "Device controls".equals(v.getContentDescription()));
+        tap(arrow, 60);
         View taskManager = find(root, v -> "Task Manager".equals(v.getContentDescription()));
-        check(taskManager != null && taskManager.getWidth() >= Aero.dp(home, 44), "Accessible Task Manager shortcut");
+        check(taskManager != null && taskManager.getWidth() == arrow.getWidth(), "Accessible Task Manager shortcut");
         tap(taskManager, 60);
         await(() -> window("@taskmanager") != null, "Taskbar shortcut opens Task Manager");
         ui(() -> window("@taskmanager").closeWindow());
+        tap(arrow, 60);
         tap(find(root, v -> "Taskbar commands".equals(v.getContentDescription())), 700);
         nodeTap("Switch Windows");
         awaitNode("Switch to Calendar");shot("window-switcher");nodeTap("Switch to Calendar");await(()->calendar.isShown()&&calendar.active(),"Overview restores actual minimized Calendar");check(edit.getText().toString().equals("Extras keeps this note"),"Same note contents after switching");
@@ -81,7 +84,7 @@ public final class DesktopExtrasSmoke extends Instrumentation {
         android.view.inputmethod.InputMethodManager input=(android.view.inputmethod.InputMethodManager)home.getSystemService(Context.INPUT_METHOD_SERVICE);boolean hasKeyboard=!input.getInputMethodList().isEmpty();if(hasKeyboard)await(()->root.getRootWindowInsets()!=null&&root.getRootWindowInsets().isVisible(WindowInsets.Type.ime()),"Installed keyboard opens");
         ui(()->home.open("@switcher"));awaitNode("Switch to Notepad");if(hasKeyboard)await(()->root.getRootWindowInsets()!=null&&!root.getRootWindowInsets().isVisible(WindowInsets.Type.ime()),"Switcher dismisses actual keyboard before showing previews");nodeTap("Switch to Notepad");
         check(edit.getText().toString().equals("Larger fonts keep this text"),"Typed content retained");for(String name:new String[]{"Minimize window","Maximize or restore window","Close window"}){View button=find(notes,v->name.equals(v.getContentDescription()));Rect bounds=new Rect();check(button!=null&&button.getGlobalVisibleRect(bounds)&&bounds.width()>=Aero.dp(home,40)&&bounds.height()>=Aero.dp(home,40),"Unclipped caption target at enlarged font: "+name);}
-        for(String name:new String[]{"Task Manager","Device controls"}){View button=find(root,v->name.equals(v.getContentDescription()));Rect bounds=new Rect();check(button!=null&&button.isFocusable()&&button.getGlobalVisibleRect(bounds)&&bounds.width()>=Aero.dp(home,40),"Accessible phone taskbar target: "+name);}shot("desktop-large-fonts");
+        for(String name:new String[]{"Device controls"}){View button=find(root,v->name.equals(v.getContentDescription()));Rect bounds=new Rect();check(button!=null&&button.isFocusable()&&button.getGlobalVisibleRect(bounds)&&bounds.width()>=Aero.dp(home,40),"Accessible phone taskbar target: "+name);}shot("desktop-large-fonts");
     }
     private void settings()throws Exception{progress("shared settings and touch controls");ui(()->home.open("setting:page:sounds"));await(()->find(root,v->"Enable desktop sound effects".equals(v.getContentDescription()))!=null,"Sound settings routed through Control Panel");check(!store.prefs.getBoolean("desktop_sounds",false),"Sounds opt-in by default");ui(()->home.open("@recent"));await(()->find(root,v->"Remember recent documents and folders".equals(v.getContentDescription()))!=null,"History controls discoverable");shot("recent-items");}
     private DesktopWindow window(String id){return (DesktopWindow)findAll(root,v->v instanceof DesktopWindow&&id.equals(((DesktopWindow)v).toolId));}

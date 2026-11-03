@@ -27,6 +27,7 @@ final class SystemTray extends LinearLayout {
     private Intent battery;
     private String page="";
     private int leftInset,rightInset,restoreVolume;
+    private final AeroIcon taskManager;
     private final BrightnessControl brightness;private boolean expanded;private final android.content.SharedPreferences prefs;private TextView compactStatus;
     private boolean running,batteryRegistered,networkRegistered,tracking;
     private final BroadcastReceiver batteryChanged=new BroadcastReceiver(){public void onReceive(Context c,Intent i){if(Intent.ACTION_BATTERY_CHANGED.equals(i.getAction()))battery=i;update();}};
@@ -35,12 +36,37 @@ final class SystemTray extends LinearLayout {
     SystemTray(Context c,FrameLayout workspace,AeroWallpaper wallpaper,Host host){
         super(c);prefs=c.getSharedPreferences("desktop",0);expanded=prefs.getBoolean("tray_expanded",false);brightness=new BrightnessControl((android.app.Activity)c);this.workspace=workspace;this.wallpaper=wallpaper;this.host=host;connections=c.getSystemService(ConnectivityManager.class);audio=c.getSystemService(AudioManager.class);power=c.getSystemService(PowerManager.class);setGravity(Gravity.CENTER_VERTICAL);
         String[] names={"Battery status","Network status","Volume control","Brightness control"};String[] pages={"battery","network","volume","brightness"};
-        for(int i=0;i<names.length;i++){TrayIcon icon=new TrayIcon(c,i);icon.setContentDescription(names[i]);icon.setFocusable(true);icon.setBackground(Aero.selection(c));String target=pages[i];icon.setOnClickListener(v->show(target));addView(icon,new LayoutParams(dp(i<2?28:40),dp(48)));icons.add(icon);}
+        for(int i=0;i<names.length;i++){TrayIcon icon=new TrayIcon(c,i);icon.setContentDescription(names[i]);icon.setFocusable(true);icon.setBackground(Aero.selection(c));String target=pages[i];icon.setOnClickListener(v->show(target));addView(icon,new LayoutParams(dp(44),dp(48)));icons.add(icon);}
+        taskManager = new AeroIcon(c, "taskmanager");
+        taskManager.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        taskManager.setFocusable(true);
+        taskManager.setContentDescription("Task Manager");
+        taskManager.setTooltipText("Task Manager");
+        taskManager.setBackground(Aero.selection(c));
+        taskManager.setOnClickListener(v -> host.open("@taskmanager"));
+        addView(taskManager, new LayoutParams(dp(44), dp(48)));
         compactStatus=Aero.text(c,"⌃",21,Color.WHITE);compactStatus.setGravity(Gravity.CENTER);compactStatus.setContentDescription("Device controls");compactStatus.setFocusable(true);compactStatus.setBackground(Aero.selection(c));compactStatus.setOnClickListener(v->{expanded=!expanded;prefs.edit().putBoolean("tray_expanded",expanded).apply();updateIconVisibility();host.layout();});compactStatus.setOnLongClickListener(v->{show("controls");return true;});addView(compactStatus,0,new LayoutParams(dp(44),dp(48)));updateIconVisibility();
     }
-    boolean expanded(){return expanded;}
+    void fitWidth(int workspaceWidth) {
+        // Leave room for Start, the clock, and part of the scrolling task strip.
+        int width = Math.min(dp(44), Math.max(dp(24), (workspaceWidth - dp(150)) / getChildCount()));
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            int childWidth = !expanded && child == compactStatus ? dp(44) : width;
+            ViewGroup.LayoutParams params = child.getLayoutParams();
+            if (params.width != childWidth) {
+                params.width = childWidth;
+                child.setLayoutParams(params);
+            }
+        }
+        int horizontalPadding = Math.max(0, (width - dp(28)) / 2);
+        if (taskManager.getPaddingLeft() != horizontalPadding) {
+            taskManager.setPadding(horizontalPadding, dp(10), horizontalPadding, dp(10));
+        }
+    }
     void clockNow(){if(compactStatus!=null){compactStatus.setTextSize(20);compactStatus.setText(expanded?"›":"‹");compactStatus.setTooltipText(expanded?"Hide notification icons":"Show hidden notification icons");}}
     private void updateIconVisibility() {
+        taskManager.setVisibility(expanded ? VISIBLE : GONE);
         for (TrayIcon icon : icons) {
             icon.setVisibility(expanded ? VISIBLE : GONE);
         }

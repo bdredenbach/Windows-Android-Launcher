@@ -36,21 +36,38 @@ public final class FidelitySmoke extends Instrumentation {
         Predicate<View> trayIcon = v -> {
             CharSequence label = v.getContentDescription();
             return label != null && (label.toString().startsWith("Battery status")
-                    || Arrays.asList("Network status", "Volume control", "Brightness control").contains(label.toString()));
+                    || Arrays.asList("Network status", "Volume control", "Brightness control", "Task Manager").contains(label.toString()));
         };
         check(find(trayIcon) == null, "Collapsed tray hides all icons even with legacy pin settings");
         tap(find(v -> "Device controls".equals(v.getContentDescription())), 60);
-        for (String label : Arrays.asList("Battery status", "Network status", "Volume control", "Brightness control")) {
+        for (String label : Arrays.asList("Battery status", "Network status", "Volume control", "Brightness control", "Task Manager")) {
             await(() -> find(v -> v.getContentDescription() != null
                     && v.getContentDescription().toString().startsWith(label)) != null, "Arrow reveals " + label);
+        }
+        ViewGroup tray = (ViewGroup) find(v -> v instanceof SystemTray);
+        for (int i = 1; i < tray.getChildCount(); i++) {
+            View previous = tray.getChildAt(i - 1);
+            View button = tray.getChildAt(i);
+            check(button.getWidth() == previous.getWidth() && button.getLeft() == previous.getRight()
+                    && button.getTop() == previous.getTop(), "Tray buttons have even spacing");
         }
         check(store.prefs.getBoolean("tray_expanded", false), "Expansion persists");
         shot("vista-tray-expanded.png");
         tap(find(v -> "Device controls".equals(v.getContentDescription())), 60);
         await(() -> find(trayIcon) == null && !store.prefs.getBoolean("tray_expanded", true), "Arrow collapses every tray icon");
         check(find(v -> "Clock and calendar".equals(v.getContentDescription())) != null, "Clock remains visible");
-        check(find(v -> "Task Manager".equals(v.getContentDescription())) != null, "Task Manager remains visible with the tray collapsed");
+
         ui(()->home.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));await(()->root.getWidth()<root.getHeight(),"Portrait restored");
+        View startButton = find(v -> "Start menu".equals(v.getContentDescription()));
+        tap(startButton, 60);
+        StartMenu menu = (StartMenu) find(v -> v instanceof StartMenu);
+        check(menu != null, "Portrait Start opens");
+        View workspace = (View) menu.getParent();
+        if (workspace.getHeight() >= Aero.dp(home, 600)) {
+            check(menu.getHeight() > Aero.dp(home, 540), "Portrait Start uses the extra vertical space");
+        }
+        tap(startButton, 60);
+
     }
     private void backgrounds()throws Exception{
         progress("background preview, save, custom picture and position");int saved=store.prefs.getInt("wallpaper",0);ui(()->home.open("setting:page:background"));VistaControlPanel control=(VistaControlPanel)window("@control").body;int choice=saved==1?2:1;tap(find(control,v->("Preview background: "+(choice==1?"Twilight":"Meadow")).equals(v.getContentDescription())),60);check(store.prefs.getInt("wallpaper",0)==saved,"Thumbnail only previews");tap(text(control,"Save changes"),60);check(store.prefs.getInt("wallpaper",0)==choice,"Save applies");shot("vista-background-picker.png");

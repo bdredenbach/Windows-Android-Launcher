@@ -55,7 +55,6 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private StartMenu startMenu;
     private SystemTray tray;private WindowPreviews previews;private BrightnessControl brightness;
     private TextView clock;
-    private View taskManagerButton;
     private AeroWallpaper wallpaper;
     private boolean destroyed,scanPending,scanAgain,receiverRegistered;
     private int scanGeneration,columns;
@@ -120,7 +119,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         setContentView(root);shell.requestApplyInsets();renderDesktop();refreshRecycleIcon();
     }
     private void layoutWorkspace(){
-        if(destroyed||workspace==null||workspace.getWidth()==0)return;int width=workspace.getWidth(),height=workspace.getHeight();if(tray!=null){boolean compact=width<dp(480);if(clock!=null)clock.setVisibility(View.VISIBLE);if(taskManagerButton!=null)taskManagerButton.setVisibility(compact&&tray.expanded()?View.GONE:View.VISIBLE);tray.bounds(desktopCutoutLeft,desktopCutoutRight,windowTopInset);}
+        if(destroyed||workspace==null||workspace.getWidth()==0)return;int width=workspace.getWidth(),height=workspace.getHeight();if(tray!=null){tray.fitWidth(width);tray.bounds(desktopCutoutLeft,desktopCutoutRight,windowTopInset);}
             int reserved=sidebar.getVisibility()==View.VISIBLE?dp(144):0;
             FrameLayout.LayoutParams desktopParams=(FrameLayout.LayoutParams)desktopScroll.getLayoutParams();
             if(desktopParams.rightMargin!=reserved||desktopParams.leftMargin!=0){desktopParams.rightMargin=reserved;desktopParams.leftMargin=0;desktopScroll.setLayoutParams(desktopParams);}
@@ -133,7 +132,19 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             FrameLayout.LayoutParams floatingParams=(FrameLayout.LayoutParams)sidebar.floatingHost.getLayoutParams();if(floatingParams.topMargin!=windowTopInset){floatingParams.topMargin=windowTopInset;sidebar.floatingHost.setLayoutParams(floatingParams);}
             sidebar.workspaceSize(width,Math.max(1,height-windowTopInset),Math.max(1,height-sidebarTop),windowTopInset);
             for(DesktopWindow tool:windows.values()){tool.safeTop(windowTopInset);tool.safeRight(sidebarInset());}
-            if(startMenu!=null){startMenu.availableHeight(height-windowTopInset);FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)startMenu.getLayoutParams();int h=Math.min(dp(540),Math.max(1,height-windowTopInset-dp(8)));int w=Math.min(dp(420),Math.max(1,width-dp(12)));if(lp.height!=h||lp.width!=w){lp.height=h;lp.width=w;startMenu.setLayoutParams(lp);}}
+            if (startMenu != null) {
+                boolean portrait = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT;
+                int available = Math.max(1, height - windowTopInset - dp(8));
+                int menuHeight = Math.min(dp(portrait ? 680 : 540), available);
+                int menuWidth = Math.min(dp(420), Math.max(1, width - dp(12)));
+                startMenu.availableHeight(menuHeight);
+                FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) startMenu.getLayoutParams();
+                if (params.height != menuHeight || params.width != menuWidth) {
+                    params.height = menuHeight;
+                    params.width = menuWidth;
+                    startMenu.setLayoutParams(params);
+                }
+            }
     }
     private void buildTaskbar(){
         shell.setClipChildren(false);shell.setClipToPadding(false);
@@ -142,16 +153,6 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         View grip=new TaskbarSeparator(this);grip.setContentDescription("Taskbar commands");grip.setTooltipText("Hold for taskbar commands");taskbar.addView(grip,new LinearLayout.LayoutParams(dp(12),dp(48)));ContextMenus.bind(grip,(x,y)->taskbarMenu(grip,x,y));
         HorizontalScrollView strip=new HorizontalScrollView(this);strip.setHorizontalScrollBarEnabled(false);strip.setFillViewport(true);strip.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(r-l>0&&taskViewportWidth!=r-l){taskViewportWidth=r-l;main.removeCallbacks(taskbarRender);main.post(taskbarRender);}});taskItems=new LinearLayout(this);taskItems.setGravity(Gravity.CENTER_VERTICAL);strip.addView(taskItems,new HorizontalScrollView.LayoutParams(-2,-1));taskItems.getViewTreeObserver().addOnGlobalLayoutListener(()->{int max=Math.max(0,taskItems.getWidth()-strip.getWidth());if(strip.getScrollX()>max)strip.scrollTo(max,0);});FrameLayout taskClip=new FrameLayout(this);taskClip.setClipChildren(true);taskClip.addView(strip,new FrameLayout.LayoutParams(-1,-1));taskbar.addView(taskClip,new LinearLayout.LayoutParams(0,dp(48),1));
         for(View surface:new View[]{taskbar,taskClip,strip,taskItems})ContextMenus.bind(surface,(x,y)->taskbarMenu(surface,x,y));
-        AeroIcon taskManager = new AeroIcon(this, "taskmanager");
-        taskManager.setPadding(dp(8), dp(8), dp(8), dp(8));
-        taskManager.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
-        taskManager.setFocusable(true);
-        taskManager.setContentDescription("Task Manager");
-        taskManager.setTooltipText("Task Manager");
-        taskManager.setBackground(Aero.selection(this));
-        taskManager.setOnClickListener(v -> open("@taskmanager"));
-        taskManagerButton = taskManager;
-        taskbar.addView(taskManager, new LinearLayout.LayoutParams(dp(44), dp(48)));
         tray=new SystemTray(this,workspace,wallpaper,new SystemTray.Host(){public void action(String id){vistaAction(id);}public void open(String id){MainActivity.this.open(id);}public void layout(){main.post(()->{layoutWorkspace();renderTaskbar();});}public void opening(){if(previews!=null)previews.dismiss();startMenu.hide();((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(root.getWindowToken(),0);}});taskbar.addView(tray,new LinearLayout.LayoutParams(-2,dp(48)));
         clock=Aero.text(this,"",10,Color.WHITE);clock.setGravity(Gravity.CENTER);clock.setPadding(dp(5),0,dp(5),0);clock.setMinWidth(dp(55));clock.setOnClickListener(v->tray.show("calendar"));clock.setContentDescription("Clock and calendar");taskbar.addView(clock,new LinearLayout.LayoutParams(-2,dp(44)));
         TextView peek=Aero.text(this,"",10,Color.WHITE);desktopToggle=peek;peek.setBackground(Aero.gloss(this,new int[]{0x668eaec0,0x554c697f,0x66314353},0,0x667f98ab));peek.setContentDescription("Show desktop");peek.setOnClickListener(v->showDesktop());ContextMenus.bind(peek,(x,y)->taskbarMenu(peek,x,y));taskbar.addView(peek,new LinearLayout.LayoutParams(dp(12),dp(44)));shell.addView(taskbar,new LinearLayout.LayoutParams(-1,dp(50)));renderTaskbar();
