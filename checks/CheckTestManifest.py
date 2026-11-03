@@ -45,4 +45,4 @@ while offset < len(data):
                     suites.add(strings[raw if raw != 0xffffffff else value].rsplit('.', 1)[-1])
     offset += size
 assert required <= suites, 'Test APK is missing instrumentation: ' + ', '.join(sorted(required - suites))
-print('PASS: all seven native suites are registered in the packaged test APK')
+print('PASS: all required native suites are registered in the packaged test APK')

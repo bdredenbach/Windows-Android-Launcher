@@ -2,6 +2,7 @@ package com.nthexperience.desktop;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
 import android.util.AtomicFile;
 import org.json.*;
@@ -24,27 +25,33 @@ final class RecycleBin {
     static synchronized void trash(Context context,DocumentOps.Ref source,DocumentOps.Cancel cancel)throws Exception{
         DocumentFolders.Item before=DocumentOps.stat(context,source.uri,cancel);
         if(before.directory()||source.parent==null||!DocumentOps.writable(context,source.uri,DocumentsContract.Document.FLAG_SUPPORTS_DELETE,before)||!DocumentOps.writable(context,source.parent,DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE,DocumentOps.stat(context,source.parent,cancel)))throw new IOException("This location cannot use Recycle Bin. Original kept.");
-        long used=0;File[] stored=root(context).listFiles((dir,name)->name.endsWith(".data"));if(stored!=null)for(File file:stored)used+=file.length();long available=Math.min(FILE_LIMIT,Math.min(LIMIT-used,root(context).getUsableSpace()-5*1024*1024));if(available<1||before.size>available)throw new IOException("Recycle Bin is full or this file exceeds its 100 MB limit. Original kept. Empty the bin or explicitly delete permanently.");
+        long used=0;File[] stored=root(context).listFiles((dir,name)->name.endsWith(".data"));if(stored!=null)for(File file:stored)used+=file.length();long available=Math.min(FILE_LIMIT,Math.min(LIMIT-used,root(context).getUsableSpace()-5*1024*1024));if(stored!=null&&stored.length>=200)throw new IOException("Recycle Bin holds up to 200 files. Empty it before moving more. Original kept.");if(available<1||before.size>available)throw new IOException("Recycle Bin is full or this file exceeds its 100 MB limit. Original kept. Empty the bin or explicitly delete permanently.");
         String id=UUID.randomUUID().toString();File copy=new File(root(context),id+".data");boolean recorded=false;
         try{
-            String checksum;try(InputStream in=context.getContentResolver().openInputStream(source.uri);FileOutputStream out=new FileOutputStream(copy)){if(in==null)throw new IOException("File unavailable. Original kept.");checksum=hash(in,out,available,cancel);out.getFD().sync();}
+            String checksum;try(InputStream in=read(context,source.uri,cancel);FileOutputStream out=new FileOutputStream(copy)){if(in==null)throw new IOException("File unavailable. Original kept.");checksum=hash(in,out,available,cancel);out.getFD().sync();}
             if(before.size>=0&&copy.length()!=before.size)throw new IOException("Source changed while reading. Original kept.");try(InputStream in=new FileInputStream(copy)){if(!checksum.equals(hash(in,null,available,cancel)))throw new IOException("Recovery copy verification failed. Original kept.");}
             DocumentFolders.Item now=DocumentOps.stat(context,source.uri,cancel);if(now.size!=before.size||now.modified!=before.modified||!now.name.equals(before.name))throw new IOException("Source changed while reading. Original kept.");
             // Verify the current source bytes too; providers may not update size/time reliably.
-            try(InputStream in=context.getContentResolver().openInputStream(source.uri)){if(in==null||!checksum.equals(hash(in,null,available,cancel)))throw new IOException("Source changed while reading. Original kept.");}
+            try(InputStream in=read(context,source.uri,cancel)){if(in==null||!checksum.equals(hash(in,null,available,cancel)))throw new IOException("Source changed while reading. Original kept.");}
             JSONObject item=new JSONObject().put("id",id).put("name",before.name).put("mime",before.mime).put("uri",source.uri.toString()).put("parent",source.parent.toString()).put("date",System.currentTimeMillis()).put("size",copy.length()).put("hash",checksum).put("deleted",false);
             metadata(context,item);recorded=true;cancel.check();
             if(!DocumentsContract.deleteDocument(context.getContentResolver(),source.uri))throw new IOException("Original could not be deleted. A recovery copy was kept in Recycle Bin.");
             item.put("deleted",true);metadata(context,item);
         }finally{if(!recorded)copy.delete();}
     }
+    private static InputStream read(Context context,Uri uri,DocumentOps.Cancel cancel)throws IOException{
+        ParcelFileDescriptor file=context.getContentResolver().openFileDescriptor(uri,"r",cancel.signal);if(file==null)throw new IOException("File unavailable");try{cancel.track(file);}catch(RuntimeException ex){file.close();throw ex;}return new ParcelFileDescriptor.AutoCloseInputStream(file){@Override public void close()throws IOException{cancel.untrack(file);super.close();}};
+    }
+    private static OutputStream write(Context context,Uri uri,DocumentOps.Cancel cancel)throws IOException{
+        ParcelFileDescriptor file=context.getContentResolver().openFileDescriptor(uri,"w",cancel.signal);if(file==null)throw new IOException("Destination unavailable");try{cancel.track(file);}catch(RuntimeException ex){file.close();throw ex;}return new ParcelFileDescriptor.AutoCloseOutputStream(file){@Override public void close()throws IOException{cancel.untrack(file);super.close();}};
+    }
     static synchronized Uri restore(Context context,JSONObject item,DocumentOps.Cancel cancel)throws Exception{
         File copy=new File(root(context),item.getString("id")+".data");String checksum=item.getString("hash");try(InputStream in=new FileInputStream(copy)){if(!checksum.equals(hash(in,null,FILE_LIMIT,cancel)))throw new IOException("The recovery copy is damaged. It has been kept.");}
         Uri parent=Uri.parse(item.getString("parent"));DocumentFolders.Item parentInfo=DocumentOps.stat(context,parent,cancel);if(!DocumentOps.writable(context,parent,DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE,parentInfo))throw new IOException("Reconnect the original folder in Computer, then try Restore again.");
         String name=DocumentOps.available(context,parent,item.getString("name"),true,cancel);Uri destination=DocumentsContract.createDocument(context.getContentResolver(),parent,item.getString("mime"),name);if(destination==null)throw new IOException("The original folder could not create the restored file.");
         boolean verified=false;try{
-            try(InputStream in=new FileInputStream(copy);OutputStream out=context.getContentResolver().openOutputStream(destination,"w")){if(out==null)throw new IOException("The destination cannot be written.");hash(in,out,FILE_LIMIT,cancel);out.flush();}
-            try(InputStream in=context.getContentResolver().openInputStream(destination)){if(in==null||!checksum.equals(hash(in,null,FILE_LIMIT,cancel)))throw new IOException("Restored file could not be verified. Recovery copy kept.");}verified=true;remove(context,item);return destination;
+            try(InputStream in=new FileInputStream(copy);OutputStream out=write(context,destination,cancel)){if(out==null)throw new IOException("The destination cannot be written.");hash(in,out,FILE_LIMIT,cancel);out.flush();}
+            try(InputStream in=read(context,destination,cancel)){if(in==null||!checksum.equals(hash(in,null,FILE_LIMIT,cancel)))throw new IOException("Restored file could not be verified. Recovery copy kept.");}verified=true;remove(context,item);return destination;
         }finally{if(!verified)try{DocumentsContract.deleteDocument(context.getContentResolver(),destination);}catch(Exception ignored){}}
     }
     static synchronized void remove(Context context,JSONObject item)throws Exception{File root=root(context);File payload=new File(root,item.getString("id")+".data");if(payload.exists()&&!payload.delete())throw new IOException("The recovery file could not be removed.");new AtomicFile(new File(root,item.getString("id")+".json")).delete();}
