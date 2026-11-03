@@ -9,16 +9,16 @@ import java.util.*;
 /** Cut/copy/delete here always refer to launcher shortcuts, never installed app packages. */
 final class ShortcutMenus {
     interface Host {void open(String id);void rename(String id);void changed();}
-    static void show(android.content.Context context,View anchor,float x,float y,DesktopStore store,String id,String source,Host host){
+    static void show(android.content.Context context,View anchor,float x,float y,DesktopStore store,String id,String source,String name,Host host){
         DesktopContextMenu menu=new DesktopContextMenu(context,"Shortcut context menu");menu.item("Open","programs",()->host.open(id));menu.separator();
         boolean inSource=ExplorerClipboard.members(store,source).contains(id);
         menu.item("Cut","cut",inSource,()->{ExplorerClipboard.shortcuts(Collections.singletonList(id),source,true);host.changed();});
         menu.item("Copy","copy",()->{ExplorerClipboard.shortcuts(Collections.singletonList(id),source,false);host.changed();});
         String destination=store.isFolder(id)?"contents:"+id:source;menu.item("Paste","paste",!ExplorerClipboard.shortcuts.isEmpty(),()->paste(context,store,destination,host));menu.separator();
-        menu.item("Delete shortcut","delete",inSource,()->{List<String> values=ExplorerClipboard.members(store,source);values.remove(id);ExplorerClipboard.members(store,source,values);host.changed();});
+        menu.item("Delete shortcut","delete",inSource&&!id.equals("@recycle"),()->{RecycleBin.trashShortcut(context,store,source,id,name);host.changed();});
         menu.item("Rename shortcut…","notes",()->host.rename(id));menu.separator();
         menu.item(store.startPins().contains(id)?"Unpin from Start Menu":"Pin to Start Menu","programs",()->{List<String> pins=store.startPins();if(pins.contains(id))pins.remove(id);else if(pins.size()<32)pins.add(id);store.startPins(pins);host.changed();});
-        menu.item(store.pinned(id)?"Remove from desktop":"Add to desktop","computer",()->{store.toggle(id);host.changed();});
+        menu.item(store.pinned(id)?"Remove from desktop":"Add to desktop","computer",()->{if(store.pinned(id)&&!id.equals("@recycle"))RecycleBin.trashShortcut(context,store,"desktop",id,name);else store.toggle(id);host.changed();});
         menu.item("Add to Quick Launch","programs",!store.quickLaunch().contains(id)&&store.quickLaunch().size()<DesktopStore.MAX_QUICK,()->{List<String> quick=store.quickLaunch();quick.add(id);store.quickLaunch(quick);host.changed();});
         if(source.equals("quick"))menu.item("Customize Quick Launch…","control",()->host.open("@quicklaunch"));
         if(!store.isFolder(id))menu.item("Add to folder  ›","folderapps",()->{DesktopContextMenu folders=new DesktopContextMenu(context,"Choose app folder");java.util.Iterator<String> keys=store.folders().keys();while(keys.hasNext()){String folder=keys.next();folders.item(store.name(folder,"Folder"),"folderapps",()->{List<String> ids=store.folderItems(folder);if(!ids.contains(id)&&ids.size()<DesktopStore.MAX_ITEMS){ids.add(id);store.folderItems(folder,ids);host.changed();}});}folders.item("New folder…","folderapps",()->host.open("@organize"));ContextMenus.show(folders,anchor,x,y);});
