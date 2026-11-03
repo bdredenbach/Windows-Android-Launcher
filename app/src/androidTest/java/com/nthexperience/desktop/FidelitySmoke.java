@@ -79,7 +79,7 @@ public final class FidelitySmoke extends Instrumentation {
     private void graphs()throws Exception{
         progress("real monitor metrics, animated interpolation, reduced motion and pause");ui(()->home.open("@taskmanager"));TaskManagerPanel panel=(TaskManagerPanel)window("@taskmanager").body;tap(find(panel,v->"Task Manager Performance".equals(v.getContentDescription())),60);int count=panel.sampleCount();await(()->panel.sampleCount()>count,"Actual CPU/memory sampling advances");check(panel.animatedGraphCount()==0,"Reduced motion leaves graph static");shell("settings put global animator_duration_scale 1");store.prefs.edit().putBoolean("reduce_motion",false).commit();await(()->panel.animatedGraphCount()>0,"Real samples animate with motion enabled");shot("vista-taskmanager-graphs.png");tap(text(panel,"View"),60);menuTap("Pause updates");int paused=panel.sampleCount();Thread.sleep(2300);check(paused==panel.sampleCount()&&panel.animatedGraphCount()==0,"Paused counters and animations stop");tap(find(panel,v->"Task Manager Processes".equals(v.getContentDescription())),60);check(find(panel,v->v instanceof TextView&&((TextView)v).getText().toString().contains("PID "+android.os.Process.myPid()))!=null,"Real process PID is shown");tap(find(panel,v->"Task Manager Networking".equals(v.getContentDescription())),60);check(find(panel,v->"Device received traffic history".equals(v.getContentDescription()))!=null,"Native network graph exists");close("@taskmanager");store.prefs.edit().putBoolean("reduce_motion",true).commit();shell("settings put global animator_duration_scale 0");
     }
-    private void binProperties()throws Exception{progress("shared Recycle Bin properties");ui(()->home.open("@recycle"));RecyclePanel panel=(RecyclePanel)window("@recycle").body;tap(text(panel,"Properties"),60);awaitNode("Recycle Bin Properties");awaitNode("Show Recycle Bin on desktop");menuTap("Recycle Bin maximum size");menuTap("500 MB");menuTap("Apply");check(store.prefs.getInt("recycle_capacity_mb",0)==500&&RecycleBin.capacity(home)==500L*1024*1024,"Native Bin Properties applies shared capacity");close("@recycle");}
+    private void binProperties()throws Exception{progress("shared Recycle Bin properties");ui(()->home.open("@recycle"));RecyclePanel panel=(RecyclePanel)window("@recycle").body;tap(text(panel,"Organize ▾"),60);menuTap("Properties");awaitNode("Recycle Bin Properties");awaitNode("Show Recycle Bin on desktop");menuTap("Recycle Bin maximum size");menuTap("500 MB");menuTap("Apply");check(store.prefs.getInt("recycle_capacity_mb",0)==500&&RecycleBin.capacity(home)==500L*1024*1024,"Native Bin Properties applies shared capacity");close("@recycle");}
     private void shortcutRecycle() throws Exception {
         progress("physical desktop folder drag into Recycle Bin and restoration");
         View source=find(v->recycleFixture.equals(v.getTag()));
@@ -90,6 +90,11 @@ public final class FidelitySmoke extends Instrumentation {
         ui(()->home.open("@recycle"));
         RecyclePanel panel=(RecyclePanel)window("@recycle").body;
         await(()->find(panel,v->"Recycle item: Recycle drag fixture".equals(v.getContentDescription()))!=null,"Folder appears in the Bin");
+        View recycled=find(panel,v->"Recycle item: Recycle drag fixture".equals(v.getContentDescription()));
+        check(recycled.findViewWithTag("recycle-item-icon") instanceof AeroIcon,"A recycled folder displays its own icon");
+        check(text(panel,"Restore all items")!=null&&find(panel,v->"File menu".equals(v.getContentDescription()))==null,"Single adaptive Restore and hidden classic menus");
+        tap(text(panel,"Views ▾"),60);menuTap("Large icons");
+        await(()->find(panel,v->"Sort Recycle Bin by Name".equals(v.getContentDescription()))==null,"Icon view replaces details columns");
         tap(find(panel,v->"Recycle item: Recycle drag fixture".equals(v.getContentDescription())),60);
         tap(text(panel,"Restore this item"),60);
         await(()->store.desktop().contains(recycleFixture),"Folder restores to the desktop");

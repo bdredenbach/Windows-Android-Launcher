@@ -43,7 +43,30 @@ final class VistaArtwork {
     private void personalize(){screen(4,5,49,40);poly(0xffb8cbd8,0xff63798e,21,43,31,43,32,51,19,51);poly(0xffe8eff3,0xff7b93aa,11,52,34,49,43,54,20,58);oval(35,33,61,59,0xffba9144);p.setShader(new RadialGradient(43,39,18,new int[]{0xffffe6a1,0xffe2b957,0xff936b30},null,Shader.TileMode.CLAMP));c.drawCircle(47,46,12,p);p.setShader(null);oval(38,37,47,44,0x77ffffff);}
     private void drive(){shadow(3,51,61,59);poly(0xfff3f6f8,0xff8599aa,13,9,49,9,60,37,5,37);poly(0xffbecbd5,0xff4f6273,5,37,60,37,58,52,7,55);rect(9,40,55,49,2,0xff263b4d,0xff637b8b);line(14,43,38,43,1,0xffbdcbd6);oval(48,42,51,45,0xff94e573);line(15,12,47,12,1,0xfffafcfd);}
     private void paper(String kind){shadow(9,55,55,62);poly(0xfffdfdfd,0xffc9dce9,13,5,40,5,53,18,53,58,13,58);poly(0xffe3edf4,0xffa2bdcf,40,5,40,18,53,18);if(kind.equals("pdffile")){p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(15);p.setColor(0xffae3a34);c.drawText("PDF",17,43,p);line(18,49,46,49,2,0xffd9a29c);}else{rect(29,13,36,54,1,0xfff1d079,0xffa37e36);for(int y=14;y<52;y+=5){rect(29,y,32,y+3,0,0xff7c6d50,0xffb89c60);rect(33,y+2,36,y+5,0,0xffd9c38a,0xff9b8249);}rect(27,38,38,45,1,0xffe0d4b3,0xff8c7a59);}}
-    private void recycle(boolean full){shadow(10,54,54,62);if(full){poly(0xfffcfcf7,0xffc1d4df,17,10,31,5,38,23,21,31);poly(0xffdcecf5,0xff97acb9,32,9,47,13,43,35,29,30);for(int i=0;i<4;i++)line(21,13+i*3,30,11+i*3,.6f,0xff7096b0);}poly(0xddd9eaf3,0xb56e9cba,11,18,53,18,48,55,37,60,18,54);oval(11,12,53,25,0xffb9cfdd);oval(15,15,49,23,full?0xffe2edf2:0xff416c87);for(int i=0;i<6;i++)line(16+i*6,25,20+i*5,52,.8f,0x888db5ca);poly(0x55ffffff,0x00ffffff,14,25,25,27,29,54,19,51);poly(0xff55b672,0xff216341,25,33,34,29,38,36,34,36,31,33,27,39,23,38);poly(0xff55b672,0xff216341,38,37,43,42,40,49,36,49,39,43,34,43);poly(0xff55b672,0xff216341,34,49,28,52,22,45,24,41,28,47,34,46);}
+    private void recycle(boolean full){
+        shadow(8,54,56,62);
+        poly(0xa5e9f6ff,0xc08eacbf,10,17,54,17,49,53,43,58,23,58,16,54);
+        oval(10,11,54,25,0xffd7e6ef);
+        oval(13,13,51,23,0xc57192a7);
+        if(full){
+            poly(0xfffdfdff,0xffa8bcc9,15,22,15,13,20,9,27,11,31,18,27,31,19,30);
+            poly(0xffffffff,0xffc3ced5,24,16,29,7,34,9,38,6,45,13,43,27,34,34,26,26);
+            poly(0xfffbffff,0xff9cb4c2,36,23,41,15,48,13,51,20,48,32,42,39,35,33);
+            line(19,14,26,18,.8f,0xff9db2c0);
+            line(29,12,33,19,.8f,0xffacbbc7);
+            line(37,12,35,22,.8f,0xffadbdc9);
+            line(44,20,42,27,.8f,0xffa0b4c1);
+        }
+        poly(0x72f5fbff,0x8ca5c4d6,10,18,20,22,32,24,44,22,54,18,49,53,42,57,22,57,16,53);
+        poly(0xbaffffff,0x08ffffff,13,22,20,25,24,53,19,51);
+        poly(0x53ffffff,0x15ffffff,44,25,50,22,46,50,41,53);
+        line(17,53,25,56,1.1f,0xe4f6fcff);
+        line(25,56,43,56,1.1f,0xe4f6fcff);
+        poly(0xff83c9ee,0xff2c6498,23,36,29,29,34,29,38,35,34,37,31,33,27,38);
+        poly(0xff83c9ee,0xff2c6498,39,36,44,43,41,49,33,49,33,45,39,45,37,41,36,42,36,37);
+        poly(0xff83c9ee,0xff2c6498,31,49,24,49,20,44,23,39,21,38,27,37,29,43,27,42,25,45,31,45);
+    }
+
     private void taskmanager(){shadow(5,53,59,60);rect(7,8,57,53,3,0xffd5e1eb,0xff6a7e90);rect(11,13,53,47,1,0xff091c17,0xff0a2720);for(int i=0;i<5;i++){line(13,18+i*6,51,18+i*6,.5f,0xff285641);line(16+i*8,15,16+i*8,45,.5f,0xff285641);}Path graph=new Path();graph.moveTo(13,39);graph.lineTo(22,38);graph.lineTo(27,22);graph.lineTo(31,34);graph.lineTo(38,31);graph.lineTo(42,18);graph.lineTo(47,36);graph.lineTo(51,32);p.setStyle(Paint.Style.STROKE);p.setColor(0xff79ef81);p.setStrokeWidth(2);c.drawPath(graph,p);p.setStyle(Paint.Style.FILL);poly(0xffc8d5df,0xff708494,27,53,37,53,38,58,23,58);}
     private void search(){folder("files");c.save();c.rotate(25,42,38);rect(43,42,50,62,2,0xff9bb4ca,0xff344c64);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(4);p.setColor(0xff6b8ba3);c.drawCircle(45,33,12,p);p.setStyle(Paint.Style.FILL);p.setShader(new RadialGradient(41,29,15,new int[]{0xfff5fcff,0xffa5d4e8},null,Shader.TileMode.CLAMP));c.drawCircle(45,33,10,p);p.setShader(null);c.restore();}
 }

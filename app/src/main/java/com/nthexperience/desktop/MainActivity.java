@@ -222,7 +222,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private int sidebarInset(){return sidebar!=null&&sidebar.getVisibility()==View.VISIBLE&&store.prefs.getBoolean("sidebar_always_top",false)?sidebar.getWidth():0;}
     private LinearLayout taskButton(String id){return taskButton(id,label(id));}
     private LinearLayout taskButton(String id,String title){LinearLayout button=new LinearLayout(this);button.setGravity(Gravity.CENTER_VERTICAL);button.setPadding(dp(6),0,dp(5),0);button.setFocusable(true);DesktopWindow window=windows.get(id);View image=window!=null&&window.body instanceof VistaExplorer&&((VistaExplorer)window.body).page().startsWith("folder:")?new AeroIcon(this,"files"):icon(id,20);button.addView(image,new LinearLayout.LayoutParams(dp(20),dp(20)));TextView name=Aero.text(this,title,11,Color.WHITE);name.setSingleLine(true);name.setEllipsize(TextUtils.TruncateAt.END);name.setPadding(dp(5),0,0,0);button.addView(name,new LinearLayout.LayoutParams(0,-1,1));name.setGravity(Gravity.CENTER_VERTICAL);return button;}
-    private View icon(String id,int size){
+    View icon(String id,int size){
         AppCatalog.Entry entry=entries.get(id);
         if(entry!=null){ImageView image=new ImageView(this);image.setImageDrawable(entry.icon);image.setScaleType(ImageView.ScaleType.FIT_CENTER);image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);return image;}
         return new AeroIcon(this,FolderLinks.id(id)?"files":id.equals("@recycle")?(recycleFull?"recycle-full":"recycle"):id.startsWith("@gadget:")?GadgetCatalog.icon(id.substring(8)):store.isFolder(id)||id.equals("@filemanagers")||id.equals("@organize")?"folderapps":id.equals("@welcome")?"orb":id.equals("@backup")?"drive":id.equals("@quicklaunch")?"programs":id.equals("@photos")?"pictures":id.startsWith("@")?id.substring(1):"apps");
@@ -284,7 +284,32 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         }
     }
     @Override public void options(View anchor,String id){ContextMenus.centered(anchor,(x,y)->shortcutMenu(anchor,id,"desktop",x,y));}
-    private void shortcutMenu(View anchor,String id,String source,float x,float y){ShortcutMenus.show(this,anchor,x,y,store,id,source,label(id),new ShortcutMenus.Host(){public void open(String value){MainActivity.this.open(value);}public void rename(String value){organizer("@organize","rename:"+value);}public void changed(){desktopChanged();}});}
+    private void shortcutMenu(View anchor,String id,String source,float x,float y){
+        if(id.equals("@recycle")&&source.equals("desktop")){
+            DesktopContextMenu menu=new DesktopContextMenu(this,"Recycle Bin desktop menu");
+            menu.item("Open","recycle",()->open(id));
+            menu.item("Empty Recycle Bin","delete",recycleFull,this::emptyRecycleBin);
+            menu.separator();
+            menu.item("Properties","control",()->recycleWindow().properties());
+            ContextMenus.show(menu,anchor,x,y);
+            return;
+        }
+        ShortcutMenus.show(this,anchor,x,y,store,id,source,label(id),new ShortcutMenus.Host(){
+            public void open(String value){MainActivity.this.open(value);}
+            public void rename(String value){organizer("@organize","rename:"+value);}
+            public void changed(){desktopChanged();}
+        });
+    }
+    private void emptyRecycleBin(){
+        RecyclePanel.confirmEmpty(this,()->worker.execute(()->{
+            String result;
+            try{RecycleBin.empty(getApplicationContext());result="Recycle Bin emptied";}
+            catch(Exception ex){result=ex.getMessage()==null?"Recycle Bin could not be emptied.":ex.getMessage();}
+            String message=result;
+            main.post(()->{if(!destroyed){toast(message);filesChanged();}});
+        }));
+    }
+    private RecyclePanel recycleWindow(){open("@recycle");return (RecyclePanel)windows.get("@recycle").body;}
     private void desktopOptions(float x,float y){
         if(desktopMenu!=null)desktopMenu.dismiss();startMenu.hide();desktopMenu=new DesktopContextMenu(this);
         desktopMenu.item("View  ›","appearance",()->desktopViewMenu(x,y));desktopMenu.item("Sort by  ›","programs",()->desktopSortMenu(x,y));desktopMenu.item("New folder","folderapps",()->organizer("@organize","new"));desktopMenu.item("Paste","paste",!ExplorerClipboard.shortcuts.isEmpty(),()->{try{ExplorerClipboard.paste(store,"desktop");desktopChanged();}catch(IllegalArgumentException ex){toast(ex.getMessage());}});desktopMenu.separator();
