@@ -27,7 +27,7 @@ public final class FidelitySmoke extends Instrumentation {
         store.prefs.edit().putBoolean("layout_locked",false).remove("desktop_positions_landscape").apply();
         recycleFixture=store.createFolder("Recycle drag fixture",Collections.singletonList("@notes"));
         List<String> icons=store.desktop();icons.remove(recycleFixture);icons.remove("@recycle");icons.add(0,"@recycle");icons.add(0,recycleFixture);store.desktop(icons);
-        home=(MainActivity)startActivitySync(new Intent(Intent.ACTION_MAIN).setComponent(new ComponentName(getTargetContext(),MainActivity.class)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));root=home.getWindow().getDecorView();await(()->home.hasWindowFocus(),"Focused desktop");tray();binProperties();shortcutRecycle();backgrounds();graphs();folders();
+        home=(MainActivity)startActivitySync(new Intent(Intent.ACTION_MAIN).setComponent(new ComponentName(getTargetContext(),MainActivity.class)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));root=home.getWindow().getDecorView();await(()->home.hasWindowFocus(),"Focused desktop");tray();taskbarModes();binProperties();shortcutRecycle();backgrounds();graphs();folders();
         result.putString("stream","PASS: task buttons preserve 0/50/100 glass opacity; equal Quick Launch separators; inline tray arrow and real device icons; draft-only background thumbnails, custom picture decode, Save changes and position; real PID/CPU/RAM/network graph sampling and pause/reduced motion; separate Explorer windows, taskbar family grouping, physical icon drag copy/move with exact bytes and original preservation; real folder desktop links and validated backups.\n");success=true;
     }catch(Throwable error){try{shot("fidelity-failure.png");StringBuilder tree=new StringBuilder();dump(getUiAutomation().getRootInActiveWindow(),tree,0);try(FileOutputStream out=getTargetContext().openFileOutput("fidelity-tree.txt",0)){out.write(tree.toString().getBytes(StandardCharsets.UTF_8));}}catch(Exception ignored){}StringWriter text=new StringWriter();error.printStackTrace(new PrintWriter(text));result.putString("stream","FAIL: "+text);
     }finally{try{shell("settings put global animator_duration_scale 0");if(home!=null)ui(()->home.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));if(folder!=null)delete(folder);for(JSONObject item:RecycleBin.list(getTargetContext()))if(recycleFixture!=null&&recycleFixture.equals(item.optString("shortcut")))RecycleBin.remove(getTargetContext(),item);if(store!=null){SharedPreferences.Editor edit=store.prefs.edit().clear();for(Map.Entry<String,Object> item:original.entrySet()){Object value=item.getValue();String key=item.getKey();if(value instanceof String)edit.putString(key,(String)value);else if(value instanceof Boolean)edit.putBoolean(key,(Boolean)value);else if(value instanceof Integer)edit.putInt(key,(Integer)value);else if(value instanceof Long)edit.putLong(key,(Long)value);else if(value instanceof Float)edit.putFloat(key,(Float)value);}edit.commit();}}catch(Exception ignored){}app.unregisterActivityLifecycleCallbacks(lifecycle);}
@@ -71,6 +71,35 @@ public final class FidelitySmoke extends Instrumentation {
         }
         tap(startButton, 60);
 
+    }
+    private void taskbarModes() throws Exception {
+        progress("taskbar Scrollable and Static modes");
+        String[] ids={"@notes","@calendar","@control","@backup"};
+        ui(()->{
+            store.prefs.edit().putBoolean("taskbar_static",false).apply();
+            for(String id:ids)home.open(id);
+        });
+        HorizontalScrollView strip=(HorizontalScrollView)find(v->"taskbar-items".equals(v.getTag()));
+        await(()->strip.canScrollHorizontally(1),"Scrollable mode allows overflow");
+        ui(()->strip.scrollTo(strip.getWidth(),0));
+        check(strip.getScrollX()>0,"Task strip can move to later buttons");
+        tap(find(v->"Taskbar commands".equals(v.getContentDescription())),700);
+        menuTap("Static");
+        await(()->store.prefs.getBoolean("taskbar_static",false)&&strip.getScrollX()==0
+                && !strip.canScrollHorizontally(1),"Static resets scrolling and fits the task buttons");
+        ViewGroup buttons=(ViewGroup)strip.getChildAt(0);
+        check(buttons.getChildCount()==ids.length,"All open task buttons remain visible in portrait");
+        for(int i=0;i<buttons.getChildCount();i++){
+            View button=buttons.getChildAt(i);
+            check(button.getWidth()>0&&button.getRight()<=strip.getWidth(),"Task button fits in the viewport");
+        }
+        check(Boolean.TRUE.equals(DesktopBackup.parse(DesktopBackup.snapshot(store).toString()).values.get("taskbar_static")),
+                "Desktop backups preserve Static mode");
+        tap(find(v->"Taskbar commands".equals(v.getContentDescription())),700);
+        menuTap("Scrollable");
+        await(()->!store.prefs.getBoolean("taskbar_static",true)&&strip.canScrollHorizontally(1),
+                "Switching back restores the scrollable strip");
+        ui(()->{for(String id:ids)window(id).closeWindow();});
     }
     private void backgrounds()throws Exception{
         progress("background preview, save, custom picture and position");int saved=store.prefs.getInt("wallpaper",0);ui(()->home.open("setting:page:background"));VistaControlPanel control=(VistaControlPanel)window("@control").body;int choice=saved==1?2:1;tap(find(control,v->("Preview background: "+(choice==1?"Twilight":"Meadow")).equals(v.getContentDescription())),60);check(store.prefs.getInt("wallpaper",0)==saved,"Thumbnail only previews");tap(text(control,"Save changes"),60);check(store.prefs.getInt("wallpaper",0)==choice,"Save applies");shot("vista-background-picker.png");

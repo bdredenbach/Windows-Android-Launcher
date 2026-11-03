@@ -51,7 +51,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private DesktopContextMenu desktopMenu;
     private int desktopRows,desktopCutoutLeft,desktopCutoutRight,windowTopInset;
     private WeatherLocation weatherLocation;
-    private LinearLayout shell,taskItems;private int taskViewportWidth;
+    private LinearLayout shell,taskItems;private HorizontalScrollView taskStrip;private int taskViewportWidth;
     private StartMenu startMenu;
     private SystemTray tray;private WindowPreviews previews;private BrightnessControl brightness;
     private TextView clock;
@@ -151,7 +151,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         LinearLayout taskbar=new LinearLayout(this);taskbar.setContentDescription("Desktop taskbar");taskbar.setGravity(Gravity.CENTER_VERTICAL);taskbar.setClipChildren(false);taskbar.setPadding(dp(3),0,dp(3),0);taskbar.setBackground(new AeroGlass(wallpaper,AeroGlass.TASKBAR));taskbar.setElevation(dp(5));
         AeroIcon orb=new AeroIcon(this,"orb");orb.setContentDescription("Start menu");orb.setFocusable(true);orb.setOnClickListener(v->{if(startMenu.getVisibility()==View.VISIBLE)startMenu.hide();else showStart(false);});ContextMenus.bind(orb,(x,y)->startOrbMenu(orb,x,y));taskbar.addView(orb,new LinearLayout.LayoutParams(dp(53),dp(53)));
         View grip=new TaskbarSeparator(this);grip.setContentDescription("Taskbar commands");grip.setTooltipText("Hold for taskbar commands");taskbar.addView(grip,new LinearLayout.LayoutParams(dp(12),dp(48)));ContextMenus.bind(grip,(x,y)->taskbarMenu(grip,x,y));
-        HorizontalScrollView strip=new HorizontalScrollView(this);strip.setHorizontalScrollBarEnabled(false);strip.setFillViewport(true);strip.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(r-l>0&&taskViewportWidth!=r-l){taskViewportWidth=r-l;main.removeCallbacks(taskbarRender);main.post(taskbarRender);}});taskItems=new LinearLayout(this);taskItems.setGravity(Gravity.CENTER_VERTICAL);strip.addView(taskItems,new HorizontalScrollView.LayoutParams(-2,-1));taskItems.getViewTreeObserver().addOnGlobalLayoutListener(()->{int max=Math.max(0,taskItems.getWidth()-strip.getWidth());if(strip.getScrollX()>max)strip.scrollTo(max,0);});FrameLayout taskClip=new FrameLayout(this);taskClip.setClipChildren(true);taskClip.addView(strip,new FrameLayout.LayoutParams(-1,-1));taskbar.addView(taskClip,new LinearLayout.LayoutParams(0,dp(48),1));
+        HorizontalScrollView strip=new HorizontalScrollView(this);taskStrip=strip;strip.setTag("taskbar-items");strip.setHorizontalScrollBarEnabled(false);strip.setFillViewport(true);strip.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(r-l>0&&taskViewportWidth!=r-l){taskViewportWidth=r-l;main.removeCallbacks(taskbarRender);main.post(taskbarRender);}});taskItems=new LinearLayout(this);taskItems.setGravity(Gravity.CENTER_VERTICAL);strip.addView(taskItems,new HorizontalScrollView.LayoutParams(-2,-1));taskItems.getViewTreeObserver().addOnGlobalLayoutListener(()->{int max=Math.max(0,taskItems.getWidth()-strip.getWidth());if(strip.getScrollX()>max)strip.scrollTo(max,0);});FrameLayout taskClip=new FrameLayout(this);taskClip.setClipChildren(true);taskClip.addView(strip,new FrameLayout.LayoutParams(-1,-1));taskbar.addView(taskClip,new LinearLayout.LayoutParams(0,dp(48),1));
         for(View surface:new View[]{taskbar,taskClip,strip,taskItems})ContextMenus.bind(surface,(x,y)->taskbarMenu(surface,x,y));
         tray=new SystemTray(this,workspace,wallpaper,new SystemTray.Host(){public void action(String id){vistaAction(id);}public void open(String id){MainActivity.this.open(id);}public void layout(){main.post(()->{layoutWorkspace();renderTaskbar();});}public void opening(){if(previews!=null)previews.dismiss();startMenu.hide();((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(root.getWindowToken(),0);}});taskbar.addView(tray,new LinearLayout.LayoutParams(-2,dp(48)));
         clock=Aero.text(this,"",10,Color.WHITE);clock.setGravity(Gravity.CENTER);clock.setPadding(dp(5),0,dp(5),0);clock.setMinWidth(dp(55));clock.setOnClickListener(v->tray.show("calendar"));clock.setContentDescription("Clock and calendar");taskbar.addView(clock,new LinearLayout.LayoutParams(-2,dp(44)));
@@ -200,11 +200,22 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
 
     private void renderTaskbar(){
         if(taskItems==null)return;DesktopWindow weatherWindow=windows.get("@weather"),feedWindow=windows.get("@gadget:feeds"),networkWindow=windows.get("@gadget:network"),compassWindow=windows.get("@gadget:compass");if(sidebar!=null)sidebar.details(weatherWindow!=null&&weatherWindow.getParent()!=null&&weatherWindow.getVisibility()==View.VISIBLE,feedWindow!=null&&feedWindow.getParent()!=null&&feedWindow.getVisibility()==View.VISIBLE,networkWindow!=null&&networkWindow.getParent()!=null&&networkWindow.getVisibility()==View.VISIBLE,compassWindow!=null&&compassWindow.getParent()!=null&&compassWindow.getVisibility()==View.VISIBLE);DesktopWindow front=null;for(int i=workspace.getChildCount()-1;i>=0;i--){View child=workspace.getChildAt(i);if(child instanceof DesktopWindow&&child.getVisibility()==View.VISIBLE&&!((DesktopWindow)child).minimizing()){front=(DesktopWindow)child;break;}}for(DesktopWindow window:windows.values())if(window.getParent()!=null){window.safeRight(sidebarInset());window.active(window==front);}taskItems.removeAllViews();
-        boolean compactTasks=getResources().getConfiguration().screenWidthDp<480&&(!orderedWindows().isEmpty()||!ExternalTasks.list().isEmpty());
-        if(!compactTasks)for(String id:store.quickLaunch()){FrameLayout quick=new FrameLayout(this);FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(dp(24),dp(24),Gravity.CENTER);quick.addView(icon(id,24),lp);quick.setContentDescription("Open "+label(id));quick.setOnClickListener(v->open(id));ContextMenus.bind(quick,(x,y)->shortcutMenu(quick,id,"quick",x,y));taskItems.addView(quick,new LinearLayout.LayoutParams(dp(40),dp(48)));}
-        View divider=new TaskbarSeparator(this);divider.setContentDescription("Quick Launch separator");ContextMenus.bind(divider,(x,y)->taskbarMenu(divider,x,y));if(!compactTasks)taskItems.addView(divider,new LinearLayout.LayoutParams(dp(12),dp(48)));
-        List<String> taskIds=new ArrayList<>();Set<String> explorerIds=new HashSet<>();for(Map.Entry<String,DesktopWindow> item:windows.entrySet())if(item.getValue().getParent()!=null){taskIds.add(item.getKey());if(item.getValue().body instanceof VistaExplorer)explorerIds.add(item.getKey());}
-        int taskRoom=(taskViewportWidth>0?taskViewportWidth:dp(240))-(!compactTasks?dp(40)*store.quickLaunch().size()+dp(12):0)-(store.prefs.getBoolean("taskbar_apps",true)?ExternalTasks.list().size()*dp(127):0);for(List<String> group:TaskbarGrouping.groups(taskIds,explorerIds,store.prefs.getString("taskbar_grouping","When full"),taskRoom,dp(127))){
+        List<String> taskIds=new ArrayList<>();
+        Set<String> explorerIds=new HashSet<>();
+        for(Map.Entry<String,DesktopWindow> item:windows.entrySet())if(item.getValue().getParent()!=null){
+            taskIds.add(item.getKey());
+            if(item.getValue().body instanceof VistaExplorer)explorerIds.add(item.getKey());
+        }
+        List<String> external=new ArrayList<>();
+        if(store.prefs.getBoolean("taskbar_apps",true)){
+            for(String id:ExternalTasks.list())if(entries.containsKey(id))external.add(id);
+        }
+        boolean compactTasks=getResources().getConfiguration().screenWidthDp<480&&(!taskIds.isEmpty()||!ExternalTasks.list().isEmpty());
+        boolean fit=store.prefs.getBoolean("taskbar_static",false);
+        int viewport=taskViewportWidth>0?taskViewportWidth:dp(240);
+        int taskRoom=viewport-addQuickLaunch(compactTasks,fit,viewport,!taskIds.isEmpty()||!external.isEmpty());
+        int firstTask=taskItems.getChildCount();
+        for(List<String> group:TaskbarGrouping.groups(taskIds,explorerIds,store.prefs.getString("taskbar_grouping","When full"),taskRoom-external.size()*dp(127),dp(127))){
             DesktopWindow first=windows.get(group.get(0));boolean grouped=group.size()>1,isActive=false;List<DesktopWindow> members=new ArrayList<>();for(String id:group){DesktopWindow window=windows.get(id);members.add(window);isActive|=window.active();if(window.active())first=window;}DesktopWindow target=first;
             String title=grouped?"Folders ("+group.size()+")":target.caption();LinearLayout button=taskButton(target.toolId,title);AeroGlass surface=new AeroGlass(wallpaper,AeroGlass.TASKBUTTON);surface.active(isActive);button.setBackground(surface);button.setSelected(isActive);button.setContentDescription(grouped?"Folder windows, "+group.size()+" windows":(isActive?"Minimize ":"Restore ")+title);
             if(target.toolId.equals("@recycle"))button.setOnDragListener(this::recycleDrop);
@@ -212,12 +223,81 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             else{button.setTooltipText(title);if(previews!=null&&store.prefs.getBoolean("taskbar_previews",true)){button.setTooltipText(null);previews.bind(button,target);}button.setOnClickListener(v->{startMenu.hide();tray.dismiss();if(target.getVisibility()==View.VISIBLE&&!target.minimizing()&&target.active())target.minimize();else target.restore();});ContextMenus.bind(button,(x,y)->{startMenu.hide();tray.dismiss();target.showSystemMenu(button,x,y);});}
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(dp(grouped?112:124),dp(48));size.rightMargin=dp(3);taskItems.addView(button,size);
         }
-        if(store.prefs.getBoolean("taskbar_apps",true))for(String id:ExternalTasks.list()){
-            if(!entries.containsKey(id))continue;LinearLayout button=taskButton(id);button.setContentDescription("Switch to "+label(id));AeroGlass appSurface=new AeroGlass(wallpaper,AeroGlass.TASKBUTTON);appSurface.active(false);button.setBackground(appSurface);button.setOnClickListener(v->open(id));ContextMenus.bind(button,(x,y)->{DesktopContextMenu menu=new DesktopContextMenu(this,"Android app taskbar menu");menu.item("Switch to "+label(id),"programs",()->open(id));menu.item("Remove taskbar button","close",()->{ExternalTasks.remove(id);renderTaskbar();});menu.item("Taskbar Properties","control",()->open("setting:page:taskbar"));ContextMenus.show(menu,button,x,y);});LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(124),dp(48));lp.rightMargin=dp(3);taskItems.addView(button,lp);
+        for(String id:external){
+           LinearLayout button=taskButton(id);button.setContentDescription("Switch to "+label(id));AeroGlass appSurface=new AeroGlass(wallpaper,AeroGlass.TASKBUTTON);appSurface.active(false);button.setBackground(appSurface);button.setOnClickListener(v->open(id));ContextMenus.bind(button,(x,y)->{DesktopContextMenu menu=new DesktopContextMenu(this,"Android app taskbar menu");menu.item("Switch to "+label(id),"programs",()->open(id));menu.item("Remove taskbar button","close",()->{ExternalTasks.remove(id);renderTaskbar();});menu.item("Taskbar Properties","control",()->open("setting:page:taskbar"));ContextMenus.show(menu,button,x,y);});LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(124),dp(48));lp.rightMargin=dp(3);taskItems.addView(button,lp);
+        }
+        if(fit){
+            fitTaskButtons(firstTask,taskRoom);
+            if(taskStrip.getScrollX()!=0)taskStrip.scrollTo(0,0);
         }
         if(sidebar!=null&&store.prefs.getBoolean("sidebar_always_top",false))sidebar.raise();
         desktopHidden.entrySet().removeIf(item->item.getValue().getParent()==null||windows.get(item.getKey())!=item.getValue());if(desktopToggle!=null){String hint=desktopHidden.isEmpty()?"Show desktop":"Restore desktop windows";desktopToggle.setContentDescription(hint);desktopToggle.setTooltipText(hint);}
         DesktopWindow manager=windows.get("@taskmanager");if(manager!=null&&manager.getParent()!=null&&manager.body instanceof TaskManagerPanel)((TaskManagerPanel)manager.body).tasksChanged();
+    }
+    private int addQuickLaunch(boolean compact,boolean fit,int viewport,boolean hasTasks){
+        if(compact)return 0;
+        List<String> shortcuts=store.quickLaunch();
+        int cell=dp(40),separator=dp(12);
+        int slots=shortcuts.size();
+        if(fit){
+            int budget=hasTasks?Math.min(viewport/2,Math.max(0,viewport-dp(72))):viewport;
+            slots=Math.min(slots,Math.max(0,(budget-separator)/cell));
+            if(budget<separator)return 0;
+        }
+        boolean overflow=slots<shortcuts.size();
+        int visible=overflow?Math.max(0,slots-1):slots;
+        for(int i=0;i<visible;i++){
+            String id=shortcuts.get(i);
+            FrameLayout quick=new FrameLayout(this);
+            quick.addView(icon(id,24),new FrameLayout.LayoutParams(dp(24),dp(24),Gravity.CENTER));
+            quick.setContentDescription("Open "+label(id));
+            quick.setOnClickListener(v->open(id));
+            ContextMenus.bind(quick,(x,y)->shortcutMenu(quick,id,"quick",x,y));
+            taskItems.addView(quick,new LinearLayout.LayoutParams(cell,dp(48)));
+        }
+        if(overflow&&slots>0){
+            TextView more=Aero.text(this,"»",19,Color.WHITE);
+            more.setGravity(Gravity.CENTER);
+            more.setContentDescription("More Quick Launch shortcuts");
+            more.setOnClickListener(v->{
+                DesktopContextMenu menu=new DesktopContextMenu(this,"More Quick Launch shortcuts");
+                for(String id:shortcuts.subList(visible,shortcuts.size()))menu.item(label(id),"programs",()->open(id));
+                ContextMenus.centered(more,(x,y)->ContextMenus.show(menu,more,x,y));
+            });
+            taskItems.addView(more,new LinearLayout.LayoutParams(cell,dp(48)));
+        }
+        View divider=new TaskbarSeparator(this);
+        divider.setContentDescription("Quick Launch separator");
+        ContextMenus.bind(divider,(x,y)->taskbarMenu(divider,x,y));
+        taskItems.addView(divider,new LinearLayout.LayoutParams(separator,dp(48)));
+        return slots*cell+separator;
+    }
+    private void fitTaskButtons(int first,int room){
+        int count=taskItems.getChildCount()-first;
+        if(count==0)return;
+        int preferred=0;
+        for(int i=first;i<taskItems.getChildCount();i++){
+            LinearLayout.LayoutParams size=(LinearLayout.LayoutParams)taskItems.getChildAt(i).getLayoutParams();
+            preferred+=size.width+size.rightMargin;
+        }
+        if(preferred<=room)return;
+        int gap=room/count>=dp(32)?dp(3):0;
+        int width=Math.max(0,room-count*gap);
+        for(int i=0;i<count;i++){
+            LinearLayout button=(LinearLayout)taskItems.getChildAt(first+i);
+            LinearLayout.LayoutParams size=(LinearLayout.LayoutParams)button.getLayoutParams();
+            size.width=width/count+(i<width%count?1:0);
+            size.rightMargin=gap;
+            button.setLayoutParams(size);
+            if(size.width<dp(46)){
+                button.setGravity(Gravity.CENTER);
+                button.setPadding(0,0,0,0);
+                button.getChildAt(1).setVisibility(View.GONE);
+                View icon=button.getChildAt(0);
+                int side=Math.min(dp(20),size.width);
+                icon.setLayoutParams(new LinearLayout.LayoutParams(side,side));
+            }
+        }
     }
     private int sidebarInset(){return sidebar!=null&&sidebar.getVisibility()==View.VISIBLE&&store.prefs.getBoolean("sidebar_always_top",false)?sidebar.getWidth():0;}
     private LinearLayout taskButton(String id){return taskButton(id,label(id));}
@@ -340,10 +420,18 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private List<DesktopWindow> orderedWindows(){List<DesktopWindow> result=new ArrayList<>();for(int i=0;i<workspace.getChildCount();i++)if(workspace.getChildAt(i) instanceof DesktopWindow)result.add((DesktopWindow)workspace.getChildAt(i));return result;}
     private void taskbarMenu(View anchor,float x,float y){
         if(desktopMenu!=null)desktopMenu.dismiss();startMenu.hide();if(tray!=null)tray.dismiss();desktopMenu=new DesktopContextMenu(this,"Taskbar context menu");
-        desktopMenu.item("Quick Launch…","programs",()->open("@quicklaunch"));desktopMenu.separator();boolean visible=false;for(DesktopWindow window:orderedWindows())if(window.getVisibility()==View.VISIBLE&&!window.minimizing())visible=true;
+        desktopMenu.item("Quick Launch…","programs",()->open("@quicklaunch"));desktopMenu.separator();
+        boolean fit=store.prefs.getBoolean("taskbar_static",false);
+        desktopMenu.checked("Scrollable",!fit,()->setTaskbarStatic(false));
+        desktopMenu.checked("Static",fit,()->setTaskbarStatic(true));
+        desktopMenu.separator();boolean visible=false;for(DesktopWindow window:orderedWindows())if(window.getVisibility()==View.VISIBLE&&!window.minimizing())visible=true;
         for(String[] mode:new String[][]{{"Cascade Windows","cascade"},{"Show Windows Stacked","stacked"},{"Show Windows Side by Side","side"}})desktopMenu.item(mode[0],"empty",visible,()->arrangeWindows(mode[1]));
         if(!arrangementUndo.isEmpty())desktopMenu.item("Undo Window Arrangement","empty",this::undoArrangement);
         desktopMenu.item(desktopHidden.isEmpty()?"Show the Desktop":"Show Open Windows","computer",this::showDesktop);desktopMenu.separator();desktopMenu.item("Switch Windows","computer",()->previews.show());desktopMenu.item("Saved Workspaces…","computer",this::showWorkspaces);desktopMenu.item("Start Task Manager","taskmanager",()->open("@taskmanager"));desktopMenu.separator();desktopMenu.item("Properties","control",()->open("setting:page:taskbar"));ContextMenus.show(desktopMenu,anchor,x,y);
+    }
+    private void setTaskbarStatic(boolean fit){
+        store.prefs.edit().putBoolean("taskbar_static",fit).apply();
+        renderTaskbar();
     }
     private void arrangeWindows(String mode){
         List<DesktopWindow> visible=new ArrayList<>();for(DesktopWindow window:orderedWindows())if(window.getVisibility()==View.VISIBLE&&!window.minimizing())visible.add(window);if(visible.isEmpty())return;
