@@ -15,7 +15,7 @@ final class ShortcutMenus {
         menu.item("Cut","cut",inSource,()->{ExplorerClipboard.shortcuts(Collections.singletonList(id),source,true);host.changed();});
         menu.item("Copy","copy",()->{ExplorerClipboard.shortcuts(Collections.singletonList(id),source,false);host.changed();});
         String destination=store.isFolder(id)?"contents:"+id:source;menu.item("Paste","paste",!ExplorerClipboard.shortcuts.isEmpty(),()->paste(context,store,destination,host));menu.separator();
-        menu.item("Delete shortcut","delete",inSource&&!id.equals("@recycle"),()->{RecycleBin.trashShortcut(context,store,source,id,name);host.changed();});
+        menu.item(store.isFolder(id)?"Delete folder":"Delete shortcut","delete",inSource&&!id.equals("@recycle"),()->{RecycleBin.trashShortcut(context,store,source,id,name);host.changed();});
         menu.item("Rename shortcut…","notes",()->host.rename(id));menu.separator();
         menu.item(store.startPins().contains(id)?"Unpin from Start Menu":"Pin to Start Menu","programs",()->{List<String> pins=store.startPins();if(pins.contains(id))pins.remove(id);else if(pins.size()<32)pins.add(id);store.startPins(pins);host.changed();});
         menu.item(store.pinned(id)?"Remove from desktop":"Add to desktop","computer",()->{if(store.pinned(id)&&!id.equals("@recycle"))RecycleBin.trashShortcut(context,store,"desktop",id,name);else store.toggle(id);host.changed();});

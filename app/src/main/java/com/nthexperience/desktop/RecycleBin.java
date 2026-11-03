@@ -21,29 +21,31 @@ final class RecycleBin {
         items.sort((a,b)->Long.compare(b.optLong("date"),a.optLong("date")));return items;
     }
     private static void metadata(Context context,JSONObject item)throws Exception{AtomicFile file=new AtomicFile(new File(root(context),item.getString("id")+".json"));FileOutputStream out=null;try{out=file.startWrite();out.write(item.toString().getBytes(StandardCharsets.UTF_8));file.finishWrite(out);}catch(Exception ex){if(out!=null)file.failWrite(out);throw ex;}}
-    static void trashShortcut(Context context, DesktopStore store, String source, String shortcut, String name) {
+    static synchronized void trashShortcut(Context context, DesktopStore store, String source,
+                                           String shortcut, String name) {
         if ("@recycle".equals(shortcut)) return;
         List<String> members = ExplorerClipboard.members(store, source);
         int position = members.indexOf(shortcut);
-        if (position < 0) return;
+        JSONObject folder = store.folder(shortcut);
+        if (folder == null && position < 0) return;
         try {
-            recordShortcut(context, source, shortcut, name, position);
-            members.remove(position);
-            ExplorerClipboard.members(store, source, members);
+            if (list(context).size() >= 200) throw new IOException("Recycle Bin is full. Item kept.");
+            JSONObject item = new JSONObject().put("id", UUID.randomUUID().toString()).put("name", name)
+                    .put("shortcut", shortcut).put("source", source).put("position", position)
+                    .put("location", source.equals("quick") ? "Quick Launch" : source.equals("managers")
+                            ? "File Managers" : source.startsWith("contents:") ? "App folder" : "Desktop")
+                    .put("date", System.currentTimeMillis()).put("deleted", true);
+            if (folder != null) item.put("appFolder", folder).put("folderPositions", store.folderPositions(shortcut));
+            metadata(context, item);
+            if (folder != null) {
+                store.setRecycledFolder(shortcut, null, null);
+            } else {
+                members.remove(position);
+                ExplorerClipboard.members(store, source, members);
+            }
         } catch (Exception ex) {
             android.widget.Toast.makeText(context, ex.getMessage(), android.widget.Toast.LENGTH_LONG).show();
         }
-    }
-
-    private static synchronized void recordShortcut(Context context, String source, String shortcut,
-                                                    String name, int position) throws Exception {
-        if (list(context).size() >= 200) throw new IOException("Recycle Bin is full. Shortcut kept.");
-        String id = UUID.randomUUID().toString();
-        metadata(context, new JSONObject().put("id", id).put("name", name)
-                .put("shortcut", shortcut).put("source", source).put("position", position)
-                .put("location", source.equals("quick") ? "Quick Launch" : source.equals("managers")
-                        ? "File Managers" : source.startsWith("contents:") ? "App folder" : "Desktop")
-                .put("date", System.currentTimeMillis()).put("deleted", true));
     }
 
     private static void restoreShortcut(Context context, JSONObject item) throws Exception {
@@ -51,6 +53,11 @@ final class RecycleBin {
         String source = item.getString("source");
         if (source.startsWith("contents:") && !store.isFolder(source.substring(9))) source = "desktop";
         String shortcut = item.getString("shortcut");
+        if (item.has("appFolder")) {
+            store.setRecycledFolder(shortcut, item.getJSONObject("appFolder"), item.getJSONObject("folderPositions"));
+            remove(context, item);
+            return;
+        }
         if ((shortcut.startsWith("folder:") && !store.isFolder(shortcut))
                 || (FolderLinks.id(shortcut) && FolderLinks.get(store, shortcut) == null))
             throw new IOException("The original shortcut target is unavailable.");

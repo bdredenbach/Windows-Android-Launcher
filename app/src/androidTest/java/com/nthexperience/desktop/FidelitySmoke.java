@@ -89,7 +89,7 @@ public final class FidelitySmoke extends Instrumentation {
         View bin=find(v->"@recycle".equals(v.getTag()));
         drag(source,bin);
         await(()->!store.desktop().contains(recycleFixture),"Desktop folder moved off the desktop");
-        check(store.folderItems(recycleFixture).equals(Collections.singletonList("@notes")),"Folder membership survives recycling");
+        check(!store.isFolder(recycleFixture),"Recycling removes the actual app folder");
         ui(()->home.open("@recycle"));
         RecyclePanel panel=(RecyclePanel)window("@recycle").body;
         await(()->find(panel,v->"Recycle item: Recycle drag fixture".equals(v.getContentDescription()))!=null,"Folder appears in the Bin");
@@ -104,6 +104,31 @@ public final class FidelitySmoke extends Instrumentation {
         tap(text(panel,"Restore this item"),60);
         await(()->store.desktop().contains(recycleFixture),"Folder restores to the desktop");
         close("@recycle");
+        check(store.folderItems(recycleFixture).equals(Collections.singletonList("@notes")),"Restore returns the folder and its shortcuts");
+
+        ui(()->home.open("@organize"));
+        DesktopOrganizer organizer=(DesktopOrganizer)window("@organize").body;
+        String navigation="Navigation: Recycle drag fixture";
+        await(()->find(organizer,v->navigation.equals(v.getContentDescription()))!=null,"App folder is listed in the navigation pane");
+        View folderLink=find(organizer,v->navigation.equals(v.getContentDescription()));
+        tap(folderLink,60);
+        await(()->organizer.page().equals("contents:"+recycleFixture),"Folder opens in the same window");
+        check(window(recycleFixture)==null,"Ordinary folder navigation opens no second window");
+        ui(organizer::goBack);
+        check(organizer.page().equals("desktop"),"Back returns to the original folder view");
+        tap(find(organizer,v->navigation.equals(v.getContentDescription())),700);
+        menuTap("Open in new window");
+        DesktopWindow separate=(DesktopWindow)find(v->v instanceof DesktopWindow&&((DesktopWindow)v).toolId.startsWith("@organizer:"));
+        check(separate!=null&&((DesktopOrganizer)separate.body).page().equals("contents:"+recycleFixture)
+                &&organizer.page().equals("desktop"),"Explicit open creates an independent window");
+        close(separate.toolId);
+        tap(find(organizer,v->navigation.equals(v.getContentDescription())),700);
+        menuTap("Delete folder");
+        await(()->!store.isFolder(recycleFixture)&&find(organizer,v->navigation.equals(v.getContentDescription()))==null,
+                "Delete folder clears the navigation pane");
+        for(JSONObject item:RecycleBin.list(home))if(recycleFixture.equals(item.optString("shortcut")))RecycleBin.remove(home,item);
+        check(!store.isFolder(recycleFixture)&&!store.desktop().contains(recycleFixture),"Permanent removal leaves no live folder");
+        close("@organize");
     }
 
     private void folders()throws Exception{

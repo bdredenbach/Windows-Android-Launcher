@@ -193,7 +193,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         if(event.getAction()==DragEvent.ACTION_DRAG_ENTERED)target.setAlpha(.6f);
         if(event.getAction()==DragEvent.ACTION_DROP){
             if(file){FileDrag drag=(FileDrag)payload;main.post(()->drag.explorer.dropInRecycleBin(drag));}
-            else main.post(()->{String id=(String)payload;RecycleBin.trashShortcut(this,store,"desktop",id,label(id));filesChanged();});
+            else main.post(()->{String id=(String)payload;RecycleBin.trashShortcut(this,store,"desktop",id,label(id));desktopChanged();});
         }
         return true;
     }
@@ -225,7 +225,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     View icon(String id,int size){
         AppCatalog.Entry entry=entries.get(id);
         if(entry!=null){ImageView image=new ImageView(this);image.setImageDrawable(entry.icon);image.setScaleType(ImageView.ScaleType.FIT_CENTER);image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);return image;}
-        return new AeroIcon(this,FolderLinks.id(id)?"files":id.equals("@recycle")?(recycleFull?"recycle-full":"recycle"):id.startsWith("@gadget:")?GadgetCatalog.icon(id.substring(8)):store.isFolder(id)||id.equals("@filemanagers")||id.equals("@organize")?"folderapps":id.equals("@welcome")?"orb":id.equals("@backup")?"drive":id.equals("@quicklaunch")?"programs":id.equals("@photos")?"pictures":id.startsWith("@")?id.substring(1):"apps");
+        return new AeroIcon(this,FolderLinks.id(id)?"files":id.equals("@recycle")?(recycleFull?"recycle-full":"recycle"):id.startsWith("@gadget:")?GadgetCatalog.icon(id.substring(8)):store.isFolder(id)||id.startsWith("@organizer:")||id.equals("@filemanagers")||id.equals("@organize")?"folderapps":id.equals("@welcome")?"orb":id.equals("@backup")?"drive":id.equals("@quicklaunch")?"programs":id.equals("@photos")?"pictures":id.startsWith("@")?id.substring(1):"apps");
     }
     private String label(String id){return store.name(id,defaultLabel(id));}
     private String defaultLabel(String id){
@@ -323,7 +323,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     private void filesChanged(){refreshRecycleIcon();if(destroyed)return;for(DesktopWindow tool:windows.values())if(tool.getParent()!=null){if(tool.body instanceof VistaExplorer)((VistaExplorer)tool.body).refreshFiles();else if(tool.body instanceof DesktopOrganizer)((DesktopOrganizer)tool.body).refreshApps();else if(tool.body instanceof RecyclePanel)((RecyclePanel)tool.body).refresh();}renderDesktop();renderTaskbar();}
     private void desktopChanged(){
         layoutWorkspace();renderDesktop();renderTaskbar();
-        for(Map.Entry<String,DesktopWindow> entry:new ArrayList<>(windows.entrySet())){DesktopWindow window=entry.getValue();if(entry.getKey().startsWith("folder:")&&!store.isFolder(entry.getKey())){if(window.body instanceof VistaShell)((VistaShell)window.body).close();workspace.removeView(window);windows.remove(entry.getKey());continue;}if(window.getParent()==null)continue;if(store.isFolder(entry.getKey()))window.caption(label(entry.getKey()));if(window.body instanceof DesktopOrganizer)((DesktopOrganizer)window.body).refreshApps();else if(window.body instanceof RecyclePanel)((RecyclePanel)window.body).refresh();}
+        for(Map.Entry<String,DesktopWindow> entry:new ArrayList<>(windows.entrySet())){DesktopWindow window=entry.getValue();if(window.getParent()==null)continue;if(window.body instanceof DesktopOrganizer)((DesktopOrganizer)window.body).refreshApps();else if(window.body instanceof RecyclePanel)((RecyclePanel)window.body).refresh();}
         refreshRecycleIcon();renderTaskbar();
     }
     private void quickOptions(View anchor,String id){ContextMenus.centered(anchor,(x,y)->shortcutMenu(anchor,id,"quick",x,y));}
@@ -390,10 +390,15 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         body.addView(editor,new LinearLayout.LayoutParams(-1,0,1));window("@notes","Notepad",body);
     }
     private final VistaShell.Actions vistaActions=new VistaShell.Actions(){public void open(String id){MainActivity.this.open(id);}public void action(String id){vistaAction(id);}};
-    private final DesktopOrganizer.Host organizerHost=new DesktopOrganizer.Host(){public String label(String id){return MainActivity.this.label(id);}public View icon(String id,int size){return MainActivity.this.icon(id,size);}public void changed(){desktopChanged();}public void open(String id){MainActivity.this.open(id);}};
+    private final DesktopOrganizer.Host organizerHost=new DesktopOrganizer.Host(){public String label(String id){return MainActivity.this.label(id);}public View icon(String id,int size){return MainActivity.this.icon(id,size);}public void changed(){desktopChanged();}public void open(String id){MainActivity.this.open(id);}public void openFolderWindow(String id){
+        if(!store.isFolder(id))return;
+        int count=0;for(DesktopWindow window:orderedWindows())if(window.body instanceof DesktopOrganizer)count++;
+        if(count>=12){toast("Close a shortcut folder window before opening another (12 maximum).");return;}
+        organizer("@organizer:"+UUID.randomUUID(),"contents:"+id);
+    }};
     private void organizer(String id,String page){
         DesktopWindow existing=windows.get(id);if(existing!=null&&existing.getParent()!=null&&existing.body instanceof DesktopOrganizer){existing.restore();((DesktopOrganizer)existing.body).navigate(page);((DesktopOrganizer)existing.body).refreshApps();return;}
-        window(id,label(id),new DesktopOrganizer(this,store,vistaActions,organizerHost,()->new ArrayList<>(entries.values()),page));
+        window(id,page.startsWith("contents:")?label(page.substring(9)):label(id),new DesktopOrganizer(this,store,vistaActions,organizerHost,()->new ArrayList<>(entries.values()),page));
     }
     private final BackupPanel.Host backupHost=new BackupPanel.Host(){
         public DesktopBackup.Plan pending(){return restorePlan;}public String message(){return backupMessage;}public boolean busy(){return backupBusy;}
@@ -579,8 +584,8 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             JSONObject session=new JSONObject(saved);JSONArray tools=session.optJSONArray("tools");
             if(tools!=null)for(int i=0;i<tools.length();i++){
                 JSONObject item=tools.optJSONObject(i);if(item==null)continue;String id=item.optString("id");
-                if(!validExplorerId(id)&&!FolderLinks.id(id)&&!(id.startsWith("@gadget:")&&GadgetCatalog.extra(id.substring(8)))&&!Arrays.asList("@notes","@sticky","@calendar","@gadgets","@clock","@weather","@appearance","@computer","@control","@system","@files","@filemanagers","@organize","@quicklaunch","@backup","@welcome","@browser","@photos","@taskmanager","@recycle","@recent").contains(id)&&!store.isFolder(id))continue;
-                open(id);DesktopWindow tool=windows.get(id);if(tool==null)continue;tool.readGeometry(item.optJSONObject("geometry"));tool.setVisibility(item.optBoolean("visible",true)?View.VISIBLE:View.GONE);ToolViewState.restore(tool,item.optJSONObject("ui"));
+                if(!id.startsWith("@organizer:")&&!id.startsWith("folder:")&&!validExplorerId(id)&&!FolderLinks.id(id)&&!(id.startsWith("@gadget:")&&GadgetCatalog.extra(id.substring(8)))&&!Arrays.asList("@notes","@sticky","@calendar","@gadgets","@clock","@weather","@appearance","@computer","@control","@system","@files","@filemanagers","@organize","@quicklaunch","@backup","@welcome","@browser","@photos","@taskmanager","@recycle","@recent").contains(id)&&!store.isFolder(id))continue;
+                if(id.startsWith("@organizer:")||(id.startsWith("folder:")&&!store.isFolder(id)))organizer(id,"desktop");else open(id);DesktopWindow tool=windows.get(id);if(tool==null)continue;tool.readGeometry(item.optJSONObject("geometry"));tool.setVisibility(item.optBoolean("visible",true)?View.VISIBLE:View.GONE);ToolViewState.restore(tool,item.optJSONObject("ui"));
             }
             JSONArray hidden=session.optJSONArray("desktopHidden");if(hidden!=null)for(int i=0;i<hidden.length();i++){String id=hidden.optString(i);DesktopWindow tool=windows.get(id);if(tool!=null&&tool.getVisibility()!=View.VISIBLE)desktopHidden.put(id,tool);}
             desktopScroll.post(()->desktopScroll.scrollTo(0,session.optInt("desktopScroll")));startMenu.restore(session.optJSONObject("start"));renderTaskbar();

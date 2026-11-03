@@ -69,6 +69,39 @@ final class DesktopStore {
         List<String> quick=quickLaunch();quick.remove(id);JSONObject names=object("shortcut_names");names.remove(id);
         prefs.edit().putString("app_folders",all.toString()).putString("shortcuts",new JSONArray(ids).toString()).putString("quick_launch",new JSONArray(quick).toString()).putString("shortcut_names",names.toString()).apply();
     }
+    JSONObject folderPositions(String id) {
+        JSONObject positions = new JSONObject();
+        GadgetLayout.put(positions, "shortcuts", desktop().indexOf(id));
+        GadgetLayout.put(positions, "quick_launch", quickLaunch().indexOf(id));
+        GadgetLayout.put(positions, "start_pins", startPins().indexOf(id));
+        return positions;
+    }
+    void setRecycledFolder(String id, JSONObject folder, JSONObject positions) throws java.io.IOException {
+        JSONObject all = folders();
+        if (folder == null) all.remove(id);
+        else {
+            if (!all.has(id) && all.length() >= MAX_FOLDERS)
+                throw new java.io.IOException("The desktop already has 64 folders.");
+            GadgetLayout.put(all, id, folder);
+        }
+        SharedPreferences.Editor edit = prefs.edit().putString("app_folders", all.toString());
+        folderMembership(edit, "shortcuts", desktop(), id, positions, 512);
+        folderMembership(edit, "quick_launch", quickLaunch(), id, positions, MAX_QUICK);
+        folderMembership(edit, "start_pins", startPins(), id, positions, 32);
+        if (!edit.commit()) throw new java.io.IOException("The folder change could not be saved. Recovery data was kept.");
+    }
+    private void folderMembership(SharedPreferences.Editor edit, String key, List<String> ids,
+                                  String id, JSONObject positions, int limit) throws java.io.IOException {
+        if (positions == null) ids.remove(id);
+        else {
+            int position = positions.optInt(key, -1);
+            if (position >= 0 && !ids.contains(id)) {
+                if (ids.size() >= limit) throw new java.io.IOException("The original folder location is full.");
+                ids.add(Math.min(position, ids.size()), id);
+            }
+        }
+        edit.putString(key, new JSONArray(ids).toString());
+    }
     void shift(List<String> ids,String id,int direction){int at=ids.indexOf(id),to=at+direction;if(at>=0&&to>=0&&to<ids.size())Collections.swap(ids,at,to);}
     int iconPercent(){int old=prefs.getInt("desktop_icon_size",1);return Math.max(60,Math.min(150,prefs.getInt("desktop_icon_percent",old==0?83:old==2?126:100)));}
     int iconSize(){return Math.round(46*iconPercent()/100f);}
