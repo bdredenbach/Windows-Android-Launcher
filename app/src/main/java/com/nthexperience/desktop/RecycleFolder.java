@@ -42,7 +42,7 @@ final class RecycleFolder {
     private static void addChildren(Context context, Uri parent, String prefix, ZipOutputStream zip,
                                     DocumentOps.Cancel cancel, Set<Uri> seen, int depth) throws Exception {
         if (depth >= MAX_DEPTH) throw new IOException("The folder tree is too deep. Original kept.");
-        List<DocumentOps.Ref> children = DocumentOps.children(context, parent, cancel);
+        List<DocumentOps.Ref> children = DocumentOps.children(context, parent, cancel, true);
         children.sort(Comparator.comparing(ref -> ref.item.name));
         for (DocumentOps.Ref child : children) {
             cancel.check();

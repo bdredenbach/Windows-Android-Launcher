@@ -26,7 +26,27 @@ public final class DeviceDocumentsProvider extends DocumentsProvider {
     private void row(MatrixCursor cursor,String id,File file){MatrixCursor.RowBuilder row=cursor.newRow();for(String column:cursor.getColumnNames())switch(column){case "document_id":row.add(id);break;case "_display_name":row.add(id.equals("primary:")?"Internal storage":file.getName());break;case "mime_type":row.add(mime(file));break;case "_size":row.add(file.isDirectory()?null:file.length());break;case "last_modified":row.add(file.lastModified());break;case "flags":row.add(flags(id,file));break;default:row.add(null);}}
     @Override public Cursor queryRoots(String[] projection){return new MatrixCursor(projection==null?new String[]{"root_id","document_id","title","flags","mime_types"}:projection);}
     @Override public Cursor queryDocument(String documentId,String[] projection)throws FileNotFoundException{File file=existing(documentId);MatrixCursor cursor=new MatrixCursor(projection==null?COLUMNS:projection);row(cursor,documentId,file);return cursor;}
-    @Override public Cursor queryChildDocuments(String parentId,String[] projection,String order)throws FileNotFoundException{owner();File parent=existing(parentId);if(!parent.isDirectory())throw missing("Not a folder");MatrixCursor cursor=new MatrixCursor(projection==null?COLUMNS:projection);try(DirectoryStream<Path> stream=Files.newDirectoryStream(parent.toPath())){int count=0;for(Path child:stream){String id=id(child.toFile());try{File allowed=file(id);if(!allowed.canRead())continue;row(cursor,id,allowed);if(++count>=10001)break;}catch(FileNotFoundException ignored){}}}catch(IOException ex){throw missing("This folder cannot be read");}return cursor;}
+    static final String INCOMPLETE_CHILDREN = "com.nthexperience.desktop.INCOMPLETE_CHILDREN";
+    @Override public Cursor queryChildDocuments(String parentId,String[] projection,String order)throws FileNotFoundException{
+        owner();File parent=existing(parentId);
+        if(!parent.isDirectory())throw missing("Not a folder");
+        MatrixCursor cursor=new MatrixCursor(projection==null?COLUMNS:projection);
+        boolean incomplete=false;
+        try(DirectoryStream<Path> stream=Files.newDirectoryStream(parent.toPath())){
+            int count=0;
+            for(Path child:stream){
+                String id=id(child.toFile());
+                try{
+                    File allowed=file(id);
+                    if(!allowed.canRead()){incomplete=true;continue;}
+                    row(cursor,id,allowed);
+                    if(++count>=10001){incomplete=true;break;}
+                }catch(FileNotFoundException ignored){incomplete=true;}
+            }
+        }catch(IOException ex){throw missing("This folder cannot be read");}
+        if(incomplete){Bundle extras=new Bundle();extras.putBoolean(INCOMPLETE_CHILDREN,true);cursor.setExtras(extras);}
+        return cursor;
+    }
     @Override public ParcelFileDescriptor openDocument(String documentId,String mode,CancellationSignal signal)throws FileNotFoundException{if(signal!=null)signal.throwIfCanceled();File file=existing(documentId);if(!file.isFile())throw missing("Choose a file");if(!mode.equals("r")){owner();if((flags(documentId,file)&DocumentsContract.Document.FLAG_SUPPORTS_WRITE)==0)throw missing("File is read-only");}return ParcelFileDescriptor.open(file,ParcelFileDescriptor.parseMode(mode));}
     private void require(String id,int capability)throws FileNotFoundException{owner();File file=existing(id);if((flags(id,file)&capability)==0)throw missing("This item does not allow that action");}
     @Override public String createDocument(String parentId,String mime,String displayName)throws FileNotFoundException{require(parentId,DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE);String name=DocumentOps.name(displayName);File target=new File(existing(parentId),name);String id=id(target);target=file(id);try{boolean made=DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)?target.mkdir():target.createNewFile();if(!made)throw missing("An item with that name already exists, or the folder is read-only");return id;}catch(IOException ex){throw missing(ex.getMessage());}}

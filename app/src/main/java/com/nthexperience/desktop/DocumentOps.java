@@ -36,8 +36,16 @@ final class DocumentOps {
     }
     private static DocumentFolders.Item item(Cursor cursor){return new DocumentFolders.Item(cursor.getString(0),cursor.isNull(1)?"Unnamed item":cursor.getString(1),cursor.isNull(2)?"application/octet-stream":cursor.getString(2),cursor.isNull(3)?-1:cursor.getLong(3),cursor.isNull(4)?0:cursor.getLong(4),cursor.isNull(5)?0:cursor.getInt(5));}
     static List<Ref> children(Context context,Uri parent,Cancel cancel)throws IOException {
+        return children(context,parent,cancel,false);
+    }
+    static List<Ref> children(Context context,Uri parent,Cancel cancel,boolean requireComplete)throws IOException {
         Uri query=DocumentsContract.buildChildDocumentsUriUsingTree(parent,DocumentsContract.getDocumentId(parent));List<Ref> result=new ArrayList<>();cancel.check();
-        try(Cursor cursor=context.getContentResolver().query(query,COLUMNS,null,null,null,cancel.signal)){if(cursor==null)throw new IOException("The folder cannot be read.");while(cursor.moveToNext()){cancel.check();if(result.size()>=10000)throw new IOException("This operation is limited to folders with at most 10,000 immediate entries.");DocumentFolders.Item item=item(cursor);result.add(new Ref(DocumentsContract.buildDocumentUriUsingTree(parent,item.id),parent,item));}}return result;
+        try(Cursor cursor=context.getContentResolver().query(query,COLUMNS,null,null,null,cancel.signal)){if(cursor==null)throw new IOException("The folder cannot be read.");while(cursor.moveToNext()){cancel.check();if(result.size()>=10000)throw new IOException("This operation is limited to folders with at most 10,000 immediate entries.");DocumentFolders.Item item=item(cursor);result.add(new Ref(DocumentsContract.buildDocumentUriUsingTree(parent,item.id),parent,item));}
+            if(requireComplete&&(cursor.getExtras().getBoolean(DeviceDocumentsProvider.INCOMPLETE_CHILDREN)
+                    ||cursor.getExtras().getBoolean(DocumentsContract.EXTRA_LOADING)
+                    ||cursor.getExtras().containsKey(DocumentsContract.EXTRA_ERROR)))
+                throw new IOException("The complete folder could not be read. Original kept.");
+        }return result;
     }
     static boolean same(Uri a,Uri b){return a!=null&&b!=null&&Objects.equals(a.getAuthority(),b.getAuthority())&&DocumentsContract.getDocumentId(a).equals(DocumentsContract.getDocumentId(b));}
     private static void require(Context context,Uri uri,int flag,Cancel cancel)throws IOException {if(!writable(context,uri,flag,stat(context,uri,cancel)))throw new IOException("This location is read-only or does not support that action. Link the folder again to request changes.");}
