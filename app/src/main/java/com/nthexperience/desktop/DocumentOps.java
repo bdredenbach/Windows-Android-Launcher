@@ -41,7 +41,7 @@ final class DocumentOps {
     }
     static boolean same(Uri a,Uri b){return a!=null&&b!=null&&Objects.equals(a.getAuthority(),b.getAuthority())&&DocumentsContract.getDocumentId(a).equals(DocumentsContract.getDocumentId(b));}
     private static void require(Context context,Uri uri,int flag,Cancel cancel)throws IOException {if(!writable(context,uri,flag,stat(context,uri,cancel)))throw new IOException("This location is read-only or does not support that action. Link the folder again to request changes.");}
-    private static String available(Context context,Uri parent,String requested,boolean keepBoth,Cancel cancel)throws IOException {
+    static String available(Context context,Uri parent,String requested,boolean keepBoth,Cancel cancel)throws IOException {
         String clean=name(requested);Set<String> names=new HashSet<>();for(Ref entry:children(context,parent,cancel))names.add(entry.item.name.toLowerCase(Locale.ROOT));if(!names.contains(clean.toLowerCase(Locale.ROOT)))return clean;
         if(!keepBoth)throw new IOException("An item with that name already exists. Choose another name.");int dot=clean.lastIndexOf('.');String stem=dot>0?clean.substring(0,dot):clean,ext=dot>0?clean.substring(dot):"";if(stem.length()>200)stem=stem.substring(0,200);
         for(int n=1;n<10000;n++){String candidate=stem+" - Copy"+(n==1?"":" ("+n+")")+ext;if(!names.contains(candidate.toLowerCase(Locale.ROOT)))return candidate;}throw new IOException("Choose a different destination folder.");

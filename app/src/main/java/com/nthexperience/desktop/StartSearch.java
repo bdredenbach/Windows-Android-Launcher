@@ -20,6 +20,9 @@ final class StartSearch {
         for(String[] gadget:GadgetCatalog.ITEMS)if(GadgetCatalog.extra(gadget[0])&&(gadget[1]+" "+gadget[3]).toLowerCase(Locale.ROOT).contains(q))result.add(new Result("@gadget:"+gadget[0],gadget[1],"Gadgets",GadgetCatalog.icon(gadget[0]),null,false));
         for(String[] note:new String[][]{{"note","Notepad","@notes"},{"gadget_note","Sticky note","@sticky"}}){String text=store.prefs.getString(note[0],"");if((note[1]+" "+text).toLowerCase(Locale.ROOT).contains(q))result.add(new Result(note[2],note[1],"Notes","notes",null,false));}
         JSONArray files=LinkedFiles.list(store);for(int i=0;i<files.length();i++){JSONObject file=files.optJSONObject(i);if(file!=null&&file.optString("name").toLowerCase(Locale.ROOT).contains(q))result.add(new Result("search-file:"+file.optString("uri"),file.optString("name"),"Linked files","documentfile",null,false));}
+        Set<String> seen=new HashSet<>();for(Result item:result)seen.add(item.id.startsWith("search-file:")?item.id.substring(12):item.id);
+        JSONArray recent=RecentFiles.list(store);for(int i=0;i<recent.length();i++){JSONObject item=recent.optJSONObject(i);if(item!=null&&item.optString("name").toLowerCase(Locale.ROOT).contains(q)&&seen.add(item.optString("uri")))result.add(new Result("recent-file:"+item.optString("uri"),item.optString("name"),"Recent Items",item.optString("kind").equals("folder")?"files":"documentfile",null,false));}
+        JSONArray favorites=new BrowserData(store.context).list("favorites");for(int i=0;i<favorites.length();i++){JSONObject item=favorites.optJSONObject(i);if(item!=null&&(item.optString("title")+" "+item.optString("url")).toLowerCase(Locale.ROOT).contains(q)&&BrowserUrls.web(item.optString("url")))result.add(new Result("favorite-web:"+item.optString("url"),item.optString("title",item.optString("url")),"Favorites","browser",null,false));}
         return result;
     }
 }

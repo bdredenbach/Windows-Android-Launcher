@@ -93,6 +93,7 @@ final class BrowserPanel extends LinearLayout {
     private TextView smallButton(String text,String label,Runnable action){TextView button=Aero.button(activity,text,action);button.setContentDescription(label);button.setPadding(dp(7),0,dp(7),0);button.setLayoutParams(new LayoutParams(dp(38),dp(42)));return button;}
     WebView web(){return selected==null?null:selected.web;}
     int tabCount(){return tabs.size();}
+    boolean hasPrivateTabs(){for(Tab tab:tabs)if(tab.privateTab)return true;return false;}
     boolean isPrivate(){return selected!=null&&selected.privateTab;}
     String currentUrl(){return selected==null?"":selected.url;}
     boolean privateAvailable(){return WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)&&WebViewFeature.isFeatureSupported(WebViewFeature.DELETE_BROWSING_DATA);}

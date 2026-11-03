@@ -28,3 +28,18 @@ Arrangement uses the actual available workspace excluding cutouts, taskbar, IME 
 ## Verification
 
 A dedicated native PolishSmoke suite physically holds the taskbar, taps actual menu entries and window controls, checks the actual view geometry and state, recreates the real Activity and opens an actual separate-UID app and Android App Info. It covers task selection/switch/end, note continuity, timer suspension/resumption, caption double-tap, taskbar window commands, arrangement/undo, desktop restoration, searchable routing and valid backup inclusion. WindowArrangementCheck tests tiny through wide workspaces, crowded layouts and rounding boundaries. Existing seven portable and full Android 11/16 launcher suites remain required.
+
+
+## Connected desktop — 0.21
+
+The next pass extends the existing Vista shell with on-demand snapshots and a touch switcher, bounded still-image Explorer thumbnails (EXIF-aware), local verified Recycle Bin recovery, shared recent documents/folders and searchable Favorites, named workspaces, opt-in synthesized event sounds and a right-corner brightness flyout. Original vector artwork and synthesized PCM are used. No screen capture or accessibility service permission is requested.
+
+Additional platform references:
+- https://learn.microsoft.com/en-us/windows/win32/shell/taskbar-extensions — distinguishes Vista hover thumbnails from the later Windows7 taskbar.
+- https://learn.microsoft.com/en-us/windows/win32/shell/thumbnail-providers — Vista file-specific thumbnail behavior.
+- https://developer.android.com/reference/android/view/MotionEvent#ACTION_HOVER_ENTER — pointer/stylus hover; phone touch uses an explicit switcher.
+- https://developer.android.com/reference/android/view/WindowManager.LayoutParams#screenBrightness — foreground Activity brightness override.
+- https://developer.android.com/reference/android/provider/Settings.System#canWrite(android.content.Context) — explicit user-controlled settings-write grant; requested only from the brightness flyout.
+- https://developer.android.com/guide/topics/ui/accessibility/views/apps-views — touch target and accessibility guidance.
+
+Adaptation decisions: previews are bounded snapshots rendered only on demand and kept in memory; privacy hides the whole browser preview when any private tab exists. External Android windows are represented by labelled app launch entries. Phone taskbar overflow retains original tap/hold behavior. Recycle Bin supports regular files with readable/deletable originals and creatable parents; it keeps a durable SHA256-verified recovery copy and receipt before original deletion and verifies restored bytes before removing its copy. Folders or unsupported recovery locations are clearly permanent. Limits and restore conflicts are shown in the UI. Named workspaces are bounded JSON references and never capture note contents, private browser session state or Android app state. Brightness scope, device permissions and recent document history are deliberately excluded from desktop backups.

@@ -20,4 +20,5 @@
     <instrumentation android:name="com.nthexperience.desktop.FileOpenSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
     <instrumentation android:name="com.nthexperience.desktop.AuthenticitySmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
     <instrumentation android:name="com.nthexperience.desktop.PolishSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
+    <instrumentation android:name="com.nthexperience.desktop.DesktopExtrasSmoke" android:targetPackage="com.nthexperience.desktop" android:functionalTest="true" />
 </manifest>

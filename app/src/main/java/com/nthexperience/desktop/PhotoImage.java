@@ -14,6 +14,9 @@ final class PhotoImage {
     PhotoImage(Bitmap bitmap,int width,int height){this.bitmap=bitmap;this.width=width;this.height=height;}
     static boolean picture(String name,String type){return FileLaunch.mime(name,type).startsWith("image/");}
     static PhotoImage read(Context context,Uri uri,CancellationSignal signal)throws IOException {
+        return read(context,uri,signal,3072,6_000_000L);
+    }
+    static PhotoImage read(Context context,Uri uri,CancellationSignal signal,int longest,long pixels)throws IOException {
         if(!"content".equals(uri.getScheme()))throw new IOException("Choose a picture from Explorer.");
         BitmapFactory.Options options=new BitmapFactory.Options();options.inJustDecodeBounds=true;
         decode(context,uri,options,signal);int width=options.outWidth,height=options.outHeight;
@@ -23,7 +26,7 @@ final class PhotoImage {
             if(file!=null)try(InputStream in=file.createInputStream()){orientation=new ExifInterface(in).getAttributeInt(ExifInterface.TAG_ORIENTATION,ExifInterface.ORIENTATION_NORMAL);}
         }catch(IOException ignored){}
         signal.throwIfCanceled();options.inJustDecodeBounds=false;options.inPreferredConfig=Bitmap.Config.ARGB_8888;options.inSampleSize=1;
-        while((long)(width/options.inSampleSize)*(height/options.inSampleSize)>6_000_000L||Math.max(width,height)/options.inSampleSize>3072)options.inSampleSize*=2;
+        while((long)(width/options.inSampleSize)*(height/options.inSampleSize)>pixels||Math.max(width,height)/options.inSampleSize>longest)options.inSampleSize*=2;
         Bitmap bitmap=null;
         for(int retry=0;retry<3&&bitmap==null;retry++)try{bitmap=decode(context,uri,options,signal);}catch(OutOfMemoryError tooLarge){options.inSampleSize*=2;}
         if(bitmap==null)throw new IOException("This picture could not be decoded. Try Open with another app.");

@@ -3,7 +3,7 @@ from pathlib import Path
 import struct
 import zipfile
 
-required = {'StorageSmoke', 'BrowserSmoke', 'PhotoSmoke', 'ContinuitySmoke', 'AuthenticitySmoke', 'FileOpenSmoke', 'PolishSmoke'}
+required = {'StorageSmoke', 'BrowserSmoke', 'PhotoSmoke', 'ContinuitySmoke', 'AuthenticitySmoke', 'FileOpenSmoke', 'PolishSmoke', 'DesktopExtrasSmoke'}
 apk = Path('app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk')
 with zipfile.ZipFile(apk) as archive:
     data = archive.read('AndroidManifest.xml')
