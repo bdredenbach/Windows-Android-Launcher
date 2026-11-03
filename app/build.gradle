@@ -6,8 +6,8 @@ android {
         applicationId 'com.nthexperience.desktop'
         minSdk 26
         targetSdk 36
-        versionCode 25
-        versionName '0.22.1'
+        versionCode 26
+        versionName '0.22.2'
         testInstrumentationRunner 'com.nthexperience.desktop.StorageSmoke'
     }
     compileOptions {
