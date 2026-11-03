@@ -6,7 +6,7 @@ import android.view.View;
 
 /** Samples the softened wallpaper beneath the chrome, keeping foreground text sharp. */
 final class AeroGlass extends Drawable {
-    static final int WINDOW=0,START=1,TASKBAR=2,SIDEBAR=3;
+    static final int WINDOW=0,START=1,TASKBAR=2,SIDEBAR=3,TASKBUTTON=4;
     private final AeroWallpaper wallpaper;
     private final int style;
     private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
@@ -33,6 +33,7 @@ final class AeroGlass extends Drawable {
         int[] colors;
         if(style==WINDOW)colors=new int[]{0xb2bedbe8,0x88b2d3e4,0x9b7f9db1,0xccc0d9e7};
         else if(style==START)colors=new int[]{0xe147555e,0xdc263b49,0xe0162936,0xe82a414e};
+        else if(style==TASKBUTTON)colors=active?new int[]{0xeb557e98,0xe62c526b,0xee234056,0xe947718c}:new int[]{0x667c94a4,0x55536c7e,0x55384f60,0x66647e91};
         else if(style==TASKBAR)colors=new int[]{0xf343535b,0xe72b3e4a,0xf012222c,0xee0c1922};
         else colors=new int[]{0x33212b33,0x4423313e,0x55202a34,0x55202a34};
         int tint=TINTS[Math.max(0,Math.min(TINTS.length-1,prefs.getInt("aero_color",0)))];float intensity=Math.max(0,Math.min(100,prefs.getInt("aero_intensity",45)))/100f;

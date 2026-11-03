@@ -20,6 +20,7 @@ final class DesktopStore {
         return list("shortcuts", Arrays.asList("@computer", "@browser", "@notes", "@appearance"));
     }
     void migrateDesktop(){
+        if(!prefs.getBoolean("desktop_recycle_added",false)){List<String> icons=desktop();if(!icons.contains("@recycle"))icons.add("@recycle");desktop(icons);prefs.edit().putBoolean("desktop_recycle_added",true).apply();}
         if(prefs.getBoolean("desktop_v41",false))return;
         List<String> shortcuts=desktop();shortcuts.remove("@files");shortcuts.remove("@filemanagers");desktop(shortcuts);prefs.edit().putBoolean("desktop_v41",true).apply();
     }

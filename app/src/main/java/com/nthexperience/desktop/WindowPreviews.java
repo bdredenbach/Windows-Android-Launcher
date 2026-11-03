@@ -19,18 +19,20 @@ final class WindowPreviews {
         float scale=Math.min(1,Math.min(280f/window.getWidth(),170f/window.getHeight()));Bitmap bitmap=null;
         try{bitmap=Bitmap.createBitmap(Math.max(1,Math.round(window.getWidth()*scale)),Math.max(1,Math.round(window.getHeight()*scale)),Bitmap.Config.ARGB_8888);Canvas canvas=new Canvas(bitmap);canvas.scale(scale,scale);window.draw(canvas);return bitmap;}catch(RuntimeException|OutOfMemoryError ex){if(bitmap!=null)bitmap.recycle();return null;}
     }
-    void show(){((android.view.inputmethod.InputMethodManager)activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(activity.getWindow().getDecorView().getWindowToken(),0);dismiss();LinearLayout body=Aero.column(activity);Aero.pad(body,10);java.util.List<Bitmap> images=new ArrayList<>();
+    void showGroup(java.util.List<DesktopWindow> windows){show(windows,"Folder windows",false);}
+    void show(){show(host.windows(),"Switch Windows",true);}
+    private void show(java.util.List<DesktopWindow> windows,String title,boolean external){((android.view.inputmethod.InputMethodManager)activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(activity.getWindow().getDecorView().getWindowToken(),0);dismiss();LinearLayout body=Aero.column(activity);Aero.pad(body,10);java.util.List<Bitmap> images=new ArrayList<>();
         body.addView(Aero.text(activity,"Tap a window to switch. Previews are snapshots taken when this view opens. InPrivate windows have no preview.",12,0xff496171));
-        for(DesktopWindow window:host.windows()){
+        for(DesktopWindow window:windows){
             LinearLayout card=Aero.column(activity);card.setPadding(0,Aero.dp(activity,10),0,Aero.dp(activity,10));card.setFocusable(true);card.setContentDescription("Switch to "+window.caption());card.setBackground(Aero.selection(activity));
             card.addView(Aero.text(activity,window.caption()+(window.getVisibility()!=View.VISIBLE||window.minimizing()?" — Minimized":""),15,Aero.INK));Bitmap bitmap=snapshot(window);
             if(bitmap!=null){images.add(bitmap);ImageView preview=new ImageView(activity);preview.setImageBitmap(bitmap);preview.setScaleType(ImageView.ScaleType.FIT_CENTER);preview.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);card.addView(preview,new LinearLayout.LayoutParams(-1,Aero.dp(activity,145)));}
             else card.addView(Aero.text(activity,allowed(window)?"Preview unavailable":"InPrivate — preview hidden",12,0xff496171));
             card.setOnClickListener(v->{dismiss();window.restore();});body.addView(card);
         }
-        for(String id:host.external())body.addView(Aero.button(activity,"Open Android app: "+host.label(id),()->{dismiss();host.open(id);}));
-        if(host.windows().isEmpty()&&host.external().isEmpty())body.addView(Aero.text(activity,"No open windows",16,Aero.INK));
-        ScrollView scroll=new ScrollView(activity);scroll.addView(body);dialog=Aero.dialog(activity).setTitle("Switch Windows").setView(scroll).setNegativeButton("Close",null).create();dialog.setOnDismissListener(d->{images.clear();dialog=null;});dialog.show();
+        if(external)for(String id:host.external())body.addView(Aero.button(activity,"Open Android app: "+host.label(id),()->{dismiss();host.open(id);}));
+        if(windows.isEmpty()&&(!external||host.external().isEmpty()))body.addView(Aero.text(activity,"No open windows",16,Aero.INK));
+        ScrollView scroll=new ScrollView(activity);scroll.addView(body);dialog=Aero.dialog(activity).setTitle(title).setView(scroll).setNegativeButton("Close",null).create();dialog.setOnDismissListener(d->{images.clear();dialog=null;});dialog.show();
         int height=Math.round(activity.getResources().getDisplayMetrics().heightPixels*.75f);dialog.getWindow().setLayout(Math.min(Aero.dp(activity,400),activity.getResources().getDisplayMetrics().widthPixels-Aero.dp(activity,24)),height);
     }
     void bind(View button,DesktopWindow window){button.setOnHoverListener((v,event)->{

@@ -14,19 +14,22 @@ import android.view.View;
 final class AeroWallpaper extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
-    private int theme;
+    private int theme;private boolean following,closed;private Bitmap photo;private int photoWidth,photoHeight,background=0xff0a263b;private String position="Fill";private android.os.CancellationSignal request;
+    private static final java.util.concurrent.ExecutorService images=java.util.concurrent.Executors.newSingleThreadExecutor();
     private static Bitmap artwork,wideArtwork;
     private final java.util.List<java.lang.ref.WeakReference<AeroGlass>> surfaces=new java.util.ArrayList<>();
     private Bitmap softened;
     private int softWidth,softHeight,softTheme=-1;
     private final int[] ownLocation=new int[2],targetLocation=new int[2];
-    AeroWallpaper(Context context, int theme) { super(context); this.theme = theme;
-        if(artwork==null){try{artwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora.webp"));}catch(java.io.IOException ignored){}} if(wideArtwork==null){try{wideArtwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora-landscape.webp"));}catch(java.io.IOException ignored){}} setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); }
-    void theme(int value) { theme = value; softened=null; appearanceChanged(); }
+    AeroWallpaper(Context context,int theme){this(context,theme,true);}
+    AeroWallpaper(Context context, int theme,boolean following) { super(context); this.theme = theme;this.following=following;
+        if(artwork==null){try{artwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora.webp"));}catch(java.io.IOException ignored){}} if(wideArtwork==null){try{wideArtwork=BitmapFactory.decodeStream(context.getAssets().open("wallpapers/aero-aurora-landscape.webp"));}catch(java.io.IOException ignored){}} setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);if(following)reload(); }
+    void theme(int value) { theme = value;if(following)reload();softened=null;appearanceChanged(); }
     void appearanceChanged(){invalidate();for(java.util.Iterator<java.lang.ref.WeakReference<AeroGlass>> i=surfaces.iterator();i.hasNext();){AeroGlass glass=i.next().get();if(glass==null)i.remove();else glass.invalidateSelf();}}
     void register(AeroGlass glass){surfaces.add(new java.lang.ref.WeakReference<>(glass));}
     @Override protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight();
+        if(photo!=null&&!photo.isRecycled()){drawPhoto(c,w,h);return;}
         if(artwork!=null){
             drawArtwork(c,w,h);return;
         }
@@ -52,6 +55,14 @@ final class AeroWallpaper extends View {
         paint.setColor(0x08ffffff);
         for(int i=0;i<24;i++) { float x=((i*167+41)%997)/997f*w, y=((i*107+73)%997)/997f*h; c.drawCircle(x,y,1+(i%3),paint); }
     }
+    void draft(int theme,Bitmap image,int width,int height,String position,int background){this.theme=theme;photo=image;photoWidth=width;photoHeight=height;this.position=position;this.background=background;softened=null;appearanceChanged();}
+    void reload(){if(closed||!following)return;android.content.SharedPreferences prefs=getContext().getSharedPreferences("desktop",0);position=prefs.getString("wallpaper_position","Fill");background=BackgroundPicker.COLORS[Math.max(0,Math.min(BackgroundPicker.COLORS.length-1,prefs.getInt("wallpaper_bg",0)))];String uri=prefs.getString("wallpaper_photo","");if(request!=null)request.cancel();if(uri.isEmpty()){photo=null;softened=null;appearanceChanged();return;}android.os.CancellationSignal signal=new android.os.CancellationSignal();request=signal;android.content.Context context=getContext().getApplicationContext();images.execute(()->{PhotoImage result=null;try{result=PhotoImage.read(context,android.net.Uri.parse(uri),signal,2048,4000000);}catch(Exception|OutOfMemoryError ignored){}PhotoImage decoded=result;post(()->{if(closed||signal.isCanceled()){if(decoded!=null)decoded.bitmap.recycle();return;}photo=decoded==null?null:decoded.bitmap;photoWidth=decoded==null?0:decoded.width;photoHeight=decoded==null?0:decoded.height;softened=null;appearanceChanged();});});}
+    private void drawPhoto(Canvas canvas,float width,float height){canvas.drawColor(background);paint.setShader(null);paint.setColorFilter(null);paint.setAlpha(255);paint.setFilterBitmap(true);float scale=position.equals("Fit")?Math.min(width/photo.getWidth(),height/photo.getHeight()):Math.max(width/photo.getWidth(),height/photo.getHeight());float w=photo.getWidth()*scale,h=photo.getHeight()*scale;
+        if(position.equals("Stretch")){w=width;h=height;}
+        if(position.equals("Center")||position.equals("Tile")){float displayScale=following?1:width/Math.max(1,getResources().getDisplayMetrics().widthPixels);w=Math.max(1,photoWidth)*displayScale;h=Math.max(1,photoHeight)*displayScale;}
+        if(position.equals("Tile")){BitmapShader shader=new BitmapShader(photo,Shader.TileMode.REPEAT,Shader.TileMode.REPEAT);Matrix matrix=new Matrix();matrix.setScale(w/photo.getWidth(),h/photo.getHeight());shader.setLocalMatrix(matrix);paint.setShader(shader);canvas.drawRect(0,0,width,height,paint);paint.setShader(null);}else canvas.drawBitmap(photo,null,new RectF((width-w)/2,(height-h)/2,(width+w)/2,(height+h)/2),paint);
+    }
+    void close(){closed=true;if(request!=null)request.cancel();photo=null;softened=null;}
     private void drawArtwork(Canvas c,float w,float h){
         Bitmap image=w>h&&wideArtwork!=null?wideArtwork:artwork;
         float scale=Math.max(w/image.getWidth(),h/image.getHeight());
