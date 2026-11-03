@@ -19,7 +19,7 @@ final class WindowPreviews {
         float scale=Math.min(1,Math.min(280f/window.getWidth(),170f/window.getHeight()));Bitmap bitmap=null;
         try{bitmap=Bitmap.createBitmap(Math.max(1,Math.round(window.getWidth()*scale)),Math.max(1,Math.round(window.getHeight()*scale)),Bitmap.Config.ARGB_8888);Canvas canvas=new Canvas(bitmap);canvas.scale(scale,scale);window.draw(canvas);return bitmap;}catch(RuntimeException|OutOfMemoryError ex){if(bitmap!=null)bitmap.recycle();return null;}
     }
-    void show(){dismiss();LinearLayout body=Aero.column(activity);Aero.pad(body,10);java.util.List<Bitmap> images=new ArrayList<>();
+    void show(){((android.view.inputmethod.InputMethodManager)activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(activity.getWindow().getDecorView().getWindowToken(),0);dismiss();LinearLayout body=Aero.column(activity);Aero.pad(body,10);java.util.List<Bitmap> images=new ArrayList<>();
         body.addView(Aero.text(activity,"Tap a window to switch. Previews are snapshots taken when this view opens. InPrivate windows have no preview.",12,0xff496171));
         for(DesktopWindow window:host.windows()){
             LinearLayout card=Aero.column(activity);card.setPadding(0,Aero.dp(activity,10),0,Aero.dp(activity,10));card.setFocusable(true);card.setContentDescription("Switch to "+window.caption());card.setBackground(Aero.selection(activity));
