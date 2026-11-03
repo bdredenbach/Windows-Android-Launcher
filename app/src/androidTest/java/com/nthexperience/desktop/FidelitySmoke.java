@@ -93,9 +93,11 @@ public final class FidelitySmoke extends Instrumentation {
         View recycled=find(panel,v->"Recycle item: Recycle drag fixture".equals(v.getContentDescription()));
         check(recycled.findViewWithTag("recycle-item-icon") instanceof AeroIcon,"A recycled folder displays its own icon");
         check(text(panel,"Restore all items")!=null&&find(panel,v->"File menu".equals(v.getContentDescription()))==null,"Single adaptive Restore and hidden classic menus");
+        shot("vista-recycle-details.png");
         tap(text(panel,"Views ▾"),60);menuTap("Large icons");
         await(()->find(panel,v->"Sort Recycle Bin by Name".equals(v.getContentDescription()))==null,"Icon view replaces details columns");
         tap(find(panel,v->"Recycle item: Recycle drag fixture".equals(v.getContentDescription())),60);
+        shot("vista-recycle-icons.png");
         tap(text(panel,"Restore this item"),60);
         await(()->store.desktop().contains(recycleFixture),"Folder restores to the desktop");
         close("@recycle");
