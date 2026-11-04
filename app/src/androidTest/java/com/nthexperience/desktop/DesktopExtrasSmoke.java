@@ -49,16 +49,33 @@ public final class DesktopExtrasSmoke extends Instrumentation {
         nodeTap("Flip 3D");
         awaitNode("Previous window");
         awaitNode("Flip to Calendar");
+        awaitNode("Flip to Show Desktop");
         nodeTap("Next window");
         nodeTap("Previous window");
         shot("vista-flip-3d");
         for(int i=0;i<4&&node("Selected window: Calendar")==null;i++)nodeTap("Next window");
         awaitNode("Selected window: Calendar");
+        flipSwipe(false);
+        getUiAutomation().waitForIdle(300,2500);
+        check(node("Selected window: Calendar")==null,"A left swipe advances the stack");
+        flipSwipe(true);
+        awaitNode("Selected window: Calendar");
         nodeTap("Switch to window");
         await(()->calendar.isShown()&&calendar.active(),"Flip 3D restores the actual window");
         ui(()->home.open("@browser"));BrowserPanel browser=(BrowserPanel)window("@browser").body;if(browser.privateAvailable()){ui(()->browser.addTab("",true));ui(()->home.open("@switcher"));awaitNode("InPrivate — preview hidden");shot("window-private-preview");nodeTap("Close");
-            ui(()->home.open("@flip3d"));awaitNode("Flip to "+BrowserPanel.NAME+". InPrivate — preview hidden");nodeTap("Close dialog");}
+            ui(()->home.open("@flip3d"));awaitNode("Flip to "+BrowserPanel.NAME+". InPrivate — preview hidden");nodeTap("Close Flip 3D");}
         ui(()->window("@browser").closeWindow());
+    }
+    private void flipSwipe(boolean right)throws Exception{
+        Rect bounds=new Rect();
+        getUiAutomation().getRootInActiveWindow().getBoundsInScreen(bounds);
+        float left=bounds.left+bounds.width()*.30f,rightEdge=bounds.left+bounds.width()*.70f;
+        float start=right?left:rightEdge,end=right?rightEdge:left,y=bounds.top+bounds.height()*.46f;
+        long down=SystemClock.uptimeMillis();
+        event(down,MotionEvent.ACTION_DOWN,start,y);
+        for(int i=1;i<=8;i++){Thread.sleep(22);event(down,MotionEvent.ACTION_MOVE,start+(end-start)*i/8,y);}
+        event(down,MotionEvent.ACTION_UP,end,y);
+        Thread.sleep(300);
     }
     private void openBrightness() throws Exception {
         tap(find(root, v -> "Device controls".equals(v.getContentDescription())), 700);
