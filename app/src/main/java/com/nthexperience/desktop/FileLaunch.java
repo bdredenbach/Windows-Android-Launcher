@@ -25,6 +25,8 @@ final class FileLaunch {
     static void open(Activity activity,Uri uri,String name,String provided,boolean chooser){
         String type=mime(name,provided);
         if(!chooser&&activity instanceof MainActivity&&type.startsWith("image/")){((MainActivity)activity).openPhoto(uri,name,type,null,"@files");return;}
+        MediaLibrary.Entry media=chooser?null:MediaLibrary.entry(uri,name,provided);
+        if(media!=null&&activity instanceof MainActivity){((MainActivity)activity).openMedia(media);return;}
         try{Intent intent=intent(uri,name,provided);activity.startActivity(chooser?Intent.createChooser(intent,"Open with"):intent);}
         catch(ActivityNotFoundException ex){Aero.dialog(activity).setTitle("Cannot open file").setMessage(type.equals(APK)?"No Android package installer is available on this device.":"No installed app can open this file type ("+type+"). Install an app that supports it, then try again.").setPositiveButton("OK",null).show();}
         catch(SecurityException ex){android.app.AlertDialog.Builder dialog=Aero.dialog(activity).setTitle("Cannot open file").setMessage(type.equals(APK)?"Android blocked this installation request. Review whether Nth Desktop is allowed to install unknown apps, then tap the APK again.":"Android could not share read access to this file. Reconnect its folder or allow file browsing, then try again.").setNegativeButton("Close",null);if(type.equals(APK))dialog.setPositiveButton("Installation settings",(d,w)->{try{activity.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+activity.getPackageName())));}catch(ActivityNotFoundException|SecurityException ignored){}});dialog.show();}

@@ -17,3 +17,5 @@ Weather forecasts are provided by the Norwegian Meteorological Institute (MET No
 - https://api.met.no/
 - https://docs.api.met.no/doc/TermsOfService
 - https://creativecommons.org/licenses/by/4.0/
+
+Nth Media Player and Nth Media Center use AndroidX Media3 ExoPlayer 1.10.1 and its support modules under the Apache License, Version 2.0. The license is included in `third_party/androidx/LICENSE.txt` and in the app's license assets. Source: https://github.com/androidx/media .
