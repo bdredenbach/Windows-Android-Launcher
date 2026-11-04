@@ -1,4 +1,4 @@
-# Nth Desktop for Android
+# Nth Desktop Vista for Android
 
 A Vista-style Android home launcher by Nth Experience. **0.22.0 — Vista finishing touches** adds glass-aware active task buttons, folder-window grouping, a notification-area chevron with original Vista-inspired device icons, matching thin Quick Launch separators, an Explorer-style Recycle Bin, a thumbnail background picker, independent Explorer windows, verified file drag/drop, real-folder desktop shortcuts and a framed Gadget Gallery with Sidebar close/options/move tools (hover or hold the options button to reveal the full strip).
 

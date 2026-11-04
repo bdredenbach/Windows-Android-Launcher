@@ -13,7 +13,7 @@ final class WindowPreviews {
     private final Activity activity;private final Host host;private final Handler main=new Handler(Looper.getMainLooper());
     private AlertDialog dialog;private PopupWindow hover;private Runnable pending;
     WindowPreviews(Activity activity,Host host){this.activity=activity;this.host=host;}
-    private boolean allowed(DesktopWindow window){return !(window.body instanceof BrowserPanel)||!((BrowserPanel)window.body).hasPrivateTabs();}
+    static boolean allowed(DesktopWindow window){return !(window.body instanceof BrowserPanel)||!((BrowserPanel)window.body).hasPrivateTabs();}
     private Bitmap snapshot(DesktopWindow window){
         if(!allowed(window)||window.getWidth()<1||window.getHeight()<1)return null;
         float scale=Math.min(1,Math.min(280f/window.getWidth(),170f/window.getHeight()));Bitmap bitmap=null;
@@ -21,7 +21,30 @@ final class WindowPreviews {
     }
     void showGroup(java.util.List<DesktopWindow> windows){show(windows,"Folder windows",false);}
     void show(){show(host.windows(),"Switch Windows",true);}
-    private void show(java.util.List<DesktopWindow> windows,String title,boolean external){((android.view.inputmethod.InputMethodManager)activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(activity.getWindow().getDecorView().getWindowToken(),0);dismiss();LinearLayout body=Aero.column(activity);Aero.pad(body,10);java.util.List<Bitmap> images=new ArrayList<>();
+    void flip(){
+        hideKeyboard();
+        dismiss();
+        List<DesktopWindow> windows=new ArrayList<>(host.windows());
+        Collections.reverse(windows);
+        List<String> apps=host.external();
+        FlipStack stack=new FlipStack(activity,windows,apps,host,this::snapshot,this::dismiss);
+        AlertDialog view=Aero.dialog(activity).setTitle("Flip 3D").setView(stack).create();
+        dialog=view;
+        view.setOnDismissListener(d->{if(dialog==view)dialog=null;});
+        view.setOnKeyListener((d,key,event)->{
+            if(key!=KeyEvent.KEYCODE_TAB||!event.isMetaPressed())return false;
+            if(event.getAction()==KeyEvent.ACTION_DOWN)stack.step(event.isShiftPressed()?-1:1);
+            return true;
+        });
+        view.show();
+        view.getWindow().setLayout(Math.min(Aero.dp(activity,570),
+                activity.getResources().getDisplayMetrics().widthPixels-Aero.dp(activity,24)),-2);
+    }
+    private void hideKeyboard(){
+        ((android.view.inputmethod.InputMethodManager)activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE))
+                .hideSoftInputFromWindow(activity.getWindow().getDecorView().getWindowToken(),0);
+    }
+    private void show(java.util.List<DesktopWindow> windows,String title,boolean external){hideKeyboard();dismiss();LinearLayout body=Aero.column(activity);Aero.pad(body,10);java.util.List<Bitmap> images=new ArrayList<>();
         body.addView(Aero.text(activity,"Tap a window to switch. Previews are snapshots taken when this view opens. InPrivate windows have no preview.",12,0xff496171));
         for(DesktopWindow window:windows){
             LinearLayout card=Aero.column(activity);card.setPadding(0,Aero.dp(activity,10),0,Aero.dp(activity,10));card.setFocusable(true);card.setContentDescription("Switch to "+window.caption());card.setBackground(Aero.selection(activity));

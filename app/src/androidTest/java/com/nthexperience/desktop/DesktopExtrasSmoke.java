@@ -44,7 +44,20 @@ public final class DesktopExtrasSmoke extends Instrumentation {
         nodeTap("Switch Windows");
         awaitNode("Switch to Calendar");shot("window-switcher");nodeTap("Switch to Calendar");await(()->calendar.isShown()&&calendar.active(),"Overview restores actual minimized Calendar");check(edit.getText().toString().equals("Extras keeps this note"),"Same note contents after switching");
         View task=find(root,v->v.getContentDescription()!=null&&v.getContentDescription().toString().equals("Minimize Calendar"));check(task!=null,"Actual task button");ui(()->task.requestRectangleOnScreen(new Rect(0,0,task.getWidth(),task.getHeight()),true));Thread.sleep(200);Rect bounds=new Rect();check(task.getGlobalVisibleRect(bounds),"Task button visible");mouse(bounds.exactCenterX(),bounds.exactCenterY());awaitNode("Window preview for Calendar");shot("window-hover");mouse(root.getWidth()-10,10);long end=SystemClock.uptimeMillis()+3000;while(node("Window preview for Calendar")!=null&&SystemClock.uptimeMillis()<end)Thread.sleep(80);check(node("Window preview for Calendar")==null,"Moving the pointer away closes the actual preview");
-        ui(()->home.open("@browser"));BrowserPanel browser=(BrowserPanel)window("@browser").body;if(browser.privateAvailable()){ui(()->browser.addTab("",true));ui(()->home.open("@switcher"));awaitNode("InPrivate — preview hidden");shot("window-private-preview");nodeTap("Close");}
+        ui(calendar::minimize);
+        tap(find(root,v->"Taskbar commands".equals(v.getContentDescription())),700);
+        nodeTap("Flip 3D");
+        awaitNode("Previous window");
+        awaitNode("Flip to Calendar");
+        nodeTap("Next window");
+        nodeTap("Previous window");
+        shot("vista-flip-3d");
+        for(int i=0;i<4&&node("Selected window: Calendar")==null;i++)nodeTap("Next window");
+        awaitNode("Selected window: Calendar");
+        nodeTap("Switch to window");
+        await(()->calendar.isShown()&&calendar.active(),"Flip 3D restores the actual window");
+        ui(()->home.open("@browser"));BrowserPanel browser=(BrowserPanel)window("@browser").body;if(browser.privateAvailable()){ui(()->browser.addTab("",true));ui(()->home.open("@switcher"));awaitNode("InPrivate — preview hidden");shot("window-private-preview");nodeTap("Close");
+            ui(()->home.open("@flip3d"));awaitNode("Flip to "+BrowserPanel.NAME+". InPrivate — preview hidden");nodeTap("Close dialog");}
         ui(()->window("@browser").closeWindow());
     }
     private void openBrightness() throws Exception {

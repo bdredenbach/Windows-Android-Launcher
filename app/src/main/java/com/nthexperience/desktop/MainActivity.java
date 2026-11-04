@@ -325,6 +325,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         if(id.startsWith("search-file:")){JSONObject file=LinkedFiles.get(store,id.substring(12));if(file==null){toast("This file link is unavailable. Choose it again in Computer.");return;}viewDocument(Uri.parse(file.optString("uri")),file.optString("mime"));return;}
         if(store.isFolder(id)){organizer(id,"contents:"+id);return;}
         switch(id){
+            case "@flip3d":previews.flip();return;
             case "@switcher":previews.show();return;
             case "@brightness":tray.show("brightness");return;
             case "@recycle":if(!restoreTool(id))window(id,"Recycle Bin",new RecyclePanel(this,store,vistaActions,this::filesChanged));windows.get(id).captionIcon(recycleFull?"recycle-full":"recycle");return;
@@ -427,7 +428,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         desktopMenu.separator();boolean visible=false;for(DesktopWindow window:orderedWindows())if(window.getVisibility()==View.VISIBLE&&!window.minimizing())visible=true;
         for(String[] mode:new String[][]{{"Cascade Windows","cascade"},{"Show Windows Stacked","stacked"},{"Show Windows Side by Side","side"}})desktopMenu.item(mode[0],"empty",visible,()->arrangeWindows(mode[1]));
         if(!arrangementUndo.isEmpty())desktopMenu.item("Undo Window Arrangement","empty",this::undoArrangement);
-        desktopMenu.item(desktopHidden.isEmpty()?"Show the Desktop":"Show Open Windows","computer",this::showDesktop);desktopMenu.separator();desktopMenu.item("Switch Windows","computer",()->previews.show());desktopMenu.item("Saved Workspaces…","computer",this::showWorkspaces);desktopMenu.item("Start Task Manager","taskmanager",()->open("@taskmanager"));desktopMenu.separator();desktopMenu.item("Properties","control",()->open("setting:page:taskbar"));ContextMenus.show(desktopMenu,anchor,x,y);
+        desktopMenu.item(desktopHidden.isEmpty()?"Show the Desktop":"Show Open Windows","computer",this::showDesktop);desktopMenu.separator();desktopMenu.item("Switch Windows","computer",()->previews.show());desktopMenu.item("Flip 3D","appearance",()->previews.flip());desktopMenu.item("Saved Workspaces…","computer",this::showWorkspaces);desktopMenu.item("Start Task Manager","taskmanager",()->open("@taskmanager"));desktopMenu.separator();desktopMenu.item("Properties","control",()->open("setting:page:taskbar"));ContextMenus.show(desktopMenu,anchor,x,y);
     }
     private void setTaskbarStatic(boolean fit){
         store.prefs.edit().putBoolean("taskbar_static",fit).apply();
@@ -635,7 +636,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event){
         if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0&&videoOverlay==null&&!restoringBackup){
-            int key=event.getKeyCode();if(event.isAltPressed()&&key==KeyEvent.KEYCODE_TAB){previews.show();return true;}if(event.isCtrlPressed()&&event.isShiftPressed()&&key==KeyEvent.KEYCODE_ESCAPE){open("@taskmanager");return true;}
+            int key=event.getKeyCode();if(event.isMetaPressed()&&key==KeyEvent.KEYCODE_TAB){previews.flip();return true;}if(event.isAltPressed()&&key==KeyEvent.KEYCODE_TAB){previews.show();return true;}if(event.isCtrlPressed()&&event.isShiftPressed()&&key==KeyEvent.KEYCODE_ESCAPE){open("@taskmanager");return true;}
             if(event.isMetaPressed()&&key==KeyEvent.KEYCODE_D){showDesktop();return true;}
             if(event.isMetaPressed()&&key==KeyEvent.KEYCODE_E){open("@files");return true;}
             DesktopWindow front=null;for(DesktopWindow window:orderedWindows())if(window.getVisibility()==View.VISIBLE&&!window.minimizing())front=window;
