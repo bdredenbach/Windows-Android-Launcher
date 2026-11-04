@@ -76,8 +76,10 @@ final class MediaPlayback {
         else if (surface != null) player.clearVideoTextureView(surface);
         surface = next;
     }
-    void clearSurface(TextureView view) {
-        if (surface == view) surface(null);
+    boolean clearSurface(TextureView view) {
+        if (surface != view) return false;
+        surface(null);
+        return true;
     }
     void release() { released = true; player.release(); }
 

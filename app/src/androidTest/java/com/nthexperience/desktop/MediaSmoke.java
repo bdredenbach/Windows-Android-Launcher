@@ -42,13 +42,14 @@ public final class MediaSmoke extends Instrumentation {
             folder = DocumentOps.createFolder(getTargetContext(), downloads, "Nth Media Test " + SystemClock.uptimeMillis(), new DocumentOps.Cancel());
             for (String name : Arrays.asList("Tone.mp3", "Scene.mp4", "Tone.m4a", "Tone.wav", "Tone.flac", "Scene.webm")) {
                 String type = FileLaunch.mime(name, null);
-                Uri uri = DocumentsContract.createDocument(getTargetContext().getContentResolver(), folder, type, name);
+                String display = name.equals("Tone.mp3") ? "01 Tone.mp3" : name;
+                Uri uri = DocumentsContract.createDocument(getTargetContext().getContentResolver(), folder, type, display);
                 try (InputStream in = getContext().getAssets().open("media/" + name);
                      OutputStream out = getTargetContext().getContentResolver().openOutputStream(uri)) {
                     byte[] buffer = new byte[8192];
                     for (int n; (n = in.read(buffer)) != -1;) out.write(buffer, 0, n);
                 }
-                MediaLibrary.Entry item = MediaLibrary.entry(uri, name, type);
+                MediaLibrary.Entry item = MediaLibrary.entry(uri, display, type);
                 check(item != null, "Media type recognized: " + name);
                 files.add(item);
             }
@@ -65,9 +66,9 @@ public final class MediaSmoke extends Instrumentation {
             runOnMainSync(() -> home.open("@files"));
             await(() -> find(root, view -> view instanceof VistaExplorer) != null, "Explorer opens");
             runOnMainSync(() -> ((VistaExplorer)find(root, view -> view instanceof VistaExplorer)).navigate(page));
-            await(() -> find(root, view -> "Tone.mp3".contentEquals(view.getContentDescription() == null ? "" : view.getContentDescription())) != null,
+            await(() -> find(root, view -> "01 Tone.mp3".contentEquals(view.getContentDescription() == null ? "" : view.getContentDescription())) != null,
                     "Explorer displays the real MP3");
-            runOnMainSync(() -> find(root, view -> "Tone.mp3".equals(view.getContentDescription())).performClick());
+            runOnMainSync(() -> find(root, view -> "01 Tone.mp3".equals(view.getContentDescription())).performClick());
             await(() -> home.mediaPlayback().current() != null && home.mediaPlayback().player.getCurrentPosition() > 200,
                     "Explorer opens and decodes MP3 in the Player");
             MediaPlayback playback = home.mediaPlayback();

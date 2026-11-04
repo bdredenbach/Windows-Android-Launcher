@@ -20,6 +20,7 @@ final class MediaPanel extends LinearLayout implements Player.Listener {
         void addFiles();
         void switchView(boolean center);
         void closeCenter();
+        void libraryChanged();
     }
 
     private final MediaPlayback playback;
@@ -136,6 +137,7 @@ final class MediaPanel extends LinearLayout implements Player.Listener {
         });
         state = label("", 11);
         state.setSingleLine();
+        state.setPadding(dp(6), 0, 0, 0);
         state.setEllipsize(TextUtils.TruncateAt.END);
         options.addView(state, new LayoutParams(0, dp(40), 1));
         addView(options);
@@ -299,7 +301,7 @@ final class MediaPanel extends LinearLayout implements Player.Listener {
             playback.play(Collections.singletonList(item), 0);
             showNow();
         });
-        menu.item("Remove from library", "delete", () -> { library.remove(item); libraryChanged(); });
+        menu.item("Remove from library", "delete", () -> { library.remove(item); host.libraryChanged(); });
         ContextMenus.centered(anchor, (x, y) -> ContextMenus.show(menu, anchor, x, y));
     }
     private void volume() {
@@ -398,7 +400,7 @@ final class MediaPanel extends LinearLayout implements Player.Listener {
         removeCallbacks(tick);
         if (!playback.released) {
             playback.player.removeListener(this);
-            playback.clearSurface(video);
+            if (playback.clearSurface(video)) playback.player.pause();
         }
         super.onDetachedFromWindow();
     }

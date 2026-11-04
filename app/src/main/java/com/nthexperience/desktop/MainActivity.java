@@ -584,6 +584,11 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             else{closeMediaCenter();mediaPlayer().showNow();}
         }
         public void closeCenter(){closeMediaCenter();}
+        public void libraryChanged(){
+            MediaPanel player=playerPanel();
+            if(player!=null)player.libraryChanged();
+            if(mediaCenter!=null)mediaCenter.libraryChanged();
+        }
     };
     private MediaPanel playerPanel(){
         DesktopWindow existing=windows.get(MediaLibrary.PLAYER);
@@ -621,6 +626,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
         mediaCenter=null;
         MediaPanel player=playerPanel();
         mediaPlayback().surface(player==null?null:player.videoSurface());
+        if(player==null)mediaPlayback().player.pause();
         exitBrowserFullscreen(center);
     }
     private void chooseMedia(){
@@ -653,9 +659,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
             main.post(()->{
                 if(destroyed||restoringBackup)return;
                 int added=mediaLibrary().add(files);
-                MediaPanel player=playerPanel();
-                if(player!=null)player.libraryChanged();
-                if(mediaCenter!=null)mediaCenter.libraryChanged();
+                mediaHost.libraryChanged();
                 toast(added>0?added+" added to the media library"
                         :selected.isEmpty()?"These files are already in the library":"No supported files with lasting access were added.");
             });
