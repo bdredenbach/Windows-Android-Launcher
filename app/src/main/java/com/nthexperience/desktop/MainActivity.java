@@ -847,6 +847,7 @@ public final class MainActivity extends Activity implements StartMenu.Actions,Ga
 
     private boolean refreshUsageAccess(){
         boolean permitted=ExternalTasks.permitted(this);
+        if(permitted&&usageGuide!=null)usageGuide.dismiss();
         for(DesktopWindow window:windows.values()){
             if(window.getParent()!=null&&window.body instanceof VistaControlPanel)
                 ((VistaControlPanel)window.body).refreshUsageAccess(permitted);

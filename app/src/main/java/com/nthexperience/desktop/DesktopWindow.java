@@ -286,8 +286,8 @@ final class DesktopWindow extends LinearLayout {
     void restoreGeometry(JSONObject value){if(value!=null)applyGeometry(value,value.optBoolean("maximized"));}
     private void applyGeometry(JSONObject value,boolean maximize){
         positionX=DesktopGeometry.clamp((float)value.optDouble("x",.5),0,1);positionY=DesktopGeometry.clamp((float)value.optDouble("y",.33),0,1);
-        normalW=Aero.dp(getContext(),Math.round(DesktopGeometry.clamp((float)value.optDouble("w",520),180,MAX_SAVED_SIZE)));
-        normalH=Aero.dp(getContext(),Math.round(DesktopGeometry.clamp((float)value.optDouble("h",490),180,MAX_SAVED_SIZE)));
+        normalW=Aero.dp(getContext(),DesktopGeometry.clamp((float)value.optDouble("w",520),180,MAX_SAVED_SIZE));
+        normalH=Aero.dp(getContext(),DesktopGeometry.clamp((float)value.optDouble("h",490),180,MAX_SAVED_SIZE));
         setMaximized(maximize);fitToHost();
     }
     private float clamp(float value,float low,float high){return Math.max(low,Math.min(high,value));}
