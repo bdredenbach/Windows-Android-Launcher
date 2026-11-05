@@ -96,7 +96,21 @@ public final class StorageSmoke extends ExplorerSmoke {
         ui(box::performClick);
         await(this::usageGuideVisible,"Checkbox opens the guide before Settings");
         check(!box.isChecked(),"The guide leaves the checkbox off");
+        if(Build.VERSION.SDK_INT>=33){
+            check(node("Open App info")!=null,"Restricted-settings recovery is available from the guide");
+            check(node("Android App info menu showing Allow restricted settings")!=null,
+                    "The menu illustration has an accessible description");
+        }else{
+            check(node("Open App info")==null,"Older Android omits restricted-settings recovery");
+        }
+        boolean settingsAvailable=!shell("cmd package resolve-activity --brief -a android.settings.USAGE_ACCESS_SETTINGS").contains("No activity found");
         systemClick("OK");
+        if(!settingsAvailable){
+            await(()->home.hasWindowFocus()&&!usageGuideVisible(),"Unavailable Settings returns to the desktop");
+            check(!box.isChecked()&&!ExternalTasks.permitted(home),"Unavailable Settings keeps inclusion off");
+            progress("Usage Access settings are unavailable on this image; the guide fails closed");
+            return;
+        }
         await(this::androidSettingsVisible,"OK opens Android Usage Access settings");
         back();
         await(this::usageGuideVisible,"Returning without a grant reopens the guide");
