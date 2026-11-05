@@ -13,6 +13,8 @@ final class VistaControlPanel extends VistaShell {
     static void searchItems(String query,List<StartSearch.Result> out){for(ControlPanelCatalog.Hit hit:ControlPanelCatalog.search(query))out.add(new StartSearch.Result("setting:"+hit.destination,hit.title,"Control Panel",hit.owner.icon,null,false));}
     private final AeroWallpaper wallpaper;
     private JSONObject backgroundDraft=new JSONObject();private boolean classic;private final LinearLayout crumbs;private int layoutSignature=-1;
+    private CheckBox usageCheckbox;
+    private View usageHelp;
     private EditText nameInput;private String nameDraft;
     VistaControlPanel(Context c,DesktopStore store,AeroWallpaper wallpaper,Actions actions,String initial){
         super(c,store,actions,"Search Control Panel");this.wallpaper=wallpaper;classic=store.prefs.getBoolean("control_panel_classic",false);
@@ -27,6 +29,7 @@ final class VistaControlPanel extends VistaShell {
     private void selectView(boolean value){boolean same=page().equals("home")&&query().isEmpty();classic=value;store.prefs.edit().putBoolean("control_panel_classic",value).apply();navigate("home");if(same)render();}
     private void selectCategory(String key){classic=false;store.prefs.edit().putBoolean("control_panel_classic",false).apply();navigate("category:"+key);}
     @Override void render(){
+        usageCheckbox=null;usageHelp=null;
         if(nameInput!=null)nameDraft=nameInput.getText().toString();nameInput=null;renderPane();LinearLayout column=column();String page=page();updateAddress();status.setText("Nth Desktop  •  "+title(page));
         if(!query().isEmpty())searchResults(column);
         else if(page.equals("home")){panelHeading(column,"Adjust your computer's settings");if(classic)classicView(column);else categoryHome(column);}
@@ -39,7 +42,7 @@ final class VistaControlPanel extends VistaShell {
             case "sounds":heading(column,"Desktop sound effects","Choose the cues you want to hear.");DesktopSounds.settings(getContext(),column);break;
             case "startup":startup(column);break;
             case "taskbar":heading(column,"Taskbar and Start Menu","Choose how your taskbar and Start menu behave.");
-                taskRow(column,"Taskbar grouping","Never, when full, or always group folder windows","files","page:grouping");check(column,"Show mouse-hover window previews","taskbar_previews",true,()->actions.action("taskbar-refresh"));check(column,"Show Android status bar","show_status_bar",false,()->actions.action("chrome"));check(column,"Show Android app taskbar buttons","taskbar_apps",true,()->actions.action("taskbar-refresh"));check(column,"Include apps opened outside Nth Desktop","taskbar_usage",false,()->actions.action("taskbar-usage"));TextView usage=Aero.text(getContext(),"Optional Usage Access adds app buttons when you return here. Android manages how long those tasks stay in memory.",12,0xff586976);column.addView(usage);taskRow(column,"Quick Launch","Choose and order taskbar shortcuts","programs","open:@quicklaunch");taskRow(column,"Choose default home app","Use Nth Desktop as your home","control","home");break;
+                taskRow(column,"Taskbar grouping","Never, when full, or always group folder windows","files","page:grouping");check(column,"Show mouse-hover window previews","taskbar_previews",true,()->actions.action("taskbar-refresh"));check(column,"Show Android status bar","show_status_bar",false,()->actions.action("chrome"));check(column,"Show Android app taskbar buttons","taskbar_apps",true,()->actions.action("taskbar-refresh"));taskbarUsage(column);taskRow(column,"Quick Launch","Choose and order taskbar shortcuts","programs","open:@quicklaunch");taskRow(column,"Choose default home app","Use Nth Desktop as your home","control","home");break;
             case "sidebar":heading(column,"Windows Sidebar Properties","Gadgets on your desktop");check(column,"Keep Sidebar above windows","sidebar_always_top",false,()->actions.action("sidebar-apply"));taskRow(column,"Show Sidebar","Restore the gadget bar without changing its contents","gadgets","sidebar-show");taskRow(column,"Close Sidebar","Hide the dock; keep gadgets and their data","close","sidebar-hide");taskRow(column,"Add gadgets…","Open Gadget Gallery","gadgets","open:@gadgets");break;
             case "icons":heading(column,"Desktop Settings","Choose your icon layout, grid and desktop shortcuts.");column.addView(new DesktopSettings(getContext(),store,()->actions.action("desktop")),new LayoutParams(-1,-2));section(column,"Built-in desktop icons");String[][] icons={{"@recycle","Recycle Bin"},{"@computer","Computer"},{"@files","Files"},{"@notes","Notepad"},{"@photos","Photo Gallery"},{"@appearance","Personalize"},{"@control","Control Panel"},{"@filemanagers","File Managers"}};for(String[] icon:icons){CheckBox box=checkbox(icon[1],store.pinned(icon[0]));box.setOnCheckedChangeListener((v,value)->{if(value!=store.pinned(icon[0]))store.toggle(icon[0]);actions.action("desktop");});column.addView(box);}link(column,"Manage all desktop shortcuts",()->actions.action("shortcuts"));link(column,"Restore original desktop icons",()->actions.action("reset-icons"));break;
             case "accounts":accounts(column);break;
@@ -53,6 +56,42 @@ final class VistaControlPanel extends VistaShell {
     private String iconFor(String destination,String fallback){switch(destination){case "page:colors":return "color";case "page:background":return "pictures";case "page:startup":return "sound";default:return fallback;}}
     private void destination(String value){if(value.startsWith("page:"))navigate(value.substring(5));else if(value.startsWith("open:"))actions.open(value.substring(5));else actions.action(value);}
     private TextView taskLink(LinearLayout parent,String title,String destination){TextView link=Aero.text(getContext(),title,12,0xff0066cc);link.setMinHeight(dp(32));link.setPadding(0,dp(4),dp(4),dp(4));link.setBackground(Aero.selection(getContext()));link.setFocusable(true);link.setContentDescription(title);link.setTag("control-destination:"+destination);link.setOnClickListener(v->destination(destination));parent.addView(link,new LayoutParams(-1,-2));return link;}
+    private void taskbarUsage(LinearLayout column){
+        usageCheckbox=checkbox("Include apps opened outside Nth Desktop",false);
+        usageCheckbox.setOnClickListener(view->{
+            CheckBox box=(CheckBox)view;
+            boolean enable=box.isChecked();
+            if(enable&&!ExternalTasks.permitted(getContext()))box.setChecked(false);
+            actions.action(enable?"taskbar-usage-enable":"taskbar-usage-disable");
+        });
+        column.addView(usageCheckbox);
+        column.addView(Aero.text(getContext(),"Optional Usage Access adds taskbar buttons for apps you open elsewhere.",12,0xff586976));
+
+        LinearLayout help=Aero.column(getContext());
+        help.setPadding(0,dp(5),0,0);
+        help.addView(Aero.text(getContext(),"Turn on Android’s Usage Access switch for "
+                +getContext().getString(R.string.app_name)+", then press Back.",12,0xff586976));
+        if(Build.VERSION.SDK_INT>=33){
+            TextView blocked=Aero.text(getContext(),"If Android says access was denied, open App info. "
+                    +"Tap ⋮, choose Allow restricted settings, then press Back to continue.",12,0xff586976);
+            blocked.setPadding(0,dp(5),0,0);
+            help.addView(blocked);
+            link(help,"Open App info",()->actions.action("taskbar-usage-app-info"))
+                    .setContentDescription("Open App info for Usage Access");
+        }
+        column.addView(help);
+        usageHelp=help;
+        TextView privacy=Aero.text(getContext(),"Vista checks recent app usage when you return to the desktop. "
+                +"Taskbar buttons stay in memory for the current session. This feature does not save usage history or run a background service.",12,0xff586976);
+        privacy.setPadding(0,dp(5),0,dp(8));
+        column.addView(privacy);
+        refreshUsageAccess(ExternalTasks.permitted(getContext()));
+    }
+    void refreshUsageAccess(boolean permitted){
+        if(usageCheckbox==null)return;
+        usageCheckbox.setChecked(ExternalTasks.includesExternalApps(store,permitted));
+        usageHelp.setVisibility(permitted?GONE:VISIBLE);
+    }
     private void taskRow(LinearLayout parent,String title,String description,String icon,String destination){task(parent,icon,title,description,()->destination(destination));View row=parent.getChildAt(parent.getChildCount()-1);row.setTag("control-destination:"+destination);}
     private void categoryHome(LinearLayout parent){
         GridLayout grid=new GridLayout(getContext());grid.setContentDescription("Control Panel categories");grid.setColumnCount(columns(260,2));parent.addView(grid,new LayoutParams(-1,-2));for(String[] category:CATEGORIES){LinearLayout cell=new LinearLayout(getContext());cell.setGravity(Gravity.TOP);cell.setPadding(0,dp(5),dp(10),dp(16));cell.addView(new AeroIcon(getContext(),category[2]),new LayoutParams(dp(42),dp(42)));LinearLayout text=Aero.column(getContext());text.setPadding(dp(10),0,0,0);TextView title=Aero.text(getContext(),category[1],16,0xff287623);title.setMinHeight(dp(34));title.setContentDescription(category[1]);title.setBackground(Aero.selection(getContext()));title.setFocusable(true);title.setOnClickListener(v->selectCategory(category[0]));text.addView(title,new LayoutParams(-1,-2));List<ControlPanelCatalog.Task> links=homeTasks(category[0]);for(ControlPanelCatalog.Task task:links)taskLink(text,task.title,task.destination);cell.addView(text,new LayoutParams(0,-2,1));gridCell(grid,cell);}}
