@@ -1,15 +1,22 @@
 package com.nthexperience.desktop;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.os.Build;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.GestureDetector;
+import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import java.util.Arrays;
+import java.util.Collections;
 import org.json.*;
 
 /** Floating windows are for our built-in tools; Android apps launch normally. */
@@ -31,6 +38,12 @@ final class DesktopWindow extends LinearLayout {
     private boolean active=true,minimizing;
     private int transition;
     private DesktopContextMenu systemMenu;
+    private static final int LEFT=1, RIGHT=2, TOP=4, BOTTOM=8;
+    private static final int MAX_SAVED_SIZE=2000;
+    private final Rect resizeStart=new Rect(), resizeArea=new Rect(), resizeBounds=new Rect();
+    private final Paint gripPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
+    private int resizeCorner;
+    private float resizeDownX,resizeDownY;
     DesktopWindow(Context context, FrameLayout host, String title, View body, AeroWallpaper wallpaper,Runnable changed,DesktopStore store,String toolId,String layoutKey) {
         super(context);this.body=body; this.host=host; this.changed=changed;this.store=store;this.toolId=toolId;geometryKey="window_"+layoutKey+"_"+toolId;
         setOrientation(VERTICAL); setElevation(Aero.dp(context,16));
@@ -69,17 +82,135 @@ final class DesktopWindow extends LinearLayout {
     boolean captionIcon(String kind){if(captionKind.equals(kind))return false;captionKind=kind;ViewGroup chrome=(ViewGroup)getChildAt(0);View old=chrome.getChildAt(0);ViewGroup.LayoutParams params=old.getLayoutParams();chrome.removeViewAt(0);View icon=new AeroIcon(getContext(),kind);bindCaptionIcon(icon);chrome.addView(icon,0,params);return true;}
     boolean maximized(){return maximized;}
     void maximize(){if(!maximized)toggleMaximize();restore();}
-    void restoreDown(){settle();setVisibility(VISIBLE);maximized=false;maximizeButton.setText("□");fitToHost();saveGeometry();bringToFront();changed.run();}
+    void restoreDown(){settle();setVisibility(VISIBLE);setMaximized(false);fitToHost();saveGeometry();bringToFront();changed.run();}
     void closeWindow(){if(getParent()==null)return;dismissSystemMenu();settle();hideKeyboard();if(body instanceof VistaShell)((VistaShell)body).close();if(body instanceof WeatherPanel)((WeatherPanel)body).close();if(body instanceof BrowserPanel)((BrowserPanel)body).close();if(body instanceof PhotoGallery)((PhotoGallery)body).close();if(body instanceof TaskManagerPanel)((TaskManagerPanel)body).close();if(body instanceof RecyclePanel)((RecyclePanel)body).close();host.removeView(this);changed.run();}
     void showSystemMenu(View anchor,float x,float y){dismissSystemMenu();systemMenu=new DesktopContextMenu(getContext(),"Window commands");systemMenu.item("Restore","empty",maximized||getVisibility()!=VISIBLE||minimizing,()->{if(getVisibility()!=VISIBLE||minimizing)restore();else if(maximized)restoreDown();});systemMenu.item("Minimize","empty",getVisibility()==VISIBLE&&!minimizing,this::minimize);systemMenu.item("Maximize","empty",!maximized,this::maximize);systemMenu.separator();systemMenu.item("Close","close",this::closeWindow);ContextMenus.show(systemMenu,anchor,x,y);}
     void dismissSystemMenu(){if(systemMenu!=null){systemMenu.dismiss();systemMenu=null;}}
-    void arrange(int x,int y,int width,int height){settle();maximized=false;maximizeButton.setText("□");normalW=Math.max(1,width);normalH=Math.max(1,height);positionX=DesktopGeometry.fraction(x,hostWidth()-normalW);positionY=DesktopGeometry.fraction(y,host.getHeight()-safeTop-normalH);fitToHost();saveGeometry();}
+    void arrange(int x,int y,int width,int height){settle();setMaximized(false);normalW=Math.max(1,width);normalH=Math.max(1,height);positionX=DesktopGeometry.fraction(x,hostWidth()-normalW);positionY=DesktopGeometry.fraction(y,host.getHeight()-safeTop-normalH);fitToHost();saveGeometry();}
     String caption(){return titleLabel.getText().toString();}
     void caption(String title){titleLabel.setText(title);titleLabel.setContentDescription(title+". Drag to move window.");}
     boolean minimizing(){return minimizing;}
     boolean active(){return active;}
     void active(boolean value){active=value;glass.active(value);titleLabel.setTextColor(value?0xff111b22:0xff465563);titleLabel.setShadowLayer(Aero.dp(getContext(),value?6:2),0,0,value?0xffffffff:0x99ffffff);minimizeButton.setAlpha(value?1:.65f);maximizeButton.setAlpha(value?1:.65f);closeButton.setAlpha(value?1:.6f);}
     @Override public boolean dispatchTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN&&!minimizing){bringToFront();changed.run();}return super.dispatchTouchEvent(e);}
+    private int cornerReach(){return Aero.dp(getContext(),22);}
+    private int resizeCornerAt(float x,float y){
+        if(maximized||minimizing)return 0;
+        int reach=cornerReach();
+        int side=x<reach?LEFT:x>=getWidth()-reach?RIGHT:0;
+        if(side==0)return 0;
+        if(y>=getHeight()-reach)return side|BOTTOM;
+        // Keep the caption buttons' main touch targets clear.
+        int border=Aero.dp(getContext(),6);
+        if(y<reach&&(y<border||x<border||x>=getWidth()-border))return side|TOP;
+        return 0;
+    }
+    @Override public PointerIcon onResolvePointerIcon(MotionEvent event,int pointerIndex){
+        int corner=resizeCornerAt(event.getX(pointerIndex),event.getY(pointerIndex));
+        if(corner==0)return super.onResolvePointerIcon(event,pointerIndex);
+        boolean topLeftToBottomRight=corner==(TOP|LEFT)||corner==(BOTTOM|RIGHT);
+        return PointerIcon.getSystemIcon(getContext(),topLeftToBottomRight
+                ?PointerIcon.TYPE_TOP_LEFT_DIAGONAL_DOUBLE_ARROW:PointerIcon.TYPE_TOP_RIGHT_DIAGONAL_DOUBLE_ARROW);
+    }
+    @Override protected void onSizeChanged(int width,int height,int oldWidth,int oldHeight){
+        super.onSizeChanged(width,height,oldWidth,oldHeight);
+        updateCornerGestures(width,height);
+    }
+    private void updateCornerGestures(int width,int height){
+        if(Build.VERSION.SDK_INT<29)return;
+        int reach=cornerReach();
+        if(maximized||width<2*reach||height<2*reach){
+            setSystemGestureExclusionRects(Collections.emptyList());
+            return;
+        }
+        // A floating window can touch the phone's Back gesture area.
+        setSystemGestureExclusionRects(Arrays.asList(
+                new Rect(0,0,reach,reach),new Rect(width-reach,0,width,reach),
+                new Rect(0,height-reach,reach,height),new Rect(width-reach,height-reach,width,height)));
+    }
+    @Override protected void dispatchDraw(Canvas canvas){
+        super.dispatchDraw(canvas);
+        if(maximized)return;
+        float density=getResources().getDisplayMetrics().density;
+        gripPaint.setStrokeWidth(density);
+        gripPaint.setColor(active?0x99586e80:0x77627480);
+        float edge=4*density;
+        float bottom=getHeight()-edge;
+        for(int size=4;size<=10;size+=3){
+            float length=size*density;
+            canvas.drawLine(edge,bottom-length,edge+length,bottom,gripPaint);
+            float right=getWidth()-edge;
+            canvas.drawLine(right-length,bottom,right,bottom-length,gripPaint);
+        }
+    }
+    @Override public boolean onInterceptTouchEvent(MotionEvent event){
+        if(event.getActionMasked()!=MotionEvent.ACTION_DOWN||event.isButtonPressed(MotionEvent.BUTTON_SECONDARY))
+            return super.onInterceptTouchEvent(event);
+        int corner=resizeCornerAt(event.getX(),event.getY());
+        if(corner==0)return super.onInterceptTouchEvent(event);
+
+        dismissSystemMenu();
+        settle();
+        resizeCorner=corner;
+        resizeDownX=event.getRawX();
+        resizeDownY=event.getRawY();
+        int x=Math.round(getX()),y=Math.round(getY());
+        resizeStart.set(x,y,x+getWidth(),y+getHeight());
+        resizeBounds.set(resizeStart);
+        resizeArea.set(0,safeTop,hostWidth(),host.getHeight());
+        return true;
+    }
+    @Override public boolean onTouchEvent(MotionEvent event){
+        if(resizeCorner==0)return super.onTouchEvent(event);
+        switch(event.getActionMasked()){
+            case MotionEvent.ACTION_MOVE:
+                dragCorner(event.getRawX(),event.getRawY());
+                break;
+            case MotionEvent.ACTION_UP:
+                dragCorner(event.getRawX(),event.getRawY());
+                finishResize();
+                break;
+            case MotionEvent.ACTION_POINTER_UP:
+                if(event.getActionIndex()==0)finishResize();
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                cancelResize();
+                break;
+            default:break;
+        }
+        return true;
+    }
+    private void dragCorner(float rawX,float rawY){
+        int dx=Math.round(rawX-resizeDownX),dy=Math.round(rawY-resizeDownY);
+        int minWidth=Math.min(resizeStart.width(),Aero.dp(getContext(),220));
+        int minHeight=Math.min(resizeStart.height(),Aero.dp(getContext(),180));
+        int maxSize=Aero.dp(getContext(),MAX_SAVED_SIZE);
+        if((resizeCorner&LEFT)!=0){
+            resizeBounds.left=(int)clamp(resizeStart.left+dx,Math.max(resizeArea.left,resizeStart.right-maxSize),resizeStart.right-minWidth);
+        }else{
+            resizeBounds.right=(int)clamp(resizeStart.right+dx,resizeStart.left+minWidth,Math.min(resizeArea.right,resizeStart.left+maxSize));
+        }
+        if((resizeCorner&TOP)!=0){
+            resizeBounds.top=(int)clamp(resizeStart.top+dy,Math.max(resizeArea.top,resizeStart.bottom-maxSize),resizeStart.bottom-minHeight);
+        }else{
+            resizeBounds.bottom=(int)clamp(resizeStart.bottom+dy,resizeStart.top+minHeight,Math.min(resizeArea.bottom,resizeStart.top+maxSize));
+        }
+        place(resizeBounds.left,resizeBounds.top,resizeBounds.width(),resizeBounds.height());
+    }
+    private void finishResize(){
+        resizeCorner=0;
+        if(resizeBounds.equals(resizeStart))return;
+        normalW=resizeBounds.width();
+        normalH=resizeBounds.height();
+        positionX=DesktopGeometry.fraction(resizeBounds.left,hostWidth()-normalW);
+        positionY=DesktopGeometry.fraction(resizeBounds.top-safeTop,host.getHeight()-safeTop-normalH);
+        saveGeometry();
+    }
+    void cancelResize(){
+        if(resizeCorner==0)return;
+        resizeCorner=0;
+        fitToHost();
+    }
     private TextView chrome(String symbol,Runnable action){
         TextView view=Aero.button(getContext(),symbol,action);
         view.setTextSize(16);view.setMinHeight(0);view.setPadding(0,0,0,0);LayoutParams lp=new LayoutParams(Aero.dp(getContext(),44),Aero.dp(getContext(),44));lp.leftMargin=Aero.dp(getContext(),1);view.setLayoutParams(lp);
@@ -93,14 +224,14 @@ final class DesktopWindow extends LinearLayout {
         int height=Math.min(Aero.dp(getContext(),490),host.getHeight()-safeTop-margin*2);
         FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(Math.max(1,width),Math.max(1,height));
         normalW=width;normalH=height;host.addView(this,lp); setX((hostWidth()-width)/2f); setY(safeTop+Math.max(margin,(host.getHeight()-safeTop-height)/3f));
-        if((toolId.equals("@browser")||toolId.equals("@photos")||toolId.equals(MediaLibrary.PLAYER))&&!store.prefs.contains(geometryKey))maximized=true;
-        readGeometry(null);maximizeButton.setText(maximized?"❐":"□");fitToHost();changed.run();
+        if((toolId.equals("@browser")||toolId.equals("@photos")||toolId.equals(MediaLibrary.PLAYER))&&!store.prefs.contains(geometryKey))setMaximized(true);
+        readGeometry(null);fitToHost();changed.run();
     }
     private void hideKeyboard(){
         ((android.view.inputmethod.InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(getWindowToken(),0);
         clearFocus();
     }
-    void settle(){transition++;animate().withEndAction(null).cancel();minimizing=false;setAlpha(1);setScaleX(1);setScaleY(1);setPivotX(getWidth()/2f);setPivotY(getHeight()/2f);}
+    void settle(){cancelResize();transition++;animate().withEndAction(null).cancel();minimizing=false;setAlpha(1);setScaleX(1);setScaleY(1);setPivotX(getWidth()/2f);setPivotY(getHeight()/2f);}
     void minimize(){dismissSystemMenu();hideKeyboard();settle();if(!Aero.motion(getContext())){setVisibility(GONE);changed.run();return;}minimizing=true;int token=++transition;setPivotX(getWidth()*.2f);setPivotY(host.getHeight()-getY()+Aero.dp(getContext(),20));changed.run();animate().scaleX(.15f).scaleY(.15f).alpha(0).setDuration(180).withEndAction(()->{if(token!=transition)return;setVisibility(GONE);settle();changed.run();}).start();}
     void restore(){boolean hidden=getVisibility()!=VISIBLE||minimizing;settle();setVisibility(VISIBLE);bringToFront();changed.run();if(hidden&&Aero.motion(getContext())){int token=++transition;setPivotX(getWidth()*.2f);setPivotY(host.getHeight()-getY()+Aero.dp(getContext(),20));setScaleX(.18f);setScaleY(.18f);setAlpha(0);animate().scaleX(1).scaleY(1).alpha(1).setDuration(190).withEndAction(()->{if(token==transition)settle();}).start();}}
     @Override protected void onDetachedFromWindow(){dismissSystemMenu();settle();super.onDetachedFromWindow();}
@@ -109,18 +240,37 @@ final class DesktopWindow extends LinearLayout {
     void safeTop(int inset){safeTop=Math.max(0,inset);fitToHost();}
     void fitToHost(){
         if(getParent()==null)return;
-        FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)getLayoutParams();
-        int margin=Aero.dp(getContext(),8);
+        if(resizeCorner!=0){
+            if(resizeArea.top==safeTop&&resizeArea.right==hostWidth()&&resizeArea.bottom==host.getHeight())return;
+            resizeCorner=0;
+        }
         int width=maximized?hostWidth():Math.max(1,Math.min(normalW,hostWidth()));
         int height=maximized?Math.max(1,host.getHeight()-safeTop):Math.max(1,Math.min(normalH,host.getHeight()-safeTop));
-        setX(maximized?0:positionX*Math.max(0,hostWidth()-width));
-        setY(safeTop+(maximized?0:positionY*Math.max(0,host.getHeight()-safeTop-height)));
-        // Called from the host layout listener. Reapplying identical parameters
-        // would request another layout forever once any tool window is open.
-        if(lp.width!=width||lp.height!=height){lp.width=width;lp.height=height;setLayoutParams(lp);}
+        float x=maximized?0:positionX*Math.max(0,hostWidth()-width);
+        float y=safeTop+(maximized?0:positionY*Math.max(0,host.getHeight()-safeTop-height));
+        place(x,y,width,height);
+    }
+    private void place(float x,float y,int width,int height){
+        setX(x);
+        setY(y);
+        FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)getLayoutParams();
+        // The host layout listener can call this while a child is already laid out.
+        if(lp.width!=width||lp.height!=height){
+            lp.width=width;
+            lp.height=height;
+            setLayoutParams(lp);
+        }
+        invalidate();
+    }
+    private void setMaximized(boolean value){
+        if(maximized==value)return;
+        maximized=value;
+        maximizeButton.setText(value?"❐":"□");
+        updateCornerGestures(getWidth(),getHeight());
     }
     private void toggleMaximize(){
-        maximized=!maximized;maximizeButton.setText(maximized?"❐":"□");fitToHost();saveGeometry();changed.run();
+        cancelResize();
+        setMaximized(!maximized);fitToHost();saveGeometry();changed.run();
     }
     JSONObject geometry(){
         JSONObject result=new JSONObject();float density=getResources().getDisplayMetrics().density;
@@ -136,9 +286,9 @@ final class DesktopWindow extends LinearLayout {
     void restoreGeometry(JSONObject value){if(value!=null)applyGeometry(value,value.optBoolean("maximized"));}
     private void applyGeometry(JSONObject value,boolean maximize){
         positionX=DesktopGeometry.clamp((float)value.optDouble("x",.5),0,1);positionY=DesktopGeometry.clamp((float)value.optDouble("y",.33),0,1);
-        normalW=Aero.dp(getContext(),Math.round(DesktopGeometry.clamp((float)value.optDouble("w",520),180,900)));
-        normalH=Aero.dp(getContext(),Math.round(DesktopGeometry.clamp((float)value.optDouble("h",490),180,900)));
-        maximized=maximize;maximizeButton.setText(maximized?"❐":"□");fitToHost();
+        normalW=Aero.dp(getContext(),DesktopGeometry.clamp((float)value.optDouble("w",520),180,MAX_SAVED_SIZE));
+        normalH=Aero.dp(getContext(),DesktopGeometry.clamp((float)value.optDouble("h",490),180,MAX_SAVED_SIZE));
+        setMaximized(maximize);fitToHost();
     }
     private float clamp(float value,float low,float high){return Math.max(low,Math.min(high,value));}
 }

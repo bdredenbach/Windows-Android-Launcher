@@ -48,7 +48,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: matrix.api == 30
         with:
-          name: Nth-Desktop-Vista-0.24.1-debug
+          name: Nth-Desktop-Vista-0.25.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - name: Keep APK verification tool for the handoff
         if: matrix.api == 30
@@ -104,6 +104,7 @@ jobs:
             explorer-test.txt
             storage-test.txt
             storage-setup-test.txt
+            startup-usage-test.txt
             storage-access-test.txt
             file-open-blocked-test.txt
             file-open-test.txt
