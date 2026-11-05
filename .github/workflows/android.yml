@@ -104,6 +104,7 @@ jobs:
             explorer-test.txt
             storage-test.txt
             storage-setup-test.txt
+            startup-usage-test.txt
             storage-access-test.txt
             file-open-blocked-test.txt
             file-open-test.txt

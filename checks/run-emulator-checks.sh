@@ -26,6 +26,21 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell pm list instrumentation | tee instrumentation-test.txt
 grep -q 'com.nthexperience.desktop.AuthenticitySmoke' instrumentation-test.txt
+# Verify the startup permission flow on the full Settings image, and the shared
+# resize frame on the ATD image. Then give the established suites a fresh app.
+if [[ "${1:-30}" == "30" ]]; then
+  setup_phase=setup
+else
+  setup_phase=resize
+fi
+timeout -k 3s 180s adb shell am instrument -w -e suite storage -e phase "$setup_phase" com.nthexperience.desktop.test/com.nthexperience.desktop.StorageSmoke | tee startup-usage-test.txt
+grep -q 'PASS:' startup-usage-test.txt
+mkdir -p screenshots
+for name in vista-usage-first-run vista-usage-return; do
+  adb exec-out run-as com.nthexperience.desktop cat "files/$name.png" > "screenshots/$name.png" 2>/dev/null || true
+done
+adb shell am force-stop com.nthexperience.desktop
+adb shell pm clear com.nthexperience.desktop
 timeout -k 3s 240s adb shell am instrument -w com.nthexperience.desktop.test/com.nthexperience.desktop.PolishSmoke | tee polish-test.txt
 grep -q 'PASS:' polish-test.txt
 adb shell am force-stop com.nthexperience.desktop
